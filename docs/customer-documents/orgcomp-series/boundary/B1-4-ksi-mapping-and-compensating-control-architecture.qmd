@@ -1,0 +1,503 @@
+---
+title: "B.1.4 KSI Mapping and Compensating-Control Architecture"
+subtitle: "The control-ID-level FedRAMP KSI mapping and the substrate code that detects, registers, compensates for, and evidences each GCC-Moderate boundary gap"
+doc-type: leaf
+audience: [Assessor, Architect, Executive]
+author: Michael Stratton
+date: "August 2026"
+status: Draft
+canon-source: "inbox/New_FedRAMP_Boundary/M365_GCC-Moderate_Telemetry_and_Boundary_Assessment_External_with_images.docx"
+canon-reference: "https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/compliance/reference/gcc-moderate-boundary-assessment/"
+gap-matrix-data: "https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml"
+parent-leaf: "docs/customer-documents/orgcomp-series/boundary/B1-gcc-moderate-boundary-model.qmd"
+related-narratives:
+  - "docs/customer-documents/orgcomp-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd"
+  - "docs/customer-documents/orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd"
+related-adrs: [ADR-033, ADR-061, ADR-111]
+repo-path: docs/customer-documents/orgcomp-series/boundary/B1-4-ksi-mapping-and-compensating-control-architecture.qmd
+pillar: compliance
+sub-category: B
+leaf: B.1.4
+created-at: 2026-08-06
+updated-at: 2026-08-06
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: draft
+tiers_adopted: []
+lifecycle_review: 2026-11-22
+aliases:
+  - /customer-documents/federal-aan-series/boundary/B1-4-ksi-mapping-and-compensating-control-architecture.html
+  - /customer-documents/compliance/boundary-authorization/B1-4-ksi-mapping-and-compensating-control-architecture.html
+
+---
+
+**CONTROLLED**
+
+# B.1.4 KSI Mapping and Compensating-Control Architecture
+
+<!-- Diagrams for this leaf are not yet produced; text and tables below are the
+     complete content. A KSI-namespace map and a detect→register→compensate→
+     evidence→transport pipeline diagram are natural additions once this leaf
+     clears governance review. -->
+
+## 1. Position
+
+[B.1](B1-gcc-moderate-boundary-model.qmd) names the four NIST 800-53 controls
+that constrain outbound telemetry (SI-4, AU-2, AU-3, SC-7) and the capability
+dispositions those controls produce.
+[B.1.1](B1-1-gcc-moderate-three-way-conflict.qmd) treats the resulting
+mandate-level conflict. [B.1.3](B1-3-rebuilding-boundary-blocked-analytics.qmd)
+gives the agency-side rebuild plan. None of the three answers the two
+questions an assessor or a 3PAO actually asks when the SSP cites a
+compensating control: *which specific FedRAMP KSI control ID does this
+satisfy*, and *what code produces the evidence*. This leaf answers both, and
+in doing so it surfaces two reconciliation gaps in the substrate's own KSI
+and gap-registry artifacts that were not previously documented anywhere in
+the boundary series.
+
+This leaf is deliberately narrower and more mechanical than its siblings. It
+does not re-argue the boundary model; it walks the control-ID mapping and the
+code path from a first-person, "here is exactly what runs and what it
+proves" perspective.
+
+## 2. Two KSI Namespaces That Are Not Interchangeable
+
+The substrate carries two separately-maintained KSI rule corpora. Confusing
+them — which is easy to do, since both use the `KSI-` prefix — produces
+exactly the kind of unattributed claim the boundary-inference methodology in
+[B.1 §2](B1-gcc-moderate-boundary-model.qmd) exists to prevent. Both paths
+below are relative to the substrate's package root; both are linked under
+their real locations in §9.
+
+| | `rules/ksi/` | `ksi/rules/` |
+|---|---|---|
+| **ID shape** | NIST-family-keyed: `KSI-AC-02`, `KSI-SC-07`, `KSI-AU-06`, plus vendor sub-corpora `KSI-CARK-*` (CyberArk), `KSI-ORGTREE-*`, `KSI-RECIP-*` (HRIT reciprocity), `KSI-SNOW-*` (ServiceNow) | Sequential: `KSI-001` … `KSI-029` |
+| **Count** | 191 rules (per `index.yaml` stats block) | 29 rules (verified by directory listing — see §4) |
+| **Authority** | Substrate-native. Its own index explicitly disclaims official status, describing itself as keyed to NIST 800-53 families and stating plainly that it is *"not the official FedRAMP 20x KSI taxonomy."* | Mapped directly to the pinned, vendored **FedRAMP CR26** KSI catalog (theme-prefixed IDs like `KSI-IAM-ELP`, `KSI-MLA-LET`) |
+| **Governing doc** | None — implicit in the rule files and the local-to-family cross-reference file (`control-to-ksi-mapping.yaml`) | [`UIAO_137`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-cr26-ksi-mapping.md) (this leaf's primary source) |
+| **Consumer** | `models.fedramp`, KSI evaluation over SCuBA / substrate-native signals | `fedramp-cr26-catalog` conformance adapter (ADR-061 D3); emits `fedramp:ksi-mapping-source` props |
+
+For a question of the shape *"does the SSP's KSI evidence trace to an
+official FedRAMP 20x control?"* — the question a 3PAO asks — the second
+corpus (`ksi/rules/`) is the relevant one, because it alone is
+pinned to the official catalog. §3–§4 below cover it. The first corpus
+(`rules/ksi/`) reappears in §5 as the namespace that the boundary
+gap registry's `ksi_ids` field should — but mostly does not — resolve
+against.
+
+## 3. The CR26 Catalog Pin and What It Currently Covers
+
+Per `UIAO_137 §2`, the mapping is pinned to a specific, hash-identified
+snapshot of the FedRAMP CR26 (Consolidated Rules) catalog:
+
+| Field | Value |
+|---|---|
+| Snapshot SHA | `c31eb04c082d6d578a26a00de9a482707ab7a00c` |
+| Catalog UUID | `092dc25a-18ca-51d9-ab85-744e5435405e` |
+| KSI themes in catalog | 10 — KSI-CMT, KSI-CNA, KSI-CED, KSI-IAM, KSI-INR, KSI-MLA, KSI-PIY, KSI-RPL, KSI-SVC, KSI-SCR |
+| KSI controls in catalog | 46 |
+
+The `fedramp-cr26-catalog` adapter emits `DRIFT-PROVENANCE` if a CR26 ID
+cited in the mapping no longer resolves against this pinned snapshot — so
+the pin itself is continuously verified. What is **not** continuously
+verified is whether the mapping's prose description of its own coverage
+stays current as new local rules are added. §4 documents a concrete case
+where it did not.
+
+### 3.1 Coverage as of this leaf (verified against the live rule corpus)
+
+`UIAO_137`'s body (last updated 2026-06-18) states 14 local rules
+(`KSI-001`–`KSI-014`) covering 21 of 46 CR26 controls (~46%). A direct
+listing of `ksi/rules/` and a grep of the machine-readable
+companion (`adapters/fedramp_cr26_catalog/mappings/ksi-mapping.yaml`,
+which the same document says "must stay in lockstep" with the prose) show
+**29 rules** (`KSI-001`–`KSI-029`) mapping to **32 of 46** CR26 controls
+(~70%):
+
+| CR26 theme | Controls | Covered (documented, `UIAO_137` §4) | Covered (current, verified) | Gap closed by |
+|---|---:|---|---|---|
+| KSI-IAM | 6 | 6/6 | 6/6 — unchanged | — |
+| KSI-CMT | 4 | 4/4 (scaffold, not evaluable — ADR-111) | 4/4 (scaffold, not evaluable — ADR-111) | — |
+| KSI-CED | 1 | 0/1 | **1/1** | `KSI-022` |
+| KSI-INR | 3 | 0/3 | **3/3** | `KSI-023`, `KSI-024`, `KSI-025` |
+| KSI-PIY | 5 | 0/5 | **5/5** | `KSI-017`–`KSI-021` |
+| KSI-RPL | 4 | 0/4 | **4/4** | `KSI-026`–`KSI-029` |
+| KSI-SCR | 2 | 0/2 | **2/2** | `KSI-015`, `KSI-016` |
+| KSI-MLA | 5 | 2/5 | 2/5 — unchanged | — |
+| KSI-CNA | 8 | 2/8 | 2/8 — unchanged | — |
+| KSI-SVC | 8 | 3/8 | 3/8 — unchanged | — |
+| **Total** | **46** | **21/46 (46%)** | **32/46 (70%)** | |
+
+Every one of the five themes `UIAO_137 §4` flagged by name as having *"zero
+local rules"* — KSI-CED, KSI-INR, KSI-PIY, KSI-RPL, KSI-SCR — is now fully
+covered. The remaining true gap is 14 controls across three themes:
+KSI-CNA (6 open), KSI-MLA (3 open), KSI-SVC (5 open) — plus the 4 KSI-CMT
+controls that are mapped but not yet evaluable pending the CR26 VDR/VER
+evidence contract (ADR-111).
+
+## 4. Finding: `UIAO_137`'s Coverage Narrative Has Drifted From Its Own Rule Corpus
+
+This is a documentation-staleness finding, stated with the same load-bearing
+honesty [B.1.3 §11](B1-3-rebuilding-boundary-blocked-analytics.qmd) applies
+to the rebuild-compensation ceiling.
+
+`UIAO_137 §4` names five themes with explicit zero coverage and calls the
+gap *"expected... downstream work"*. Fifteen rules exist today —
+`KSI-015` through `KSI-029` — that close exactly those five themes, each
+correctly mapped in the machine-readable companion
+(`ksi-mapping.yaml`) to the precise CR26 control the prose said was missing
+(e.g. `KSI-022 → KSI-CED-RAT`, `KSI-026 → KSI-RPL-ABO`). The rules and their
+mapping entries are real, committed, and internally consistent with each
+other. What has not been updated is `UIAO_137`'s own narrative text: its
+"14 rules," "21 of 46," and its "zero local rules" framing for those five
+themes in §2 and §4 no longer describe the repository.
+
+This is exactly the class of drift the document's own machinery is designed
+to catch for the *catalog* (`DRIFT-PROVENANCE` on a CR26 ID going stale) but
+does not catch for the *document's self-description of its own coverage*,
+because no automated check diffs `UIAO_137`'s prose tables against a live
+count of `ksi/rules/*.yaml`. Recommended remediation: either
+generate §3–§4 of `UIAO_137` from the same script that presumably produced
+`ksi-mapping.yaml`'s coverage, or add a CI check that fails when the rule
+count in `ksi/rules/` diverges from the count asserted in
+`UIAO_137`'s frontmatter — the same discipline
+[B.1.3's fix-coverage matrix](B1-3-rebuilding-boundary-blocked-analytics.qmd#6-signal-by-signal-rebuild-coverage)
+already applies via its `generate_rebuild_coverage.py` generator comment.
+
+## 5. Finding: The Boundary Gap Registry's `ksi_ids` Field Does Not Reconcile Against Either KSI Namespace
+
+`gcc-boundary-gap-registry.yaml` (ADR-033 §3; header states *"ATO artifact:
+yes — feeds SSP Section 13"*) carries a `ksi_ids` array on every gap entry,
+described in ADR-033 as *"Input to the continuous monitoring KSI signal
+set"* and, in the ADR's implementation path, wired to *"Appendix T risk
+scoring."* Checking those IDs against the two namespaces documented in §2–§4
+surfaces a second reconciliation gap, distinct from and additional to §4's.
+
+**Most `ksi_ids` values do not resolve to any file in either corpus.**
+`ksi/rules/` tops out at `KSI-029`; `rules/ksi/` uses
+family-prefixed IDs, not bare numbers. Values like `KSI-047`, `KSI-048`,
+`KSI-062`, `KSI-063`, `KSI-071`, `KSI-087`, `KSI-098`, `KSI-099`, `KSI-112`,
+and `KSI-113` — cited across `GAP-INT-001`, `GAP-INT-003`, `GAP-INT-004`,
+`GAP-INT-005`, `GAP-INT-008`, `GAP-INT-009`, `GAP-INT-011`, `GAP-ARC-001`,
+`GAP-ARC-002`, and `GAP-ARC-003` — have no corresponding rule file anywhere
+in the repository today.
+
+**Where a value happens to collide with a real ID, the topics do not
+match**, which is worse than a non-resolving reference because it is silent
+until checked. Two examples:
+
+| Gap entry | Registry `ksi_ids` | Registry subject | What that ID actually is |
+|---|---|---|---|
+| `GAP-ARC-004` — Defender for Servers telemetry (SI-3/SI-4/IR-5) | `KSI-015`, `KSI-016` | Security-telemetry compensating control | `KSI-015` = *Supply Chain Risk Mitigation*, `KSI-016` = *Supply Chain Monitoring* (KSI-SCR theme) |
+| `GAP-INT-006` — Expedited Windows Quality Updates (SI-2/RA-5) | `KSI-028`, `KSI-029` | Patch-SLA compensating control | `KSI-028` = *Recovery Objective Review*, `KSI-029` = *Recovery Capability Testing* (KSI-RPL theme, CP-family) |
+
+Both `GAP-ARC-004` and `GAP-INT-006` are flagged `P1` in the registry —
+`GAP-ARC-004` is explicitly `GAP_UNMITIGATED` and requires AO risk
+acceptance. An assessor pulling the cited KSI ID to check the evidence trail
+would land on an unrelated recovery-planning or supply-chain rule, not on
+anything about Defender telemetry or patch SLAs.
+
+**One entry does resolve correctly — into the *other* namespace.**
+`GAP-ENT-001` (PIM-for-Groups password-reset escalation, a `DRIFT-AUTHZ`
+rather than `DRIFT-BOUNDARY` finding) cites `ksi_ids: ["KSI-AC-02",
+"KSI-AC-06", "KSI-AU-06"]`. These resolve exactly, by title, against
+`rules/ksi/index.yaml`: `KSI-AC-02` = *Account Management*,
+`KSI-AC-06` = *Least Privilege*, `KSI-AU-06` = *Audit Record Review,
+Analysis, and Reporting* — a correct fit for a password-reset
+privilege-escalation finding. This shows the registry's `ksi_ids` field is
+not wrong by construction; it is inconsistently sourced. The most
+recently-added entry (`GAP-ENT-001`) correctly cites the substrate-native
+NIST-family namespace (§2's first corpus); the older Intune/Arc entries cite
+numbers that resolve nowhere, or resolve to the wrong CR26-mapped rule.
+
+**A fourth namespace exists and is disjoint from all of the above.**
+`monitoring/ongoing_auth.py` — the OSCAL ongoing-authorization
+evidence generator described in §6.4 below — reads
+`docs/data/ksi-mappings.yml`, whose entries use a third ID *shape* entirely:
+descriptive slugs (`KSI-IDENTITY-MFA`, `KSI-TELEMETRY-VISIBILITY`,
+`KSI-NETWORK-SEGMENTATION`, `KSI-ENDPOINT-COMPLIANCE`, `KSI-DATA-PROTECTION`).
+These map directly to NIST control IDs (`IA-2`, `AU-6`, `SC-7`, …) rather
+than to either KSI corpus in §2, and are not cross-referenced from
+`UIAO_137`, the gap registry, or either rule corpus.
+
+**Net effect.** The substrate currently has four `KSI-`-prefixed ID spaces
+in active use — the 191-rule NIST-family corpus, the 29-rule CR26-mapped
+corpus, the boundary gap registry's ad hoc numbering, and the
+ongoing-authorization generator's descriptive slugs — with exactly one
+verified cross-reference between any pair of them (`GAP-ENT-001`, §5 above).
+[UIAO_139 §2](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-gcc-moderate-realtime-boundary-impact.md)
+already documents that the boundary series carries three unreconciled
+*gap* registers "at different altitudes" and flags that as intentional,
+tracked, non-blocking drift; this leaf's finding is the same category of
+issue one level down, in the KSI IDs those registers cite, and it has not
+previously been named. Given the gap registry's own header claims ATO
+status (*"feeds SSP Section 13"*), reconciling or removing the non-resolving
+`ksi_ids` values before that registry is submitted in an SSP package is
+the concrete action item this leaf adds to the reconciliation backlog.
+
+## 6. The Compensating-Control Pipeline — Detect, Register, Compensate, Evidence, Transport
+
+The code that implements everything B.1/B.1.1/B.1.3 describe in narrative
+form is a five-stage pipeline. Each stage is a real, running component;
+none of this is aspirational.
+
+### 6.1 Detect — `DRIFT-BOUNDARY` and the GCC Boundary Probe
+
+ADR-033 adds `DRIFT-BOUNDARY` as a sixth drift class alongside
+DRIFT-SCHEMA, DRIFT-SEMANTIC, DRIFT-PROVENANCE, DRIFT-AUTHZ, and
+DRIFT-IDENTITY, defined as:
+
+> *"A feature, capability, or service that is nominally within the
+> authorized system boundary and appears available in administrative
+> interfaces, but is functionally unavailable or produces no data due to
+> undocumented restrictions, telemetry dependencies that conflict with
+> FedRAMP compliance controls, or cloud service provider limitations not
+> reflected in official documentation."*
+
+with a severity table (security-control impact → P1; operational
+visibility / compliance documentation → P2; feature capability / reporting
+→ P3).
+
+`adapters/modernization/gcc_boundary_probe/probe.py` implements the
+detector. `GraphProbe` and `ARCProbe` issue live calls against Microsoft
+Graph and Azure Resource Manager and classify the result into the six-value
+status enum from ADR-033 (`FUNCTIONAL`, `SILENTLY_BLOCKED`,
+`EXPLICITLY_UNAVAIL`, `PLANNING_PHASE`, `COMPENSATED`, `GAP_UNMITIGATED`).
+The Endpoint Analytics probe is illustrative of the pattern:
+
+```python
+async def probe_endpoint_analytics_available(self) -> tuple[str, str]:
+    # First: does the tenant have enrolled devices at all?
+    status, devices = await self._get(".../deviceManagement/managedDevices?$count=true&$top=1")
+    if devices.get("@odata.count", 0) == 0:
+        return "PROBE_SKIPPED", "No enrolled devices to probe against"
+
+    # Then: does the analytics endpoint return actual insights, or an empty shell?
+    status2, scores = await self._get(".../beta/deviceManagement/userExperienceAnalyticsOverview")
+    if status2 == 200 and not scores.get("insights", []):
+        return "SILENTLY_BLOCKED", (
+            "Endpoint analytics API responds but returns no insights. "
+            "DiagTrack telemetry pipeline likely blocked by FedRAMP controls."
+        )
+```
+
+The probe's `_build_finding()` also bridges each finding to the signal-level
+telemetry-gaps SSOT (`gcc-moderate-telemetry-gaps.yaml`) via a
+`telemetry_gap_refs` list, resolving to the exact `fixes` /
+`partial-substitute` / `partial-bounded` / `not-fixed` rebuild verdict from
+[B.1.3 §6.1](B1-3-rebuilding-boundary-blocked-analytics.qmd#61-complete-fix-coverage-matrix-all-26-gap-rows)
+via `load_rebuild_verdicts()`. A single probe run therefore emits, per
+finding: the live functional status, the NIST controls it constrains, the
+KSI IDs it should (per §5, does not always) affect, and the B.1.3 rebuild
+verdict — one object serving three separate registers.
+
+### 6.2 Register — the Compensating Controls Registry
+
+`gcc-boundary-gap-registry.yaml` is the canonical, machine-generated
+inventory the probe writes to. Its own header declares its authority
+directly:
+
+```yaml
+# Canon ref:    ADR-033, Appendix U (extended)
+# ATO artifact: yes — feeds SSP Section 13 (Inherited Controls)
+# Generated by: gcc-boundary-probe-v1
+# Update cycle: Weekly automated probe + governed PR on change
+```
+
+Walking one entry end to end shows the full contract the registry commits
+to (`GAP-INT-001`, Endpoint Analytics):
+
+| Field | Value |
+|---|---|
+| `nist_controls` | `SI-4`, `SI-2` |
+| `compensating_control` | a registered ID naming the in-boundary telemetry component (§6.3) |
+| `status` | `COMPENSATED` |
+| `ksi_ids` | `KSI-047`, `KSI-048` *(does not resolve — see §5)* |
+| `ato_note` | *(paraphrased)* the SSP must not claim Endpoint Analytics as a functioning SI-4 implementation, and must instead document the in-boundary telemetry component (§6.3) as the compensating control |
+
+The `ato_note` field exists specifically to prevent SSP overclaiming — it is
+the registry's own guard against the exact failure mode ADR-033's
+"Context" section describes: an SSP claiming an inherited Microsoft control
+that is, in practice, non-functional in GCC-Moderate.
+
+As of the current registry snapshot: **15 gaps** tracked, **11 compensated**,
+**3 unmitigated**, of which two are `P1` and carry explicit AO
+risk-acceptance requirements — `GAP-INT-008` (Windows Device Health
+Attestation, no compensating control, called out in its own `ato_note` as
+*"the most significant security control gap in the GCC-Moderate Intune
+deployment"*) and `GAP-ARC-004` (Defender for Servers telemetry — a
+compensating control is named in the registry but the gap's `status` stays
+`GAP_UNMITIGATED` pending verification; also flagged in §5 for its
+non-matching `ksi_ids`). One entry (`GAP-ENT-001`) is structurally different
+from the other fourteen: it is a `DRIFT-AUTHZ` detection gap (the underlying
+Entra feature works; the upstream SCuBA baseline check `MS.AAD.7.4v1` does
+not flag the specific PIM-for-Groups escalation path — tracked upstream at
+`cisagov/ScubaGear#2072`), not a `DRIFT-BOUNDARY` telemetry gap, riding in
+the same file because both are compensating-control entries feeding the
+same SSP section.
+
+### 6.3 Compensate — In-Boundary Telemetry Aggregation
+
+`adapters/modernization/gcc_boundary_probe/telemetry.py`
+implements the compensating control the registry assigns to the Intune
+Endpoint-Analytics and Arc-telemetry gaps (§6.2). Its module docstring
+states the mechanism directly:
+
+> *"Collects device health telemetry within the FedRAMP boundary using
+> Graph API management plane (not telemetry plane)... These are management
+> API calls, not telemetry streams. They do not require DiagTrack or
+> commercial telemetry endpoints."*
+
+Two collection paths, both staying inside the boundary by construction —
+the same "destination, not the data" principle
+[B.1.3 §2](B1-3-rebuilding-boundary-blocked-analytics.qmd#2-the-in-boundary-principle--why-this-is-lawful-where-inheritance-is-not)
+argues for the agency-scale rebuild, implemented here at the tenant-admin
+scale:
+
+- **`collect_intune_device_health()`** — paginates
+  `/deviceManagement/managedDevices` via Graph, a management-plane
+  endpoint available in every sovereign cloud (`cloud="commercial"`,
+  `"gcc-high"`, or `"dod"`; commercial also serves GCC-Moderate per
+  ADR-033). Populates a `DeviceHealthRecord` (compliance state, disk
+  health, memory, boot time, TPM presence, OrgPath, Entra join state)
+  tagged with a fixed data-source marker identifying it as substrate-
+  collected, in-boundary telemetry rather than a Microsoft
+  telemetry-pipeline artifact.
+- **`collect_local_wmi_health()`** — runs a local PowerShell/CIM script
+  (`Win32_ComputerSystem`, `Win32_OperatingSystem`, `Win32_LogicalDisk`,
+  `Win32_Tpm`) with **no external network call at all**. Used for
+  ARC-enrolled servers where `GAP-ARC-001`/`002`/`003` show Azure Monitor's
+  telemetry endpoints blocked.
+
+The module docstring's compliance claim is explicit and testable: *"Maps to
+NIST 800-137 continuous monitoring requirements."* That is the standard
+this component exists to satisfy without touching the commercial telemetry
+pipeline SI-4/AU-2/AU-3/SC-7 constrain.
+
+### 6.4 Evidence — OSCAL Ongoing Authorization
+
+`monitoring/ongoing_auth.py`'s `OngoingAuthGenerator` is the
+component that turns the registry and telemetry above into a FedRAMP
+20x-consumable artifact. It loads `monitoring-sources.yml` (signal →
+control) and `ksi-mappings.yml` (KSI → controls, evidence source — the
+fourth namespace flagged in §5), and emits one OSCAL `observation` per
+signal, each tagged with `control-id`, `signal`, and `evidence-source`
+props under the `fedramp.gov/ns/oscal` namespace:
+
+```python
+def _build_observation(self, control_id, signal, description, evidence_source, source_system):
+    return {
+        "uuid": str(uuid.uuid4()),
+        "title": f"ConMon Evidence: {control_id} via {source_system}",
+        "props": [
+            {"name": "control-id", "value": control_id, "ns": "https://fedramp.gov/ns/oscal"},
+            {"name": "signal", "value": signal, "ns": "https://fedramp.gov/ns/oscal"},
+            {"name": "evidence-source", "value": evidence_source, "ns": "https://fedramp.gov/ns/oscal"},
+        ],
+        "methods": ["AUTOMATED"],
+        "collected": now,
+    }
+```
+
+The module docstring cites the exact requirement this satisfies: *"the
+FedRAMP 20x Phase 2 ConMon requirement for machine-readable control
+evidence,"* and the internal rule it enforces: *"ALWAYS cross-reference
+every monitored control to an OSCAL evidence record."* `generate()`
+produces a complete `ongoing-authorization` OSCAL document with
+`impact-level: moderate` and an `import-ssp` reference — the artifact a
+3PAO would consume directly during a ConMon review.
+
+### 6.5 Transport (gated) — Reporting Egress
+
+Evidence generation is not the same as evidence transmission, and the
+substrate keeps them as two separate actuators. `reporting_egress`
+is the gated transport leg — the only code path in the substrate that can
+move a generated evidence artifact to an external federal destination.
+Every submission passes through one gate table (`engine.submit`):
+
+| Condition | Disposition | Transmits? |
+|---|---|---|
+| `live=False` (default) | `PLANNED` | no — dry-run only |
+| `live=True`, no/invalid approval | `BLOCKED` | no — the L3 gate |
+| `live=True` + approval, driver unconfigured | `BLOCKED` | no |
+| `live=True` + approval + configured + valid | `SUBMITTED` | **yes — the only path** |
+
+There is no code path that transmits without both `live=True` and a valid
+`Approval` token — no autonomous (L4) submission at Moderate. And per
+ADR-066, `CLAW` is deliberately not a configured destination in this
+package: raw telemetry stays on the native pipe, consistent with the CLAW
+corollary in
+[B.1.1 §2.4](B1-1-gcc-moderate-three-way-conflict.qmd#24-the-claw-corollary--telemetry-sharing-does-not-resolve-any-corner) —
+exporting evidence to CISA does not, and is not designed to, substitute for
+the in-boundary compensating controls §6.1–6.4 build.
+
+## 7. Cross-Reference: Registry Gap → NIST Control → Compensating Control → KSI (Corrected)
+
+For the entries where §5 found a resolvable KSI reference — either because
+the registry cited the correct namespace (`GAP-ENT-001`) or because the
+correct mapping can be derived from the `nist_controls` field already
+present on every entry — the corrected trace looks like this. This table is
+illustrative of the reconciliation §5 recommends, not a claim that the
+registry has been updated to match it:
+
+| Gap | NIST controls | Compensating control | Correct KSI reference (§2 namespace) |
+|---|---|---|---|
+| `GAP-INT-001` Endpoint Analytics | SI-4, SI-2 | in-boundary telemetry component (§6.3) | `KSI-SI-04` (System Monitoring), `KSI-SI-02` (Flaw Remediation) — `rules/ksi/` |
+| `GAP-ARC-004` Defender for Servers | SI-3, SI-4, IR-5 | proposed telemetry component, not yet effective (`GAP_UNMITIGATED`) | `KSI-SI-03`, `KSI-SI-04`, `KSI-IR-05` — `rules/ksi/` |
+| `GAP-INT-008` Device Health Attestation | SI-7, IA-3 | none (`GAP_UNMITIGATED`) | `KSI-SI-07`, `KSI-IA-03` — `rules/ksi/` |
+| `GAP-ENT-001` PIM password-reset escalation | AC-2, AC-6, AU-6 | PIM-escalation detection classifier (§6.2) | `KSI-AC-02`, `KSI-AC-06`, `KSI-AU-06` — already correct |
+
+## 8. What This Leaf Is and Is Not
+
+It **is** the control-ID and source-code companion to B.1/B.1.1/B.1.3: for
+every compensating control the parent leaves describe in narrative terms,
+this leaf names the file, the function, and the exact NIST/KSI identifiers
+involved. It **is** an honest status report on the reconciliation state of
+the substrate's own KSI and gap-registry artifacts, current as of this
+leaf's `updated-at` date — §4 and §5 are findings, not settled state, and
+will go stale themselves as the corpus keeps growing (§4 is itself an
+instance of the failure mode it describes, and this leaf's numbers should
+be re-verified against the live rule count at each `lifecycle_review`).
+
+It **is not** a claim that the four KSI ID spaces named in §5 have been, or
+need to be, merged into one. `UIAO_137 §1` explicitly scopes CR26-tailoring
+and cross-corpus unification as separate work; this leaf's contribution is
+naming the specific unresolved references so that work has a concrete
+starting list rather than a general awareness that "the registers aren't
+unified yet."
+
+## 9. Cross-References
+
+- **Parent boundary model**: [B.1 GCC-Moderate Boundary Model](B1-gcc-moderate-boundary-model.qmd)
+- **Three-way compliance conflict**: [B.1.1](B1-1-gcc-moderate-three-way-conflict.qmd)
+- **In-boundary rebuild plan**: [B.1.3](B1-3-rebuilding-boundary-blocked-analytics.qmd)
+- **KSI mapping source**: [`UIAO_137` — Local KSI Rules ↔ FedRAMP CR26 KSI Catalog Mapping](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-cr26-ksi-mapping.md)
+- **NIST-family KSI corpus (§2)**: [`rules/ksi/`](https://github.com/WhalerMike/uiao/tree/main/src/uiao/rules/ksi/)
+- **CR26-mapped KSI corpus (§2)**: [`ksi/rules/`](https://github.com/WhalerMike/uiao/tree/main/src/uiao/ksi/rules/)
+- **Drift taxonomy / ADR-033**: [`adr-033-gcc-boundary-drift-class.md`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-033-gcc-boundary-drift-class.md)
+- **Compensating controls registry**: [`gcc-boundary-gap-registry.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/gcc-boundary-gap-registry.yaml)
+- **CR26 machine-readable mapping**: [`ksi-mapping.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/adapters/fedramp_cr26_catalog/mappings/ksi-mapping.yaml)
+- **Probe adapter**: [`adapters/modernization/gcc_boundary_probe/`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/adapters/modernization/gcc_boundary_probe/)
+- **In-boundary telemetry**: [`telemetry.py`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/adapters/modernization/gcc_boundary_probe/telemetry.py)
+- **Ongoing authorization generator**: [`ongoing_auth.py`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/monitoring/ongoing_auth.py)
+- **Gated reporting egress**: [`reporting_egress/README.md`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/reporting_egress/README.md) (ADR-128, UIAO_208)
+- **Three-registers note**: [`UIAO_139` §2](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-gcc-moderate-realtime-boundary-impact.md)
+
+## 10. Provenance
+
+This leaf was authored to close a gap identified during a review of the
+boundary series against a direct question about NIST-control and FedRAMP-KSI
+impact: B.1/B.1.1/B.1.3 answer at the mandate and pillar level but do not
+name control IDs or code. Its content is derived from direct inspection of
+`UIAO_137`, `ADR-033`, `gcc-boundary-gap-registry.yaml`, the
+`gcc_boundary_probe` adapter source, `reporting_egress`, and
+`ongoing_auth.py` as committed in this repository as of 2026-08-06, not from
+the external source memo the other B.1.x leaves derive from. §4 and §5 are
+net-new findings not previously recorded in any canon document; they should
+be triaged into the same governance workflow that tracks
+[UIAO_139 §2](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-gcc-moderate-realtime-boundary-impact.md)'s
+three-registers note.
