@@ -590,6 +590,61 @@ SASE, and diverse-transport architecture Section 4 already specifies,
 which means the compliance case and the architecture case point at the
 same build, not two different ones.
 
+### 4.9 CISA telemetry continuity — CLAW and Protective DNS replace MTIPS
+
+Regional breakout removes 1,500 branches from the MTIPS-provided
+sensors that currently generate EINSTEIN 1 Enhanced (E1E) telemetry —
+today's mechanism for sharing network visibility with CISA. That
+telemetry does not survive the transition by default; it has to be
+replaced, and CISA's own architecture guidance for exactly this
+migration path names the replacement mechanism directly: agencies
+moving from MTIPS to a SASE-based architecture route the equivalent
+telemetry to CISA's Comprehensive Log Aggregation Warehouse
+(CLAW).[^cisa-sase-tic3]
+
+Two things about this belong in the program plan, not left implicit:
+
+- **CLAW onboarding is a three-way coordination effort** — the agency,
+  CISA, and the SD-WAN/SASE vendor — not a configuration change a
+  network team completes alone. The guidance states this explicitly:
+  implementing the integration "requires coordination among agencies,
+  CISA, and [the SASE solution] to enable the secure and reliable
+  transmission of relevant telemetry ... to CLAW."[^cisa-sase-tic3]
+  That coordination has its own lead time, and it belongs on the
+  Phase 0/1 critical path alongside the TIC 3.0 accreditation package
+  Section 4.5 already names — not treated as a Phase 2 cutover detail
+  discovered after circuits are already ordered.
+- **MTIPS should not be decommissioned before CLAW telemetry is
+  confirmed flowing.** Section 7's Phase 2 exit criterion should read
+  as gated on confirmed CLAW parity, not on branch cutover completion
+  alone: decommissioning MTIPS circuits before CISA confirms equivalent
+  visibility through CLAW trades a compliance gap in E1E telemetry for
+  a gap in transport — a worse position than the one being fixed, not
+  a clean cutover.
+
+The same integration point closes a second, independent federal
+requirement. CISA's guidance directs agencies to route DNS traffic
+through the SASE solution to CISA's Protective DNS service via DNS-
+over-HTTPS — the mechanism CISA identifies as satisfying OMB M-22-09's
+requirement to "resolve DNS queries using encrypted DNS wherever it is
+technically supported."[^cisa-sase-tic3] This program's SD-WAN/SASE
+build (Sections 4.4–4.5) is the natural place to configure that
+integration; it should be scoped into Phase 1 alongside SSE enforcement
+rather than deferred as a later enhancement.
+
+CISA's own capability-to-technology mapping (Appendix A of the same
+guidance) also cross-checks the control closures Appendix A.2 claims
+for this program's architecture: CISA maps its TIC Policy Enforcement
+Point (PEP) Security Capability Groups directly to SASE, NGFW, and IAM
+— the same technology classes Section 4 already specifies — with DNS
+PEP Capabilities mapped specifically to SASE plus Protective DNS, which
+is the closure this subsection adds.[^cisa-sase-tic3]
+
+[^cisa-sase-tic3]: [*The Journey to Zero Trust: Using Secure Access
+    Service Edge in a Modern TIC 3.0 Solution*](https://www.cisa.gov/resources-tools/resources/using-sase-modern-tic-30-solution),
+    CISA, June 2026, §5.5 (CISA Telemetry and Security Services) and
+    Appendix A (TIC Security Capability Solutions, Table 2).
+
 ## 5. Sizing and Bill of Materials
 
 Figures reflect published list pricing with a 40% federal discount
@@ -727,8 +782,8 @@ and the paper should be revised accordingly once the number is known.
 | Phase | Timing | Activities | Exit criteria |
 |---|---|---|---|
 | **Phase 0** | Months 0–6 | Architecture and detailed design; TIC 3.0 Branch Office use case package and accreditation; on-premises SD-WAN control plane build; ten-site pilot spanning all transport types and tiers | Authority to operate for regional breakout; pilot sites stable for 30 days; validated per-site costs replacing the estimates in this paper |
-| **Phase 1** | Months 6–18 | Twelve hub sites: SD-WAN aggregation, regional internet breakout, SSE enforcement, 24 consolidated distribution points, content library migration and prestaging | All hubs in production; content served from hub tier; legacy field office DPs in read-only fallback |
-| **Phase 2** | Months 18–48 | Branch migration in waves keyed to MPLS contract renewal dates: DIA and 5G installation, SD-WAN overlay, cutover, MPLS circuit termination | 100% of branches on local transport; MPLS decommissioned; field office DPs retired |
+| **Phase 1** | Months 6–18 | Twelve hub sites: SD-WAN aggregation, regional internet breakout, SSE enforcement, 24 consolidated distribution points, content library migration and prestaging; CLAW onboarding coordination initiated with CISA (Section 4.9) | All hubs in production; content served from hub tier; legacy field office DPs in read-only fallback; CLAW telemetry integration confirmed in the pilot sites |
+| **Phase 2** | Months 18–48 | Branch migration in waves keyed to MPLS contract renewal dates: DIA and 5G installation, SD-WAN overlay, cutover, MPLS circuit termination | 100% of branches on local transport; MPLS decommissioned **only after CLAW telemetry parity is confirmed per branch** (Section 4.9); field office DPs retired |
 | **Phase 3** | Months 36+ | Direct-breakout M365 optimization in production (DSCP-marked, application-aware routing per Section 4.6 — not INR); deploy Microsoft Connected Cache at hub sites as Intune workloads shift; retire distribution points as the Section 4.7 gates close, not on a fixed date | M365 path optimization in production within GCC's available mechanisms; MCC serving cloud-managed content; each Section 4.7 gate tracked and closed explicitly, with distribution points retired as they close |
 
 ### 7.1 Sequencing rationale
@@ -769,6 +824,7 @@ and the paper should be revised accordingly once the number is known.
 | **Selected SSE vendor lacks FedRAMP Moderate authorization** | Medium | Confirm in Phase 0. Multiple SSE vendors hold FedRAMP Moderate authorization; the SD-WAN design is unaffected by the choice. |
 | **Connected Cache unavailable or unsupported for GCC tenants** | Low | Confirm with the Microsoft account team. Nothing in Phases 0–2 depends on it; it affects only Phase 3 optimization. |
 | **EIS task order modification across 1,500 sites delays transport** | Medium | Engage acquisition in Phase 0. Sequence Phase 2 waves to contract renewal dates already in the pipeline. |
+| **CLAW onboarding lags branch cutover, leaving a telemetry gap when MTIPS is decommissioned** | High | Initiate the three-way CLAW coordination (agency, CISA, SASE/SD-WAN vendor) in Phase 0 alongside the accreditation package, not at Phase 2 cutover (Section 4.9). Gate each branch's MPLS decommission on confirmed CLAW telemetry parity for that site rather than on cutover completion alone. |
 | **5G coverage inadequate at interior building locations** | Low | Per-site survey; outdoor-mount cellular gateway where interior signal is insufficient. |
 
 ## 9. Assumptions Requiring Validation
@@ -788,6 +844,7 @@ ordered by impact on the conclusion.
 | 7 | Co-management maturity | Early | Track against the five gates in Section 4.7 (app content, update content, OS provisioning, caching role, compliance evidence) rather than estimating a calendar date; also paces the ADR-071 consolidation framing in Section 2.2 |
 | 8 | Field office OS deployment requirement | Assumed centralized or vendor-staged | If offices re-image locally, revisit PXE and local content requirements |
 | 9 | Workstation-to-workstation SMB permitted | Assumed prohibited | Network security policy; affects Peer Cache availability only |
+| 10 | CLAW onboarding status and lead time | Not yet initiated | Confirm with the CISA Services Program (Section 4.9); determines whether Phase 0/1 timing needs to absorb three-way coordination lead time before any branch MPLS circuit can be decommissioned |
 
 ::: {.callout-note}
 ## Confidence statement
@@ -982,6 +1039,7 @@ network layer exactly as it applies to the tenant layer.
 - [Binding Operational Directive 25-01 (CISA)](https://www.cisa.gov/news-events/directives/bod-25-01-implementing-secure-practices-cloud-services) — cited directly for scope, to state plainly what it does and does not govern (Appendix A.2).
 - [Ticket-to-Machine, Not Ticket-to-Human](ticket-to-machine-not-ticket-to-human.qmd) — the continuous machine-verified evidence model contrasted against distribution points in Appendix A.1.
 - ADR-071, Intune-First Asset Onboarding — the co-management doctrine this paper's Phase 1 framing reconciles to (Section 2.2).
+- [*The Journey to Zero Trust: Using Secure Access Service Edge in a Modern TIC 3.0 Solution*](https://www.cisa.gov/resources-tools/resources/using-sase-modern-tic-30-solution) (CISA, June 2026) — the CLAW/E1E telemetry-replacement mechanism, the three-way onboarding coordination requirement, Protective DNS via DoH satisfying OMB M-22-09, and the TIC PEP Security Capability Groups mapping (Section 4.9).
 
 *Prepared for internal agency review. Cost figures are planning
 estimates derived from published list pricing and industry benchmarks;

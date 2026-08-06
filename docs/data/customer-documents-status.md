@@ -965,7 +965,7 @@
 | [`docs/customer-documents/whitepapers/federal-compliance-for-moderate-agencies.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-compliance-for-moderate-agencies.qmd) | 442 | Substantial | ✅ | — | — |
 | [`docs/customer-documents/whitepapers/federal-hrit-productization.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-hrit-productization.qmd) | 365 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/federal-ssot-alignment.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-ssot-alignment.qmd) | 375 | Substantial | ✅ | 3/3 | — |
-| [`docs/customer-documents/whitepapers/field-office-wan-transformation-dp-consolidation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/field-office-wan-transformation-dp-consolidation.qmd) | 990 | Substantial | ✅ | 2/2 | — |
+| [`docs/customer-documents/whitepapers/field-office-wan-transformation-dp-consolidation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/field-office-wan-transformation-dp-consolidation.qmd) | 1048 | Substantial | ✅ | 2/2 | — |
 | [`docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd) | 796 | Substantial | ✅ | 4/4 | — |
 | [`docs/customer-documents/whitepapers/hybrid-join-without-governance.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/hybrid-join-without-governance.qmd) | 337 | Substantial | ✅ | 4/4 | — |
 | [`docs/customer-documents/whitepapers/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/index.qmd) | 106 | Navigation hub | ✅ | — | — |
@@ -978,14 +978,14 @@
 | [`docs/customer-documents/whitepapers/scubagear-integration-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/scubagear-integration-whitepaper.qmd) | 397 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/session-vs-telemetry-identity.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/session-vs-telemetry-identity.qmd) | 157 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.qmd) | 386 | Substantial | ✅ | 2/2 | — |
-| [`docs/customer-documents/whitepapers/tic3-sdwan-vs-dia.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/tic3-sdwan-vs-dia.qmd) | 867 | Substantial | ✅ | 10/10 | — |
+| [`docs/customer-documents/whitepapers/tic3-sdwan-vs-dia.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/tic3-sdwan-vs-dia.qmd) | 985 | Substantial | ✅ | 11/11 | — |
 | [`docs/customer-documents/whitepapers/ticket-to-machine-appendices.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/ticket-to-machine-appendices.qmd) | 134 | Authored | ✅ | — | — |
 | [`docs/customer-documents/whitepapers/ticket-to-machine-not-ticket-to-human.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/ticket-to-machine-not-ticket-to-human.qmd) | 256 | Substantial | ✅ | 5/5 | — |
 | [`docs/customer-documents/whitepapers/uiao-governance-os-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/uiao-governance-os-whitepaper.qmd) | 316 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/uiao-vs-native-tools.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/uiao-vs-native-tools.qmd) | 673 | Substantial | ✅ | 1/1 | — |
 | [`docs/customer-documents/whitepapers/zero-trust-governance-principles.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/zero-trust-governance-principles.qmd) | 650 | Substantial | ✅ | 1/1 | — |
 | [`docs/customer-documents/whitepapers/zero-trust-governance-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/zero-trust-governance-whitepaper.qmd) | 289 | Substantial | ✅ | 3/3 | — |
-| [`docs/customer-documents/whitepapers/zero-trust-whole-agency-unification.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/zero-trust-whole-agency-unification.qmd) | 311 | Substantial | ✅ | — | — |
+| [`docs/customer-documents/whitepapers/zero-trust-whole-agency-unification.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/zero-trust-whole-agency-unification.qmd) | 304 | Substantial | ✅ | — | — |
 | [`docs/customer-documents/whitepapers/zta-scuba-relationship.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/zta-scuba-relationship.qmd) | 154 | Authored | ✅ | 1/1 | — |
 
 ## Integrity

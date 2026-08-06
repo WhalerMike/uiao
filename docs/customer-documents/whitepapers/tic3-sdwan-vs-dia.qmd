@@ -362,7 +362,7 @@ lays out for agency voice:
   networks, with the cloud-delivered SASE PoP as the PEP and ZTNA replacing
   VPN.
 
-![TIC 3.0: the two use cases governing the field-office path and the permissibility rule](../orgcomp-series/figs/tc-fig-17-tic3-pep.png){#fig-tic3-pep fig-alt="A two-row table mapping the TIC 3.0 use cases that govern agency voice. Branch Office, Use Case E: field office agents on Amazon Connect and Teams Phone, traffic path field office to local DIA to AWS .com or M365 GCC, policy enforcement point at or near the branch egress as SD-WAN edge plus SASE services. Remote User, Use Case F: teleworking agents and staff, home network to internet to cloud voice platforms, PEP as the cloud-delivered SASE PoP with ZTNA replacing VPN. Teal permissibility panel: TIC 3.0 under OMB M-19-26 replaced mandatory consolidation with a use-case model — both use cases permit traffic to leave without hairpinning through a TIC access point, and neither permits it to leave ungoverned; the security-capabilities catalog must be satisfied at the distributed PEP, and the SASE stack is that PEP. Red panel: an ungoverned DIA circuit is not modernization, it is a finding — the bare circuit that fixes G.114 deletes the SC-7 boundary the MPLS-to-TIC path did provide, while with the SASE PEP in place the same circuit is the TIC 3.0 target architecture. White background. Source: OrgComp Vol I Book 06 Telecom Modernization." width="100%"}
+![TIC 3.0: the two use cases governing the field-office path and the permissibility rule](../orgcomp-series/figs/tc-fig-17-tic3-pep.png){#fig-tic3-pep fig-alt="A two-row table mapping the TIC 3.0 use cases that govern agency voice. Branch Office, Use Case E: field office agents on Amazon Connect and Teams Phone, traffic path field office to local DIA to AWS .com or M365 GCC, policy enforcement point at or near the branch egress as SD-WAN edge plus SASE services. Remote User: teleworking agents and staff, home network to internet to cloud voice platforms, PEP as the cloud-delivered SASE PoP with ZTNA replacing VPN. Teal permissibility panel: TIC 3.0 under OMB M-19-26 replaced mandatory consolidation with a use-case model — both use cases permit traffic to leave without hairpinning through a TIC access point, and neither permits it to leave ungoverned; the security-capabilities catalog must be satisfied at the distributed PEP, and the SASE stack is that PEP. Red panel: an ungoverned DIA circuit is not modernization, it is a finding — the bare circuit that fixes G.114 deletes the SC-7 boundary the MPLS-to-TIC path did provide, while with the SASE PEP in place the same circuit is the TIC 3.0 target architecture. White background. Source: OrgComp Vol I Book 06 Telecom Modernization." width="100%"}
 
 The permissibility rule is the entire point: **both use cases permit traffic
 to leave without hairpinning through a TIC access point, and neither permits
@@ -373,7 +373,114 @@ or DIA?" — it asks "where is the PEP on this DIA circuit, and which catalog
 capabilities does it satisfy?" An agency that cannot answer has not
 modernized; it has opened a finding.
 
-### 4.1 The other half of the bargain: telemetry to CISA
+::: {.callout-note}
+## Does an agency need SD-WAN to meet SASE and Zero Trust?
+
+No. The two use cases above answer this directly: **Remote User** traffic
+reaches Zero Trust posture with zero SD-WAN in the path — a cloud-delivered
+SASE PoP as the PEP, ZTNA replacing VPN, done. SD-WAN is not a prerequisite
+for SASE or for Zero Trust; it is the transport-governance layer this
+paper's own title names, and it earns its place for one reason only:
+**Branch Office** continuity. A branch's traffic is high-value, often
+latency-sensitive, and typically spans multiple circuits at once — SD-WAN
+adds circuit-wide encryption (SC-8), active-active multipath, and per-class
+steering that a single teleworker's cloud-PoP path doesn't need and a
+single-circuit branch can't get any other way. Skip SD-WAN and stay
+Zero-Trust-compliant if there is no branch circuit to govern; add it back
+the moment there is one, because that is the specific workload it solves.
+
+CISA's own June 2026 guidance, [*The Journey to Zero Trust: Using SASE in a
+Modern TIC 3.0
+Solution*](https://www.cisa.gov/resources-tools/resources/using-sase-modern-tic-30-solution),
+makes the same point from the other direction: it positions **SASE** as the
+piece that operationalizes Zero Trust for distributed federal traffic; SD-WAN
+does not appear in that framing at all, because CISA is describing the
+access-and-enforcement layer, not the branch-transport layer underneath it.
+:::
+
+![Two paths to the same TIC 3.0 Zero Trust posture — SD-WAN required for Branch Office, not for Remote User](images/tic3-sdwan-vs-dia-diagram-03-with-without-sdwan.png){#fig-with-without-sdwan fig-alt="Two side-by-side vertical stacks on a white background under a shared navy TIC 3.0 policy-gate banner (OMB M-19-26), stating both use cases permit local egress without the TIC hairpin and neither permits it ungoverned; the security-capabilities catalog must be satisfied at the distributed policy enforcement point. Left stack, Branch Office (Use Case E), three layers top to bottom: a teal SASE/SSE box (Layer 7 governor — SWG/FWaaS for SC-7/SI-3, CASB for AC-4, ZTNA for CA-7, the distributed PEP); a navy SD-WAN box (Layer 3 governor — IPsec overlay for SC-8, traffic classes for SC-6, active-active multipath, governs the pipe not the flows); a white box with red outline labeled THE PIPE — DIA/MPLS/LEO/5G, solves G.114 latency only, satisfies no control by itself. Caption: 3-layer stack, SD-WAN governs the pipe, SASE governs the flows. Right stack, Remote User, also three positions top to bottom but only two active layers: the same teal SASE/SSE box (same Layer 7 governor — cloud-delivered SASE PoP, ZTNA replaces VPN, the distributed PEP, same catalog); a grey dashed box labeled SD-WAN — NOT APPLICABLE (no branch circuit to govern, nothing here for SD-WAN to add, a single teleworker is not a site); a white box with grey outline labeled HOME INTERNET — unmanaged last mile, not an agency circuit, there is no pipe to overlay. Caption: 2-layer stack, SASE/ZTNA alone reaches the same posture. A light-teal banner spans the bottom of both columns: Both paths satisfy the same TIC 3.0 security-capabilities catalog at the distributed PEP. SD-WAN earns its place only where there is a branch circuit to govern — it is never a Zero Trust prerequisite. Source: CISA, The Journey to Zero Trust — Using SASE in a Modern TIC 3.0 Solution (June 2026): SASE is positioned as the Zero Trust enabler; SD-WAN is not part of that framing. Clean engineering blueprint style, navy #1F3A5F, teal #1A9E8F, red #C0392B, grey #8A97A3 on white background." width="100%"}
+
+### 4.1 Can Branch Office reach this without SD-WAN?
+
+Sometimes — with real caveats, not a blanket yes. Part 5 breaks the closure
+into four pieces: SC-8 circuit-wide encryption, SC-6 traffic-class
+separation, SI-4/AU-12 application-layer path telemetry, and active-active
+multipath as the availability property behind all three. Each piece can, in
+principle, be closed by something other than a dedicated SD-WAN product —
+but not all of them survive the substitution equally well.
+
+**The terminology matters here.** Gartner's original 2019 definition of SASE
+already bundles SD-WAN in as one of its converged components — SASE is
+SD-WAN plus the SSE stack (SWG, CASB, ZTNA, FWaaS/NGFW) delivered from the
+cloud as one service. When this paper (or the industry generally) talks
+about "SASE without SD-WAN," what is actually being described is **SSE** —
+Gartner's own name for the security-only subset of SASE with the WAN-edge /
+transport-governance component removed. A Branch Office that skips SD-WAN
+is, by definition, running SSE plus *something else* for the transport leg
+— not a variant of SASE that happens to lack a component.
+
+Two scenarios where that something-else genuinely does not need to be a
+standalone SD-WAN product:
+
+1. **Single-circuit branch — the multipath closure is moot by
+   construction.** SD-WAN's signature capability, active-active steering
+   across paths, has nothing to steer across when there is exactly one
+   circuit. A single-circuit branch can satisfy SC-8 with a plain IPsec or
+   GRE tunnel from the branch router into the SASE PoP, with the SSE stack
+   covering SC-7, AC-4, SI-3, and CA-7 as it would for any site. What this
+   path does **not** close is **CP-8** (NIST SP 800-53's telecommunications
+   services diversity control): one circuit is one circuit, and no overlay
+   technology manufactures a second path that doesn't physically exist.
+   That is a documented risk-acceptance an authorizing official can make for
+   a low-criticality site — a real, honest gap, not a control satisfied by
+   another mechanism.
+2. **A converged SASE vendor's own branch connector.** Several SASE/SSE
+   vendors sell a lightweight branch appliance or connector that provides
+   the encrypted tunnel and basic path awareness as part of the *same
+   platform* as the SSE stack, rather than a separately procured,
+   separately branded "SD-WAN" product. Per Gartner's own definition above,
+   this is not an exception to "you need SD-WAN" — it **is** SD-WAN,
+   delivered as a converged capability inside one vendor's fabric instead of
+   as a distinct SKU. The functional requirement does not disappear; the
+   procurement line item does.
+
+**What does not survive the substitution, with or without a branded SD-WAN
+product in the picture:**
+
+- **Sub-second, per-flow active-active failover across multiple circuits.**
+  Traditional routing-based failover (BGP re-convergence, VRRP/HSRP gateway
+  failover) operates at the whole-circuit level, on a timescale of seconds
+  rather than the sub-second, per-flow failover an SD-WAN control plane
+  provides. A multi-circuit branch that needs real resilience needs
+  *something* doing this job — hand-built routing can approximate it, at
+  materially worse failover performance.
+- **Per-application, per-class traffic steering across paths (SC-6).**
+  Routing traffic classes across specific circuits at the flow level is a
+  policy-engine function; without one, per-class separation collapses to
+  whatever a static routing table or manual QoS policy can express, which
+  does not scale past a handful of sites and does not adapt to path
+  conditions.
+- **The automated evidence trail for SI-4/AU-12.** SD-WAN's DPI-plus-
+  steering-log is what turns "traffic was routed somewhere" into a
+  per-flow, application-identified audit record. Hand-built routing does
+  not produce this by default; even where the underlying control is
+  arguably satisfied by manual means, the agency loses the machine-readable
+  evidence Part 7's compliance ledger depends on and is left assembling
+  audit trails by hand — precisely the failure mode Part 1 argues against
+  for the transport decision generally.
+
+**The honest bottom line:** a multi-circuit Branch Office that needs genuine
+resilience always needs something performing SD-WAN's function — whether
+procured as a distinct product or absorbed into a converged SASE vendor's
+platform, per Gartner's own definition of what SASE already includes. The
+clean exceptions are a single-circuit branch, where the correct answer is a
+documented CP-8 risk-acceptance rather than a claim that the control was
+closed some other way, and a converged-platform deployment, where the
+function is still present under a different name. Neither is "Zero Trust
+without transport governance" — both are transport governance delivered, or
+explicitly not delivered and named as such, rather than assumed away.
+
+### 4.2 The other half of the bargain: telemetry to CISA
 
 M-19-26's trade was not "distributed enforcement for free" — it was
 distributed enforcement *in exchange for visibility*. An agency that
@@ -394,7 +501,7 @@ telemetry story: **OMB M-21-31** defines the event-logging maturity tiers
 and **OMB M-22-09** speaks directly to encrypted traffic and the
 inspection tradeoffs of Section 5.5.
 
-### 4.2 The PEP has a location — apply Part 2 to it
+### 4.3 The PEP has a location — apply Part 2 to it
 
 This paper's own physics argument applies to the enforcement point. If the
 Branch Office PEP is realized as a **cloud SASE PoP**, the flows it governs
@@ -674,7 +781,7 @@ register.
 | SI-3 Malicious Code Protection | Nothing | SWG inline SSL inspection at the nearest PoP | Proxied flows; **no inline inspection on Optimize-bypassed flows** — compensate with endpoint protection and the SC-7(4) exception record | **Shared** — inherited from the authorized SASE CSO; CSO and CRM line TBD at acquisition (Part 8) | [Vol I Book 06](../orgcomp-series/Vol_I_Book_06_OrgComp_Federal_Telecommunications_Modernization.qmd) cross-references |
 | SI-4 / SI-4(10) System Monitoring / Visibility of Encrypted Communications | Link state and byte counts | Overlay DPI + SASE per-session telemetry; SI-4(10) encrypted-traffic visibility satisfied by SWG TLS break-and-inspect | All flows for path/steering telemetry; session-content telemetry, including SI-4(10) visibility, on proxied flows only — absent by design on Optimize-bypassed flows | Agency-implemented (overlay DPI) / **Shared** (SASE per-session telemetry, incl. SI-4(10)) — CSO and CRM line TBD at acquisition (Part 8) | Vol I Books 05–07 |
 | AU-12 Audit Record Generation | IP flow logs | Per-session records: user, device, app, action, data type | Proxied flows; Optimize-bypassed flows yield five-tuple + steering metadata only — measure against M-21-31 EL tiers | Agency-implemented (overlay steering log) / **Shared** (SASE session records) — CSO and CRM line TBD at acquisition (Part 8) | Vol I Books 05–07 |
-| CA-7 Continuous Monitoring | Nothing machine-readable | Per-session evidence into the series' ConMon pipeline **and** telemetry to CISA CLAW (Part 4.1 — a distinct artifact) | All flows, at the fidelity each class permits | Agency-implemented — ConMon pipeline; CLAW is a separate federal-reporting obligation, not CSO inheritance | Evidence-fabric books |
+| CA-7 Continuous Monitoring | Nothing machine-readable | Per-session evidence into the series' ConMon pipeline **and** telemetry to CISA CLAW (Part 4.2 — a distinct artifact) | All flows, at the fidelity each class permits | Agency-implemented — ConMon pipeline; CLAW is a separate federal-reporting obligation, not CSO inheritance | Evidence-fabric books |
 | CP-8 Telecommunications Services (+ CP-8(2), CP-8(3) only) | **CP-8(2)/CP-8(3) closed by the transport menu itself** — no single point of failure, separation of primary and alternate providers; **CP-8(1)** priority of service requires contractual TSP/NS-EP provisions and **CP-8(4)** provider contingency plan requires the provider's own documented plan — neither satisfied by transport diversity alone | Transport selection and diversity (Part 3) for CP-8(2)/CP-8(3); acquisition vehicle (Part 8) for CP-8(1); provider deliverable (Part 8) for CP-8(4) | The circuit portfolio, not any single circuit | Agency-implemented via the acquisition vehicle (Part 8); CP-8(4) evidence is a provider deliverable, not agency-authored | Part 3 of this paper; acquisition controls in Part 8 |
 
 : The ledger — what the pipe provides, what the governor provides, and where each claim actually applies {.striped .hover}
@@ -717,7 +824,7 @@ For a decision maker, the whole paper compresses to an ordered checklist:
    supply-chain envelope.** Choose DIA transports — fiber, 5G, LEO,
    retained MPLS — on measured latency to the destinations that matter
    (M365 front door, contact-center region, the nearest *authorized* SASE
-   PoP per Section 4.2), on the G.114 budget, and on the CP-8 diversity the
+   PoP per Section 4.3), on the G.114 budget, and on the CP-8 diversity the
    portfolio must deliver. Physics ranks the candidates; the envelope
    bounds them: Section 889 prohibitions, the agency's acquisition vehicles
    (EIS/GSA), SCRM obligations (SR-3, SR-5, SR-6), and — for managed LEO or
@@ -747,7 +854,7 @@ For a decision maker, the whole paper compresses to an ordered checklist:
    branches from the TIC hairpin to distributed egress changes the
    authorization boundary: SSP and boundary-diagram updates, a security
    impact analysis, and the CA-6 authorization decision on the change
-   belong *before* cutover, and the CLAW telemetry path of Section 4.1
+   belong *before* cutover, and the CLAW telemetry path of Section 4.2
    belongs in the same package. This is the step that actually gates
    deployment, and it is missing from most modernization schedules.
 
@@ -793,6 +900,17 @@ Verification Register (EV-M091–M096).
 - **CISA TIC 3.0 core guidance** — Program Guidebook, Reference
   Architecture, Security Capabilities Catalog (current published version),
   and the Branch Office use case.
+- **CISA, "The Journey to Zero Trust: Using SASE in a Modern TIC 3.0
+  Solution"** (June 2026) — positions SASE as the Zero Trust enabler for
+  distributed federal traffic; the source behind Part 4's SD-WAN-optionality
+  callout. Same underlying document already cited via EV-M094's telemetry
+  verification below; this is its first standalone bibliography entry.
+- **Gartner, "The Future of Network Security Is in the Cloud"** (2019) —
+  coined Secure Access Service Edge (SASE) and defined it as SD-WAN
+  converged with Security Service Edge (SSE) technologies (SWG, CASB,
+  ZTNA, FWaaS/NGFW) delivered primarily as a cloud service; the basis for
+  §4.1's SASE-vs-SSE terminology distinction (SSE is the security-only
+  subset of SASE with the SD-WAN/transport-governance component removed).
 - **NCPS Cloud Interface Reference Architecture, Vols. 1–2** — the
   reporting patterns for agency telemetry to CISA's Cloud Log Aggregation
   Warehouse (CLAW).
