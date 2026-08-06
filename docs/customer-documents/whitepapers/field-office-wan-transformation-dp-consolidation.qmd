@@ -60,22 +60,20 @@ This paper shares its transport argument with
 finding with [Next Generation DNS](infoblox-hybrid-dns-unified-ddi.qmd);
 both are cited rather than re-derived. Its own contribution is the
 distribution-point unit-economics argument in Sections 2–3, the
-distribution-point-vs.-Intune compliance comparison in Section 3.4, the
-gated (not calendar-based) all-in cutover trigger in Section 4.7, and
-the compliance/reporting case for SD-WAN and TIC 3.0 that holds
-independent of the cost model, in Section 4.8 — none of which are
-covered elsewhere in this corpus.
+distribution-point-vs.-Intune compliance comparison in Section 3.4
+(detailed in Appendix A.1), the gated (not calendar-based) all-in
+cutover trigger in Section 4.7, and the compliance/reporting case for
+SD-WAN and TIC 3.0 that holds independent of the cost model, in
+Section 4.8 (detailed in Appendix A.2) — none of which are covered
+elsewhere in this corpus.
 :::
 
 ## Executive Summary
 
-A proposal is under consideration to invest approximately \$50,000,000
-refreshing Configuration Manager distribution point hardware at roughly
-1,500 field offices. This paper argues the investment addresses a
-symptom rather than a cause, targets a tier the agency has already
-decided to retire, and can be replaced by a network modernization
-program that costs less, delivers more, and is a prerequisite for the
-Intune migration already underway.
+The proposal, its rationale, and this paper's counter-argument are
+summarized in the box above. The five findings below are that
+argument's evidentiary basis — the unit economics, the capacity math,
+and the cost model that Sections 2 through 6 develop in full.
 
 ### Findings
 
@@ -114,11 +112,14 @@ Intune migration already underway.
 | Option | Yr 1 capital | 5-yr net | What it delivers |
 |---|---|---|---|
 | **Distribution point refresh (proposed)** | \$50.0M | −\$50.0M | Content delivery only; capital into a retiring tier |
-| **SD-WAN + DIA + 5G, DP consolidation** | \$10.0M | +\$7.7M | Content, M365, Teams, video, Intune enablement, TIC 3.0 breakout |
+| **SD-WAN + DIA + 5G, DP consolidation** | \$10.0M | +\$7.7M\* | Content, M365, Teams, video, Intune enablement, TIC 3.0 breakout |
 | **Do nothing** | \$0 | \$0 | Aging DPs, constrained branches, Intune migration blocked |
 
 *Five-year positions assume phased migration with savings ramping from
-year 2. Section 6 gives the model and sensitivity analysis.*
+year 2. \*The network program's 5-yr net additionally depends on
+Assumption 1 (current MPLS cost per site — not yet validated; see
+Section 9); it is a base-case figure, not a floor. Section 6 gives the
+model and sensitivity analysis.*
 
 ![Capacity, not office count, sizes the content tier. Left panel, red border: the proposed state — 1,500 distribution points, one per field office, illustrated as a grid of small boxes with a callout stating this count is driven by branch transport constraints rather than Configuration Manager capacity, costing $50.0M ($33,333 per site) for a tier already being retired. A teal arrow labeled "size to capacity" points right. Right panel, teal border: the target state — 24 distribution points across 12 hubs, broken into a primary data center (2 DPs) and secondary data center (2 DPs) each with HA pairs, plus 10 regional hubs with 20 pull DPs sourcing from the two data centers, confining fan-out to a 2-to-20 relationship. A callout shows the math: 70,000 endpoints divided by the 4,000-per-DP ceiling equals 18 minimum, with 24 deployed for 73% target utilization, yielding 96,000 client capacity and 37% headroom. A navy banner across the bottom states that distribution point count is a network-topology decision, not a Configuration Manager capacity decision, and that fixing branch transport collapses the content tier from 1,500 sites to 12 — a 98.4% reduction — sourced to Microsoft Learn's Configuration Manager size-and-scale documentation.](images/field-office-wan-transformation-dp-consolidation-diagram-01-capacity-driven-consolidation.png){#fig-capacity-driven-consolidation width="100%"}
 
@@ -280,7 +281,7 @@ Manager size-and-scale documentation.[^dp-limits]
 | **Clients per distribution point** | 4,000 | 70,000 endpoints require 18 at ceiling; 24 with headroom |
 | **Standard distribution points per site** | 250 | A 1,500-DP topology is impossible without pull DPs |
 | **Pull distribution points per site (additional)** | 2,000 | 1,500 is feasible only as 250 standard plus 1,250 pull |
-| **Total DPs per primary site** | 5,000 | Fits, but forces a tiered pull topology |
+| **Total DPs per primary site** | 5,000 | Hierarchy-wide ceiling — the primary site's own DPs plus all DPs belonging to its child secondary sites. This design uses a stand-alone primary site with no secondary sites, so the binding ceiling is the 2,250 figure above (250 standard + 2,000 pull), not this row |
 | **Clients per stand-alone primary site** | 150,000 Windows | 70,000 endpoints fit comfortably in one site |
 | **Packages and applications per DP** | 10,000 | Not a binding constraint |
 
@@ -333,39 +334,21 @@ content library.
 
 ### 3.4 Distribution points vs. Intune — a compliance comparison
 
-Sections 3.1–3.3 make the economic and capacity case against the
-per-office distribution point model. This section asks a different
-question: independent of cost, how does a distribution point compare
-to Intune on compliance grounds, and what does keeping any distribution
-point tier alive cost in ongoing compliance work — on top of, not
-instead of, whatever compliance program already covers the Intune-
-managed endpoint fleet?
-
-The two sit in structurally different compliance postures, not just
-different maturity levels of the same one:
-
-| Dimension | Configuration Manager distribution point | Intune |
-|---|---|---|
-| **Compliance boundary** | On-premises Windows Server + IIS site system role; the agency owns the entire customer-side stack | SaaS; the underlying service is covered by the Microsoft 365 GCC Moderate FedRAMP ATO, inherited by the agency through the standard FedRAMP customer responsibility matrix |
-| **Hardening baseline** | DISA Windows Server STIG and IIS STIG apply and must be scanned independently, per server | Agency responsibility is limited to configuration (compliance policies, configuration profiles); the underlying service's own hardening is Microsoft's inherited CSP responsibility |
-| **Vulnerability management (RA-5, SI-2)** | The agency runs vulnerability scanning and patch management against every distribution point's OS and IIS stack, indefinitely, for as many distribution points as exist | RA-5/SI-2 for the service backend is Microsoft's responsibility under the FedRAMP ATO; the agency's remaining SI-2 exposure is the endpoint OS layer, which is scanned regardless of whether a distribution point exists |
-| **Continuous compliance evidence (CA-7)** | A distribution point has no compliance state of its own — successful content delivery is not a compliance claim, and a stalled or compromised distribution point is invisible to continuous monitoring unless separately instrumented | Native, continuous per-device compliance evaluation feeding Conditional Access in real time — the machine-verified evidence stream this corpus documents in [Ticket-to-Machine, Not Ticket-to-Human](ticket-to-machine-not-ticket-to-human.qmd) |
-| **Transmission confidentiality (SC-8)** | Configurable — an HTTPS distribution point with a FIPS-validated certificate closes it — but this is a per-server configuration choice that must be verified, not a default | TLS to Microsoft's FedRAMP-authorized endpoints is standard by default |
-| **System Security Plan footprint** | Every distribution point is its own system component: its own SSP entry, its own POA&M line items, its own place in the authorization boundary | Not a separate SSP component; already covered under the M365 GCC ATO boundary claimed for Intune-managed endpoints |
-
-None of this is a substitution, and that is the point. For as long as
-any distribution point exists — 1,500 today, 24 under this design's
-Section 4 target, or whatever smaller number Section 4.7's gates
-eventually allow — its STIG baseline, its vulnerability scan cadence,
-and its SSP entry must be built and sustained as their own compliance
-program, **in addition to**, not instead of, whatever compliance
-program already covers the 70,000-endpoint Intune-managed fleet.
-Section 6's cost model prices distribution point hardware and
-licensing; it does not price this labor. Section 3.2's "compliance
-sustainment" line item is this program, understated: consolidating to
-24 distribution points shrinks it to roughly a twelfth of its former
-size, but it does not shrink to zero, and it does not shrink at all
-until Section 4.7's gates close.
+Independent of the economics and capacity math in Sections 3.1–3.3, a
+distribution point and Intune sit in structurally different compliance
+postures — different SSP footprint, different hardening responsibility,
+different continuous-evidence posture, control by control. That
+comparison is detailed in Appendix A.1 rather than here, to keep this
+section on the cost and capacity argument. The finding that carries
+forward into the cost model: for as long as any distribution point
+exists — 1,500 today, 24 under this design's Section 4 target, or
+whatever smaller number Section 4.7's gates eventually allow — its
+compliance sustainment is a program in addition to, not instead of,
+whatever already covers the Intune-managed fleet. Section 3.2's
+"compliance sustainment" line item is this program, understated:
+consolidating to 24 distribution points shrinks it to roughly a
+twelfth of its former size, but it does not shrink to zero, and it
+does not shrink at all until Section 4.7's gates close.
 
 ## 4. Proposed Target Architecture
 
@@ -593,71 +576,19 @@ gate.
 
 Sections 2 through 6 make the economic case: even under downside MPLS
 assumptions, this program is cheaper than the proposed refresh. That
-economic case is not the only one. NIST, CISA, and the OrgComp control-
-closure ledger this corpus maintains give the agency reasons to build
-SD-WAN and TIC 3.0 branch breakout at these 1,500 sites that hold even
-if Section 6.3's sensitivity analysis had come out unfavorably.
-
-**NIST SP 800-53 controls a flat MPLS branch with centralized-only
-inspection leaves unclaimed or weakly claimed.** The full mapping —
-control by control, with the evidence source for each — is maintained
-in [SD-WAN vs. DIA Under TIC 3.0](tic3-sdwan-vs-dia.qmd), §5, and in
-Vol I Book 07 of the Federal Organization Compliance series; this
-section states only which of those closures land at field offices
-specifically, not the derivation:
-
-- **SC-7 (Boundary Protection) and SC-7(4)** — a governed distributed
-  policy enforcement point at the regional hub, not the flat branch
-  circuit itself, is what makes local egress an assessed boundary
-  rather than a gap in one.
-- **SC-8 / SC-8(1) (Transmission Confidentiality, Cryptographic
-  Protection)** — closed by the SD-WAN overlay's circuit-wide IPsec,
-  not by the DIA/MPLS pipe underneath it.
-- **AC-4 (Information Flow Enforcement) and SI-3 (Malicious Code
-  Protection)** — provided by the SASE/SSE stack this program's Phase 1
-  deploys at the hub tier (Section 4.5), not by the branch router.
-- **SI-4 and AU-12 (System Monitoring, Audit Generation)** — the
-  application-aware routing and path telemetry this program's SD-WAN
-  overlay generates is the evidence source; a static branch circuit
-  generates none of it.
-- **CP-8 (Telecommunications Services), CP-8(2) and CP-8(3) (Single
-  Points of Failure, Provider Diversity)** — closed directly by this
-  program's own dual-path branch design in Section 4.4: DIA plus a
-  physically diverse 5G secondary path at all 1,500 sites is the
-  CP-8(2)/CP-8(3) closure, not an add-on to it.
-
-None of these controls are claimed by hardware sitting idle in a
-closet. They are claimed by the SD-WAN, SASE, and diverse-transport
-architecture this paper's Section 4 already specifies — which means
-the compliance case and the architecture case point at the same build,
-not two different ones.
-
-**CISA's Zero Trust Maturity Model v2.0 cross-cutting capabilities**
-— Visibility and Analytics, Automation and Orchestration, and
-Governance — run underneath every pillar, not beside them, per
-[Zero Trust Governance Principles](zero-trust-governance-principles.qmd).
-A flat MPLS branch fleet is opaque to all three: there is no correlated
-telemetry to see, no policy surface to automate against, and nothing
-for governance to enforce. Twelve governed hub sites with SD-WAN and
-SASE telemetry are what give the Network pillar a cross-cutting
-capability to report at all — this is a maturity-model argument, not
-only a security one, and it applies whether or not the MPLS economics
-in Section 6.3 favor the program.
-
-**BOD-25-01's discipline applies here even though its text does not.**
-CISA [Binding Operational Directive 25-01](https://cyber.dhs.gov/bod/25-01/)
-governs Microsoft 365 tenant configuration, not branch network
-architecture — it is not itself a network mandate, and this paper does
-not claim otherwise. What transfers is the sequencing lesson
-[Assessment Tools vs. Closing BOD-25-01 Findings](bod-25-01-close-before-assess.qmd)
-documents for M365 baselines: an assessment tool that measures
-deviation from a control is not the same claim as having closed it.
-Running a ZTMM self-assessment or a network vulnerability scan against
-1,500 flat, ungoverned branch egress points produces the same growing
-deviation list that paper describes for unremediated SCuBA findings —
-the assessment keeps finding the gap; only the SD-WAN/SASE build in
-Section 4 closes it. Remediate first, then assess, applies to the
-network layer exactly as it applies to the tenant layer.
+economic case is not the only one — NIST, CISA, and the OrgComp
+control-closure ledger this corpus maintains give the agency reasons to
+build SD-WAN and TIC 3.0 branch breakout at these 1,500 sites that hold
+even if Section 6.3's sensitivity analysis had come out unfavorably.
+The control-by-control mapping (SC-7, SC-8, AC-4, SI-3, SI-4, AU-12,
+CP-8), the CISA Zero Trust Maturity Model v2.0 cross-cutting-capability
+argument, and the BOD-25-01 sequencing lesson are detailed in Appendix
+A.2, to keep this section focused on the architecture it justifies.
+The finding that carries forward: none of those controls are claimed
+by hardware sitting idle in a closet — they are claimed by the SD-WAN,
+SASE, and diverse-transport architecture Section 4 already specifies,
+which means the compliance case and the architecture case point at the
+same build, not two different ones.
 
 ## 5. Sizing and Bill of Materials
 
@@ -747,6 +678,19 @@ cumulative cash position in year four. The distribution point refresh
 reaches −\$50M in year one and recurs at the next refresh cycle. The
 five-year delta between the two paths is approximately \$57.7M.
 
+This comparison is not scope-for-scope, and that difference is
+deliberate rather than an accounting convenience. The \$50M ask funds
+content delivery only; the \$10M program funds the network
+modernization that content delivery consolidation depends on, and that
+same transport and hub investment also carries M365, Teams, TIC 3.0
+breakout, and the Intune migration. Funding the hub and transport layer
+once rather than paying for it piecemeal under separate initiatives is
+the argument, not a bonus attached to it. A sponsor who wants the
+content-delivery problem solved narrowly, with no interest in the other
+workloads, should weigh the \$10.0M capital figure against the
+transport-related recurring savings in Section 6.1 alone rather than
+against the full capability list in the headline comparison.
+
 ![Two paths, five years: cumulative cash position. A line chart with years 1 through 5 on the horizontal axis and cumulative dollar position from +$10M to −$50M on the vertical axis. A flat red line at −$50.0M represents the distribution point refresh, holding at that level across all five years with a label noting it recurs at the next refresh cycle. A rising teal line represents the SD-WAN, DIA, and 5G network modernization program: −$10.0M in year 1, −$8.23M in year 2, −$4.11M in year 3, crossing zero to +$1.78M in year 4 (marked "turns cash-positive" with an open circle), and +$7.67M in year 5. A navy banner at the bottom states the five-year delta between the two paths is approximately $57.7M and that the breakeven threshold is $873 per site per month of current MPLS spend.](images/field-office-wan-transformation-dp-consolidation-diagram-02-five-year-cash-position.png){#fig-five-year-cash-position width="100%"}
 
 ### 6.3 Sensitivity to current MPLS cost
@@ -816,7 +760,7 @@ and the paper should be revised accordingly once the number is known.
 
 | Risk | Rating | Mitigation |
 |---|---|---|
-| **TIC 3.0 branch breakout accreditation slips** | High | Phase 0 begins with the accreditation package, not the design. Fall back to hub-only breakout, which is a defensible end state on its own and still eliminates the per-office DP requirement. |
+| **TIC 3.0 branch breakout accreditation slips** | High | Phase 0 begins with the accreditation package, not the design. Fall back to hub-only breakout, which is a defensible end state on its own and still eliminates the per-office DP requirement. A twelve-month slip pushes the year-4 breakeven in Section 6.2 to approximately year five; it does not change the five-year delta versus the \$50M refresh, since Phase 2 migration waves are keyed to MPLS contract renewal dates rather than a fixed calendar. |
 | **Current MPLS cost is lower than assumed, inverting the financial case** | High | Validate before submission. If below breakeven, re-present the program on capability grounds; it remains cheaper than \$50M regardless. |
 | **Crypto throughput licensed below circuit speed** | Medium | Specify throughput tier explicitly per platform in the bill of materials; validate under load during the Phase 0 pilot. |
 | **Workstation-to-workstation SMB prohibited by segmentation policy** | Medium | Peer Cache is an optimization, not a dependency. If prohibited, branch content pulls directly from the hub tier over the new circuits, which are sized for it. |
@@ -910,19 +854,133 @@ Recommend deferring the distribution point refresh pending a network
 modernization assessment.
 :::
 
+## Appendix A — Compliance and Reporting Detail
+
+This appendix holds the control-by-control compliance detail referenced
+from Sections 3.4 and 4.8. It is written for a security architecture or
+ISSO audience; a reader focused on the budget and capacity case can
+treat Sections 3.4 and 4.8's summary findings as sufficient and skip
+this appendix entirely.
+
+### A.1 Distribution points vs. Intune — a compliance comparison
+
+Sections 3.1–3.3 make the economic and capacity case against the
+per-office distribution point model. This section asks a different
+question: independent of cost, how does a distribution point compare
+to Intune on compliance grounds, and what does keeping any distribution
+point tier alive cost in ongoing compliance work — on top of, not
+instead of, whatever compliance program already covers the Intune-
+managed endpoint fleet?
+
+The two sit in structurally different compliance postures, not just
+different maturity levels of the same one:
+
+| Dimension | Configuration Manager distribution point | Intune |
+|---|---|---|
+| **Compliance boundary** | On-premises Windows Server + IIS site system role; the agency owns the entire customer-side stack | SaaS; the underlying service is covered by the Microsoft 365 GCC Moderate FedRAMP ATO, inherited by the agency through the standard FedRAMP customer responsibility matrix |
+| **Hardening baseline** | DISA Windows Server STIG and IIS STIG apply and must be scanned independently, per server | Agency responsibility is limited to configuration (compliance policies, configuration profiles); the underlying service's own hardening is Microsoft's inherited CSP responsibility |
+| **Vulnerability management (RA-5, SI-2)** | The agency runs vulnerability scanning and patch management against every distribution point's OS and IIS stack, indefinitely, for as many distribution points as exist | RA-5/SI-2 for the service backend is Microsoft's responsibility under the FedRAMP ATO; the agency's remaining SI-2 exposure is the endpoint OS layer, which is scanned regardless of whether a distribution point exists |
+| **Continuous compliance evidence (CA-7)** | A distribution point has no compliance state of its own — successful content delivery is not a compliance claim, and a stalled or compromised distribution point is invisible to continuous monitoring unless separately instrumented | Native, continuous per-device compliance evaluation feeding Conditional Access in real time — the machine-verified evidence stream this corpus documents in [Ticket-to-Machine, Not Ticket-to-Human](ticket-to-machine-not-ticket-to-human.qmd) |
+| **Transmission confidentiality (SC-8)** | Configurable — an HTTPS distribution point with a FIPS-validated certificate closes it — but this is a per-server configuration choice that must be verified, not a default | TLS to Microsoft's FedRAMP-authorized endpoints is standard by default |
+| **System Security Plan footprint** | Every distribution point is its own system component: its own SSP entry, its own POA&M line items, its own place in the authorization boundary | Not a separate SSP component; already covered under the M365 GCC ATO boundary claimed for Intune-managed endpoints |
+
+None of this is a substitution, and that is the point. For as long as
+any distribution point exists — 1,500 today, 24 under this design's
+Section 4 target, or whatever smaller number Section 4.7's gates
+eventually allow — its STIG baseline, its vulnerability scan cadence,
+and its SSP entry must be built and sustained as their own compliance
+program, **in addition to**, not instead of, whatever compliance
+program already covers the 70,000-endpoint Intune-managed fleet.
+Section 6's cost model prices distribution point hardware and
+licensing; it does not price this labor. Section 3.2's "compliance
+sustainment" line item is this program, understated: consolidating to
+24 distribution points shrinks it to roughly a twelfth of its former
+size, but it does not shrink to zero, and it does not shrink at all
+until Section 4.7's gates close.
+
+### A.2 Compliance and reporting drivers, independent of cost
+
+Sections 2 through 6 make the economic case: even under downside MPLS
+assumptions, this program is cheaper than the proposed refresh. That
+economic case is not the only one. NIST, CISA, and the OrgComp control-
+closure ledger this corpus maintains give the agency reasons to build
+SD-WAN and TIC 3.0 branch breakout at these 1,500 sites that hold even
+if Section 6.3's sensitivity analysis had come out unfavorably.
+
+**NIST SP 800-53 controls a flat MPLS branch with centralized-only
+inspection leaves unclaimed or weakly claimed.** The full mapping —
+control by control, with the evidence source for each — is maintained
+in [SD-WAN vs. DIA Under TIC 3.0](tic3-sdwan-vs-dia.qmd), §5, and in
+Vol I Book 07 of the Federal Organization Compliance series; this
+section states only which of those closures land at field offices
+specifically, not the derivation:
+
+- **SC-7 (Boundary Protection) and SC-7(4)** — a governed distributed
+  policy enforcement point at the regional hub, not the flat branch
+  circuit itself, is what makes local egress an assessed boundary
+  rather than a gap in one.
+- **SC-8 / SC-8(1) (Transmission Confidentiality, Cryptographic
+  Protection)** — closed by the SD-WAN overlay's circuit-wide IPsec,
+  not by the DIA/MPLS pipe underneath it.
+- **AC-4 (Information Flow Enforcement) and SI-3 (Malicious Code
+  Protection)** — provided by the SASE/SSE stack this program's Phase 1
+  deploys at the hub tier (Section 4.5), not by the branch router.
+- **SI-4 and AU-12 (System Monitoring, Audit Generation)** — the
+  application-aware routing and path telemetry this program's SD-WAN
+  overlay generates is the evidence source; a static branch circuit
+  generates none of it.
+- **CP-8 (Telecommunications Services), CP-8(2) and CP-8(3) (Single
+  Points of Failure, Provider Diversity)** — closed directly by this
+  program's own dual-path branch design in Section 4.4: DIA plus a
+  physically diverse 5G secondary path at all 1,500 sites is the
+  CP-8(2)/CP-8(3) closure, not an add-on to it.
+
+None of these controls are claimed by hardware sitting idle in a
+closet. They are claimed by the SD-WAN, SASE, and diverse-transport
+architecture this paper's Section 4 already specifies — which means
+the compliance case and the architecture case point at the same build,
+not two different ones.
+
+**CISA's Zero Trust Maturity Model v2.0 cross-cutting capabilities**
+— Visibility and Analytics, Automation and Orchestration, and
+Governance — run underneath every pillar, not beside them, per
+[Zero Trust Governance Principles](zero-trust-governance-principles.qmd).
+A flat MPLS branch fleet is opaque to all three: there is no correlated
+telemetry to see, no policy surface to automate against, and nothing
+for governance to enforce. Twelve governed hub sites with SD-WAN and
+SASE telemetry are what give the Network pillar a cross-cutting
+capability to report at all — this is a maturity-model argument, not
+only a security one, and it applies whether or not the MPLS economics
+in Section 6.3 favor the program.
+
+**BOD-25-01's discipline applies here even though its text does not.**
+CISA [Binding Operational Directive 25-01](https://www.cisa.gov/news-events/directives/bod-25-01-implementing-secure-practices-cloud-services)
+governs Microsoft 365 tenant configuration, not branch network
+architecture — it is not itself a network mandate, and this paper does
+not claim otherwise. What transfers is the sequencing lesson
+[Assessment Tools vs. Closing BOD-25-01 Findings](bod-25-01-close-before-assess.qmd)
+documents for M365 baselines: an assessment tool that measures
+deviation from a control is not the same claim as having closed it.
+Running a ZTMM self-assessment or a network vulnerability scan against
+1,500 flat, ungoverned branch egress points produces the same growing
+deviation list that paper describes for unremediated SCuBA findings —
+the assessment keeps finding the gap; only the SD-WAN/SASE build in
+Section 4 closes it. Remediate first, then assess, applies to the
+network layer exactly as it applies to the tenant layer.
+
 ## Sources
 
 - [Size and scale — Configuration Manager (Microsoft Learn)](https://learn.microsoft.com/en-us/intune/configmgr/core/plan-design/configs/size-and-scale-numbers) — distribution point, primary site, and packages-per-DP capacity limits (Section 3.1, 4.3).
-- [Manage distribution points — Configuration Manager (Microsoft Learn)](https://learn.microsoft.com/en-us/intune/configmgr/core/servers/deploy/configure/install-and-configure-distribution-points) — pull-distribution-point behavior and fan-out warning (Section 3.2).
+- [Manage distribution points — Configuration Manager (Microsoft Learn)](https://learn.microsoft.com/en-us/intune/configmgr/core/servers/deploy/configure/install-and-configure-distribution-points) — pull-distribution-point configuration and behavior (Section 3.2); the simultaneous-request fan-out warning itself is on the [Size and scale](https://learn.microsoft.com/en-us/intune/configmgr/core/plan-design/configs/size-and-scale-numbers) page cited above, which this section also draws on.
 - [Co-management workloads (Microsoft Learn)](https://learn.microsoft.com/en-us/intune/configmgr/comanage/workloads) — the seven workload sliders underlying the all-in gates (Section 4.7).
 - [Prerequisites for Windows Autopatch (Microsoft Learn)](https://learn.microsoft.com/en-us/windows/deployment/windows-autopatch/prepare/windows-autopatch-prerequisites) — the update-workload pairing cited as Gate 2 (Section 4.7).
 - [Microsoft Connected Cache with Configuration Manager (Microsoft Learn)](https://learn.microsoft.com/en-us/intune/configmgr/core/plan-design/hierarchy/microsoft-connected-cache#support-for-intune-win32-apps) — the DP-hosted-MCC nuance behind Gate 4 (Section 4.7).
 - [SD-WAN vs. DIA Under TIC 3.0](tic3-sdwan-vs-dia.qmd), §5 — the full NIST SP 800-53 control-closure mapping this paper draws its field-office-specific closures from (Sections 4.2, 4.5, 4.8).
 - [Next Generation DNS](infoblox-hybrid-dns-unified-ddi.qmd), Part 9 — the INR/GCC-Moderate exclusion finding this paper cites (Section 4.6).
-- [Zero Trust Governance Principles](zero-trust-governance-principles.qmd) — the CISA ZTMM v2.0 cross-cutting capabilities argument (Section 4.8).
-- [Assessment Tools vs. Closing BOD-25-01 Findings](bod-25-01-close-before-assess.qmd) — the remediate-before-assess sequencing this paper extends from the M365 tenant layer to the network layer (Section 4.8).
-- [Binding Operational Directive 25-01 (CISA)](https://cyber.dhs.gov/bod/25-01/) — cited directly for scope, to state plainly what it does and does not govern (Section 4.8).
-- [Ticket-to-Machine, Not Ticket-to-Human](ticket-to-machine-not-ticket-to-human.qmd) — the continuous machine-verified evidence model contrasted against distribution points in Section 3.4.
+- [Zero Trust Governance Principles](zero-trust-governance-principles.qmd) — the CISA ZTMM v2.0 cross-cutting capabilities argument (Appendix A.2).
+- [Assessment Tools vs. Closing BOD-25-01 Findings](bod-25-01-close-before-assess.qmd) — the remediate-before-assess sequencing this paper extends from the M365 tenant layer to the network layer (Appendix A.2).
+- [Binding Operational Directive 25-01 (CISA)](https://www.cisa.gov/news-events/directives/bod-25-01-implementing-secure-practices-cloud-services) — cited directly for scope, to state plainly what it does and does not govern (Appendix A.2).
+- [Ticket-to-Machine, Not Ticket-to-Human](ticket-to-machine-not-ticket-to-human.qmd) — the continuous machine-verified evidence model contrasted against distribution points in Appendix A.1.
 - ADR-071, Intune-First Asset Onboarding — the co-management doctrine this paper's Phase 1 framing reconciles to (Section 2.2).
 
 *Prepared for internal agency review. Cost figures are planning
