@@ -19,7 +19,7 @@ pillar: compliance
 sub-category: B
 leaf: B.1.3
 created-at: 2026-06-26
-updated-at: 2026-06-26
+updated-at: 2026-08-06
 format:
   html:
     toc: true
@@ -134,7 +134,7 @@ The critical architectural property is the **loop**: L5 is what separates a
 rebuild that lifts ZTMM maturity from one that merely improves visibility.
 A risk score that no access decision consumes lifts only the Visibility &
 Analytics pillar; the same score wired into Conditional Access lifts
-Identity, Devices, and Automation & Orchestration as well (§12).
+Identity, Devices, and Automation & Orchestration as well (§14).
 
 ## 5. Implementation Plan
 
@@ -224,7 +224,7 @@ The phase that converts visibility into maturity.
 |---|---|
 | 6.1 | Telemetry-completeness workbook: data-freshness checks across every expected table (the rebuild fails silently if a source stops emitting). |
 | 6.2 | Detection-efficacy review: measure each rebuilt detection against known-good test events; record false-negative posture honestly. |
-| 6.3 | Map each operating rebuild to the ZTMM pillar it lifts and attest the new tier (§12), with the Evidence Bundle finding shape from [B.1.1 §5](B1-1-gcc-moderate-three-way-conflict.qmd). |
+| 6.3 | Map each operating rebuild to the ZTMM pillar it lifts and attest the new tier (§14), with the Evidence Bundle finding shape from [B.1.1 §5](B1-1-gcc-moderate-three-way-conflict.qmd). |
 
 ### 5.7 The Operate-and-Tune Phase (never closes)
 
@@ -252,7 +252,7 @@ fidelity) for the rebuildable and substitute signals. Row keys reference
 - **Partial — bounded** — reconstructable only to a reduced fidelity / latency ceiling.
 - **Not fixed** — irreducible (data the agency never holds) or suppressed at source (telemetry never collected).
 
-No verdict reaches commercial-cloud parity or Optimal maturity — that is a MAS 2026 dependency (§11–§12).
+No verdict reaches commercial-cloud parity or Optimal maturity — that is a MAS 2026 dependency (§11–§14).
 
 <!-- BEGIN: rebuild-coverage (generated from gcc-moderate-telemetry-gaps.yaml by scripts/generate_rebuild_coverage.py - do not edit by hand) -->
 | # | Signal (gap id) | Disposition | Verdict | Rebuild path & residual |
@@ -523,7 +523,177 @@ the MAS 2026 scope refinement of
 to GCC-Moderate scope, the corresponding agency rebuild can be retired rather
 than maintained in perpetuity.
 
-## 12. Maturity Mapping — What Each Rebuild Buys
+## 12. The MAS 2026 Petition — What's Actually Worth Asking Microsoft For
+
+FedRAMP's Minimum Assessment Scope rules launched 2026-06-24 as part of the
+Consolidated Rules for 2026 and became required for 20x authorizations on
+2026-07-04 — the "MAS 2026" §6, §11.4, and §11.5 treat as a future scope
+refinement is now a live rule an agency can invoke. MAS-CSO-IIR's two-prong
+test — in scope if a component is "likely to handle federal customer data or
+likely to impact the confidentiality, integrity, or availability of federal
+customer data" — is the test any petition to Microsoft has to survive. This
+section names what it actually supports asking for, and what it does not.
+
+### 12.1 Two defensible targets
+
+**INR path-optimization telemetry.** Row 8 of §6.1 treats INR
+(`inr-realtime-path-metrics`) as a permanent substitute: the agency rebuilds
+via SD-WAN/SASE PEP telemetry (ADR-057) rather than Microsoft's own path
+intelligence, because Microsoft does not provision the feature in
+GCC-Moderate. INR's core payload — latency, jitter, and path performance
+between an edge device and Microsoft's network — does not itself handle
+federal customer data, and its absence does not on its face impact the
+confidentiality, integrity, or availability of federal customer data handled
+by the cloud service offering, which is MAS-CSO-IIR's own threshold. If that
+reading holds under review, INR telemetry falls outside the cloud service
+offering as MAS-CSO-IIR defines it, and would not need FedRAMP-authorized
+inclusion to be served into GCC-Moderate — at which point the ADR-057
+substitute in row 8 could be retired rather than maintained in perpetuity,
+per §11.5.
+
+**Dashboards and assessment tooling (Secure Score, Zero Trust Assessment).**
+The GCC-tier ceiling on these tools is documented in [Zero Trust Governance
+Principles §8](../../whitepapers/zero-trust-governance-principles.qmd) — they
+surface aggregated, agency-facing output the tenant already has partial
+access to, not a raw commercial pipeline. The ask here is narrower than
+INR's: extend the same measurement-only telemetry into the score/dashboard
+computation the tenant already sees a reduced version of, not expose the
+underlying pipeline. This is the easier of the two asks and carries none of
+the location-data question §12.2 raises for INR.
+
+### 12.2 The open item the INR ask has to carry, not discover later
+
+[B.1.1 §2.5](B1-1-gcc-moderate-three-way-conflict.qmd) and §9 above both
+establish that EO 14117 constrains precise geolocation independent of
+FedRAMP scope — MAS moving a pipeline back into the boundary does not relax
+it. Path-optimization telemetry commonly carries source-IP-derived location
+signal to select the nearest edge; whether INR's specific payload rises to
+"precise geolocation" under EO 14117, versus coarse metro-level routing
+data, is not established anywhere in this leaf's source material or [the INR
+finding](../../findings/fedramp-gcc-moderate-informed-network-routing.html) —
+it requires someone who has actually seen INR's telemetry schema, not an
+inference from the product description.
+
+The consequence for how the petition is worded: the technical ask should be
+**INR path-optimization without precise per-device geolocation**, not INR as
+currently shipped commercially. That framing holds regardless of how the
+geolocation question resolves; a please-enable-INR ask does not.
+
+### 12.3 What the test does not support asking for
+
+The same two-prong test cuts the other way for the signals §6.1 marks
+**Fixes** or **Not fixed** for a different reason. Entra Identity Protection
+ML risk, Endpoint Analytics Advanced, and cross-tenant correlation are built
+from identity-attributed, federal-customer-data telemetry — exactly what
+MAS-CSO-IIR is designed to keep in scope, not remove from it. Bundling these
+with §12.1's asks invites Microsoft to reject the whole petition on the same
+test the agency is invoking for INR and the dashboards; if pursued at all,
+they belong on a separate, commercial-parity product-roadmap channel, not a
+MAS scope argument.
+
+### 12.4 Where this belongs
+
+This is a vendor-relationship and federal-policy action the rebuild plan
+does not execute — it runs through the agency's Microsoft account team and
+FedRAMP PMO liaison, with the outcome tracked against [the INR
+finding](../../findings/fedramp-gcc-moderate-informed-network-routing.html)'s
+existing external-remedy item rather than duplicated here.
+
+## 13. If MAS 2026 Unblocks It — What Retires, and What Doesn't
+
+§12 argues for a specific petition. This section answers the question that
+follows from it: if Microsoft grants it — if INR and Adoption Score's
+underlying telemetry actually re-enter GCC-Moderate — which of this leaf's
+own agency-built workarounds does that retire?
+
+### 13.1 Which rows this actually reaches
+
+Not most of them. Of the 26 rows in §6.1's matrix, only the **8 rows with a
+`confirmed` disposition** are realistically reachable by a MAS scope
+determination: INR and Adoption Score's seven sub-signals. Microsoft
+simply does not provision these products to GCC-Moderate at all, which is
+exactly the condition §12.1's argument depends on.
+
+The other 18 rows — 14 of them `inferred`, plus the `restricted` and
+`retention-limited` rows — are a different animal. `Inferred` means the raw
+telemetry is *already collectible in-boundary* (SigninLogs, Defender
+DeviceEvents, Purview audit); the boundary constrains *exporting* it to
+Microsoft's commercial ML, not the agency's access to it. That is precisely
+the identity- and device-attributed federal-customer-data telemetry
+MAS-CSO-IIR's own test is built to keep in scope, not release — Entra
+Identity Protection ML risk, CAE, the Endpoint Analytics performance
+signals, DLP behavioral analytics. MAS scope refinement has no mechanism
+that reaches these; unblocking them would require Microsoft shipping a
+GCC-Moderate-authorized version of the ML service itself, a different and
+harder problem than a boundary technicality.
+
+So: "Microsoft turns telemetry back on under MAS" means these 8 rows, not
+all 26. The rebuild plan's Phase 2/3 detection work (§5.2–§5.3) for the
+`inferred` rows stays standing capability regardless of how §12's petition
+lands.
+
+### 13.2 The eight retirable workarounds
+
+Every row below is a `Partial — substitute` verdict in §6.1 — never
+`Fixes` — precisely because it is an agency-built approximation of a
+Microsoft product that isn't there. Controls are read directly from
+`gcc-moderate-telemetry-gaps.yaml`'s `constraining_controls` field, not
+inferred:
+
+| Gap row | Constraining controls | Current agency workaround | Retires if MAS unblocks it |
+|---|---|---|---|
+| Communication patterns (ChatCount vs EmailCount) | SI-4, AU-2, AU-3 | Rebuild ratios from the unified audit log | Yes |
+| Content collaboration (attachments vs cloud links) | SI-4, AU-2, AU-3 | Derive from audit + message-trace metadata | Yes |
+| Mobility (multi-platform usage) | SI-4, AU-2, AU-3 | Platform/device read from SigninLogs | Yes |
+| Meetings participation telemetry | SI-4, AU-2, AU-3 | Reconstruct from Teams audit / CQD | Yes |
+| Apps Health (update channel, version telemetry) | SI-4, AU-2, AU-3 | Intune + WUfB device export | Yes |
+| Network connectivity scores (per location) | SI-4, SC-7 | SD-WAN / SASE PEP + CQD (ADR-057) | Yes |
+| Endpoint readiness baselines (tenant-wide) | SI-4, AU-2, AU-3 | Device-inventory export + Phase 3 models | Yes |
+| INR real-time path metrics | SC-7 | SD-WAN / SASE / ThousandEyes (ADR-057) | Yes |
+
+Per §11.5, "the corresponding agency rebuild can be retired rather than
+maintained in perpetuity" — this table is that list, made concrete rather
+than asserted in the abstract.
+
+### 13.3 The ThousandEyes-specific answer
+
+[ADR-057](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-057-thousandeyes-networks-pillar-scope.md)
+scopes ThousandEyes' *endorsed* use against this gap matrix to exactly two
+of the eight rows above — `inr-realtime-path-metrics` and
+`network-connectivity-scores-per-location` — and its §2 explicitly forbids
+using it for anything outside that (Identity, Devices, Data, and
+Applications & Workloads pillars are all named non-endorsed scope). If
+Microsoft turns those two signals back on, ThousandEyes loses its entire
+chartered justification in this architecture: nothing else in the
+gap matrix was ever within its endorsed scope to begin with.
+
+One thing this does **not** mean: ThousandEyes disappearing outright.
+ADR-057 §1 also endorses it for the BGP / DNS / MITM detection chain and
+M365 service-availability tests — a general network-security monitoring
+capability that was never really an INR-substitute, it rode along in the
+same ADR because the same tool happens to do both. That value proposition
+doesn't depend on MAS and would likely survive on its own merits. The
+accurate framing is a **narrowing**, not an elimination: ThousandEyes'
+role shifts from "Networks-pillar compensating control for two named gap
+rows" to "BGP/DNS/MITM monitoring tool" — a smaller, differently-justified
+footprint worth its own procurement re-scope, not a reason to decommission
+the tool.
+
+### 13.4 What isn't tracked yet
+
+The NIST-control column in §13.2 is exact, read from the gap-matrix YAML
+directly. A KSI-ID trace for these eight rows does not currently exist.
+[B.1.4 §5](B1-4-ksi-mapping-and-compensating-control-architecture.qmd)
+already found four disjoint `KSI-`-prefixed ID spaces in the substrate with
+almost no verified cross-reference between them, and its own worked
+examples trace a different gap registry
+(`gcc-boundary-gap-registry.yaml`'s `GAP-INT-*` / `GAP-ARC-*` entries) than
+the `gcc-moderate-telemetry-gaps.yaml` rows this section uses. Closing that
+trace — which KSI ID each of these eight rows should cite, in which of
+B.1.4 §2's two namespaces — is future reconciliation work this leaf flags
+rather than asserts.
+
+## 14. Maturity Mapping — What Each Rebuild Buys
 
 ![ZTMM maturity lift: most pillars rise from Initial to Advanced with the rebuild, while the Optimal tier remains unreachable without MAS 2026.](images/b1-3-rebuilding-boundary-blocked-diagram-05-ztmm-maturity-lift.png){#fig-b1-3-ztmm-lift fig-alt="Blueprint bar chart, white background. Seven ZTMM pillars (Identity, Devices, Networks via ADR-057, Apps & Workloads, Data, Visibility & Analytics, Automation & Orchestration) each shown rising from an Initial navy baseline through a teal Advanced segment, capped by a hatched grey 'Optimal — needs MAS 2026' segment the rebuild does not reach." width="100%"}
 
@@ -544,15 +714,15 @@ agency analytics. The rebuild lifts each pillar conditionally:
 agency-built equivalence to Microsoft's continuously-tuned global pipelines —
 the latter being precisely the fidelity §11 says is irreducible.
 
-## 13. What This Leaf Is and Is Not
+## 15. What This Leaf Is and Is Not
 
 It **is** the agency-side build plan for the one lever the agency controls.
 It **is not** a claim that the agency can reach commercial-cloud fidelity,
-and it **is not** a reason to defer MAS 2026 advocacy — the two are
+and it **is not** a reason to defer MAS 2026 advocacy (§12) — the two are
 complementary, and the rebuild is the interim posture that keeps the agency
 defensible until the scope decision lands.
 
-## 14. Cross-References
+## 16. Cross-References
 
 - **Parent boundary model**: [B.1 GCC-Moderate Boundary Model](B1-gcc-moderate-boundary-model.qmd)
 - **Three-way compliance conflict**: [B.1.1](B1-1-gcc-moderate-three-way-conflict.qmd) — the mandate triangle the rebuild compensates for; the CLAW corollary and EO 14117 overlay
@@ -562,7 +732,7 @@ defensible until the scope decision lands.
 - **Machine-readable gap matrix**: [`canon/data/gcc-moderate-telemetry-gaps.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml)
 - **Source memo**: [M365 GCC-Moderate Telemetry & Boundary Assessment (external)](../../../../inbox/New_FedRAMP_Boundary/M365_GCC-Moderate_Telemetry_and_Boundary_Assessment_External_with_images.docx)
 
-## 15. Provenance
+## 17. Provenance
 
 This leaf operationalizes the compensating-architecture stack of the M365
 GCC-Moderate Telemetry & Boundary Assessment (External v1.0, 2026-04-25) §13
