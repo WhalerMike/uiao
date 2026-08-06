@@ -110,6 +110,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [AD to Entra ID — The Structural Migration Problem](whitepapers/ad-to-entraid-migration-problem.html) | Active | Executive, Customer |
 | [AODIM — Attribute-Oriented Directory & Identity Model](whitepapers/aodim-executive-whitepaper.html) | Active | Executive, Customer |
 | [Assessment Tools vs. Closing BOD-25-01 Findings](whitepapers/bod-25-01-close-before-assess.html) | Active | Executive, Customer, Assessor, Architect |
+| [Event Logging Under the GCC-Moderate FedRAMP Boundary — What's Blocked, Why, and the Limits of Recovery](whitepapers/event-logging-fedramp-boundary-limitations.html) | Draft | Executive, Architect, Assessor, Technical-Lead |
 | [Federal AI Governance — Submission Readiness Brief](whitepapers/federal-ai-governance-submission-readiness.html) | Active | Executive, Customer |
 | [Federal Application Aware Networking Architecture](whitepapers/federal-application-aware-networking-architecture.html) | Draft | Executive, Architect, Engineer, Assessor, Technical-Lead |
 | [Federal Compliance for Moderate Agencies](whitepapers/federal-compliance-for-moderate-agencies.html) | Active | Executive, Architect, Assessor, Technical-Lead |

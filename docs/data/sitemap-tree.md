@@ -989,6 +989,7 @@
   - [Flipping 50,000 Devices to Hybrid Join — The Governed and Ungoverned Paths](customer-documents/whitepapers/hybrid-join-without-governance.html)
   - [AD to Entra ID — The Structural Migration Problem](customer-documents/whitepapers/ad-to-entraid-migration-problem.html)
   - [The Session vs. Telemetry Divide — Why Identity Architecture Splits at the FedRAMP Boundary](customer-documents/whitepapers/session-vs-telemetry-identity.html)
+  - [Event Logging Under the GCC-Moderate FedRAMP Boundary — What's Blocked, Why, and the Limits of Recovery](customer-documents/whitepapers/event-logging-fedramp-boundary-limitations.html)
   - [AODIM — Attribute-Oriented Directory & Identity Model](customer-documents/whitepapers/aodim-executive-whitepaper.html)
   - [UIAO vs Microsoft Native Tools — Gap Analysis](customer-documents/whitepapers/uiao-vs-native-tools.html)
   - [Ticket-to-Machine, Not Ticket-to-Human: Why Changing State Isn't Compliance Evidence](customer-documents/whitepapers/ticket-to-machine-not-ticket-to-human.html)

@@ -1,0 +1,459 @@
+---
+title: "Event Logging Under the GCC-Moderate FedRAMP Boundary — What's Blocked, Why, and the Limits of Recovery"
+subtitle: "Windows Event Viewer as the on-endpoint audit source, Azure Event Hubs as the in-boundary rebuild pipe — a full accounting of the 26 telemetry signals the FedRAMP Moderate authorization boundary blocks, restricts, or retention-limits, and how far an agency-owned pipeline can recover them"
+doc-type: whitepaper
+audience: [Executive, Architect, Assessor, Technical-Lead]
+author: Michael Stratton
+date: "August 2026"
+status: Draft
+canon-source: "src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml"
+derived-from: "Synthesis of the M365 GCC-Moderate Telemetry & Boundary Assessment gap matrix (gcc-moderate-telemetry-gaps.yaml, 26 rows) and the B.1/B.1.1/B.1.3 boundary-model leaves; adds the Windows Event Viewer / Azure Event Hubs framing and the grouped-by-source-family presentation as new material not present in those leaves. Carries no facts beyond what the yaml and the B.1.x leaves already establish — see Honest limits and scope."
+repo-path: docs/customer-documents/whitepapers/event-logging-fedramp-boundary-limitations.qmd
+created-at: 2026-08-05
+updated-at: 2026-08-05
+version: "1.0"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2026-11-22
+---
+
+# Event Logging Under the GCC-Moderate FedRAMP Boundary — What's Blocked, Why, and the Limits of Recovery {.unnumbered}
+
+::: {.content-visible when-format="html"}
+::: {.callout-tip appearance="simple"}
+**[Download this whitepaper as DOCX](event-logging-fedramp-boundary-limitations.docx)** — a Word copy of
+this page, regenerated on every site deploy. (Also available from the
+**Other Formats** link in the page sidebar.)
+:::
+:::
+
+## The problem this paper resolves
+
+Two very different pieces of Microsoft technology sit underneath the same
+question an agency operating M365 GCC-Moderate under a FedRAMP Moderate
+authorization has to answer: *what am I actually able to see, and what have
+I quietly lost?*
+
+**Windows Event Viewer** is the decades-old, on-endpoint audit log — the
+System, Security, Application, and role-specific channels every Windows
+device already writes to, and the substrate NIST SP 800-53's audit family
+(AU-2, AU-3, AU-12) and OMB M-21-31's event-logging maturity tiers are
+written about. **Azure Event Hubs** is the opposite end of the pipe: a
+tenant-scale, PaaS streaming broker an agency can stand up *inside its own
+authorization boundary* to land diagnostic and audit exports at scale — the
+mechanism the in-boundary rebuild plan in
+[B.1.3](../orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd)
+depends on.
+
+Neither tool is itself blocked by the FedRAMP Moderate boundary. What *is*
+blocked is a specific, enumerated set of 26 telemetry signals — mostly
+Microsoft's own cloud-side computed products (risk scores, adoption
+aggregates, ML-driven anomaly detections) built **on top of** raw data that
+Event Viewer and equivalent cloud audit logs already produce. This paper is
+the full accounting: which signals are blocked, why, what actually breaks
+as a result, and how far an Event Hub-based in-boundary pipeline can
+recover them. **Scope:** this paper draws every fact from the 26-row gap
+matrix and the B.1/B.1.1/B.1.3 boundary-model leaves; where this page and
+those leaves disagree, the leaves are authoritative — see [Honest limits
+and scope](#honest-limits-and-scope).
+
+## Executive summary
+
+- **26 telemetry signals are documented as blocked, restricted, or
+  retention-limited** under the GCC-Moderate FedRAMP Moderate authorization
+  boundary — confirmed by Microsoft documentation for some, inferred from
+  the boundary's own SI-4/AU-2/AU-3/SC-7 architecture for most.
+- **The constraint is the destination, not the data.** Raw telemetry —
+  including the Windows Event Viewer-sourced records behind the Endpoint
+  Analytics family — is collectible in-boundary. What GCC-Moderate does not
+  provision is Microsoft's **commercial multi-tenant ML and analytics
+  layer** built on top of that raw data. An agency can land the same raw
+  records in its own Event Hub → SIEM pipeline and rebuild an approximation
+  of the missing layer, *inside* its own boundary.
+- **Of the 26 signals: 8 are fully rebuildable, 16 partially, 2 not at
+  all.** The two irreducible losses are structural, not a resourcing
+  problem: cross-tenant access telemetry (the agency never holds the other
+  tenant's data) and Office "Optional" diagnostic data (suppressed at the
+  client before collection, not merely unexported).
+- **Ramifications land hardest on four fronts:** Zero Trust risk scoring
+  loses its fastest, most-tuned inputs (Entra risk detection degrades from
+  commercial minutes to GCC-Moderate hours-to-days); anomaly detection loses
+  what the source data itself calls an "infinite gap" for network-path
+  attacks (BGP hijack, DNS manipulation, MITM are natively undetectable);
+  insider-risk signals — digital disengagement, DLP override patterns, data
+  hoarding — degrade or disappear; and forensic reconstruction hits a hard
+  28-day wall on location telemetry unless an agency exports before the
+  purge.
+- **Full compensation is not achievable at any investment level.** The
+  rebuild reaches functional coverage and Advanced ZTMM maturity on most
+  pillars; it does not reach commercial fidelity or Optimal maturity on any
+  pillar, and two specific losses have no rebuild path at all.
+
+## 1. Two tools, two roles
+
+### 1.1 Windows Event Viewer — the on-endpoint audit substrate
+
+Windows Event Viewer (`eventvwr.msc`) is the built-in log reader for the
+Windows Event Log service — the System, Security, Application, Setup, and
+Forwarded Events channels every Windows endpoint writes to natively, plus
+any application- or service-specific channel a piece of software registers
+for itself. It is not a Microsoft cloud product; it predates GCC-Moderate,
+Entra ID, and Azure entirely, and it keeps writing regardless of tenant,
+licensing, or authorization boundary. A concrete example already in this
+repository: [`Install-UIAOService.ps1`](../../../deploy/windows-server/Install-UIAOService.ps1)
+registers the UIAO Windows service's own Event Viewer log source on
+install, exactly the pattern any Windows-hosted federal service uses to
+make its own operational and security events auditable.
+
+**Why it matters to a federal agency specifically:** Event Viewer's
+Security log is the literal implementation surface for NIST SP 800-53's
+audit-family controls — AU-2 (auditable events), AU-3 (content of audit
+records), AU-12 (audit generation) — at the endpoint. OMB M-21-31 (event
+logging maturity tiers EL0 through EL3) is a federal mandate specifically
+about centralizing, retaining, and protecting exactly this class of log;
+[Federal Compliance for Moderate
+Agencies](federal-compliance-for-moderate-agencies.qmd) names M-21-31 as
+real and agency-facing but out of scope for that primer on length grounds —
+this paper is where it becomes directly relevant, because Event Viewer logs
+are the input M-21-31 governs the handling of.
+
+**Its role in the gap matrix:** Microsoft's Endpoint Analytics – Advanced
+service does not invent new data — it reads System/Application-channel
+events and Event Tracing for Windows (ETW) providers already on the device
+(boot-phase timings, application crash/hang records, stop-error/bugcheck
+events, resource-usage counters), rolls them up through the Intune/Defender
+agent, and computes trend and anomaly products on Microsoft's commercial
+cloud side. **That rollup-and-compute layer is what GCC-Moderate does not
+provision** — not the underlying Event Viewer data, which the endpoint
+keeps writing either way.
+
+### 1.2 Azure Event Hubs — the in-boundary rebuild transport
+
+Azure Event Hubs is a PaaS, tenant-scale streaming/ingestion broker — the
+Azure equivalent of a partitioned commit log, built to absorb diagnostic
+and audit exports at volumes a single-endpoint tool like Event Viewer was
+never meant to handle. It runs in Azure Commercial and inherits Azure's own
+FedRAMP Moderate/High P-ATO, so it does not require a separate
+authorization to use inside a GCC-Moderate boundary. Because it is PaaS,
+**the agency owns the data plane**: its own namespace, its own retention,
+its own network path (Private Link / disabled public access), its own
+encryption keys if required. That is precisely the property that keeps it
+out of the blocked category the rest of this paper describes — it is not a
+Microsoft-operated multi-tenant analytics service the boundary is built to
+keep raw telemetry away from; it is agency-operated transport the boundary
+was drawn to *permit*.
+
+**Its role in the rebuild:** nearly every Azure, Entra, and M365-adjacent
+resource that emits diagnostic or audit data can stream it to an Event Hub
+namespace via Diagnostic Settings. Downstream, an in-boundary SIEM
+(Sentinel, Log Analytics, or a third-party equivalent — see [B.1.3
+§9](../orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd#9-authorization-compliance-hygiene)
+on keeping every hop in-boundary) subscribes and lands the data. Event Hubs
+is Layer 1 (**Collection**) of the five-layer in-boundary rebuild
+architecture B.1.3 specifies in full — see that leaf for the complete
+implementation plan; this paper does not re-derive it.
+
+### 1.3 How they connect — and where they don't
+
+The two tools are not one continuous pipe for every blocked signal. They
+connect only for the subset of the gap matrix that actually originates as
+an on-endpoint Windows Event Viewer / ETW record:
+
+| Signal family | Originates in Event Viewer/ETW? | Rebuild transport |
+|---|---|---|
+| Endpoint Analytics – Advanced (6 rows: boot performance, crash/hang rate, CPU/memory, stop-error restarts, battery/WFA, performance regression) | **Yes** — System/Application channel events and ETW counters, rolled up by the Intune/Defender agent | Defender `DeviceEvents` / Graph device export → Event Hub → in-boundary Log Analytics → agency anomaly model |
+| Adoption Score, Entra ID, Intune behavioral, M365 core/Purview, Microsoft INR, Teams CQD (20 rows) | **No** — these originate as service-side audit/diagnostic records in Microsoft's cloud, not on the endpoint | Entra/Intune/Purview Diagnostic Settings → Event Hub → in-boundary Log Analytics directly; Event Viewer is not in this chain at all |
+
+This distinction matters for accuracy: Event Viewer explains *why* the
+Endpoint Analytics family is rebuildable at all (the raw data already
+exists locally, in-boundary, and always did). It says nothing about the
+other twenty signals — those are blocked or restricted for reasons internal
+to Microsoft's cloud-side collection decisions, covered next.
+
+## 2. Where and why the boundary blocks telemetry
+
+The full architectural argument is [B.1's boundary
+model](../orgcomp-series/boundary/B1-gcc-moderate-boundary-model.qmd) and
+[B.1.3 §2's in-boundary
+principle](../orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd#2-the-in-boundary-principle-why-this-is-lawful-where-inheritance-is-not);
+the load-bearing fact, restated for this paper's purpose:
+
+**The FedRAMP Moderate authorization boundary constrains where
+identity-attributed, behavioral telemetry may go — not whether an agency
+may collect and analyze it at all.** SI-4 (system monitoring), AU-2/AU-3
+(audit events and content), and SC-7 (boundary protection) govern the
+*export destination*. Sending that data to Microsoft's commercial
+multi-tenant machine-learning and analytics services is the flow the
+boundary restricts, because that destination sits outside the agency's own
+authorization scope. Sending the same data to an agency-owned, in-boundary
+SIEM is not restricted — it is exactly the in-boundary monitoring SI-4 and
+AU-2/AU-3 contemplate.
+
+That single distinction produces every row in the gap matrix, but through
+three different mechanisms (`documented` status in the underlying
+[`gcc-moderate-telemetry-gaps.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml)):
+
+| Mechanism | What it means | How many of the 26 rows |
+|---|---|---|
+| **Confirmed** | Microsoft documentation explicitly states the product/feature is unavailable in GCC-Moderate | 8 |
+| **Inferred** | No explicit Microsoft statement; blocked as a consequence of the SI-4/AU-2/AU-3/SC-7 boundary architecture itself | 15 |
+| **Restricted** | Available, but defaulted off or scoped down (e.g., Office "Optional" diagnostic data defaults to the narrower "Required" tier) | 1 |
+| **Retention-limited** | Available, but a shortened data-lifetime cap creates a forensic cliff before an agency can act on or export it | 2 |
+
+The **why** varies by row, but resolves to one of three underlying causes,
+each with a different rebuild prognosis (full detail in [B.1.3
+§3](../orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd#3-scope-what-can-and-cannot-be-rebuilt)):
+
+1. **Only the ML/analytics layer is missing; raw telemetry is collectible
+   in-boundary** — fully the agency's to rebuild (this is the Event
+   Viewer-sourced Endpoint Analytics family, and most of the Entra/Intune
+   behavioral rows).
+2. **Microsoft's specific computed product's inputs never reach the
+   tenant** — a different in-boundary source can substitute, but the exact
+   Microsoft product cannot be recreated (Adoption Score, INR).
+3. **The data itself is never the agency's to hold, or never collected at
+   all** — irreducible; no rebuild closes it (cross-tenant telemetry,
+   suppressed-at-source Office diagnostics).
+
+## 3. The full catalog — all 26 blocked signals, grouped by source
+
+Every row below is sourced from
+[`gcc-moderate-telemetry-gaps.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml);
+the row-by-row rebuild mechanics (raw inputs, reconstruction logic, fidelity
+gap) live in [B.1.3
+§6.2](../orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd#62-rebuild-mechanics-rebuildable-substitute-signals)
+and are not repeated here — this section's contribution is grouping by
+product family so an agency can inventory exposure by the console it
+actually operates.
+
+### 3.1 Adoption Score (7 signals — confirmed unavailable)
+
+| Signal | Constraining controls | ZTMM pillar(s) | Rebuild verdict |
+|---|---|---|---|
+| Communication patterns (chat vs. email ratio) | SI-4, AU-2, AU-3 | Identity, Visibility & Analytics | Partial — substitute |
+| Content collaboration (attachments vs. cloud links) | SI-4, AU-2, AU-3 | Data, Visibility & Analytics | Partial — substitute |
+| Mobility (multi-platform usage patterns) | SI-4, AU-2, AU-3 | Identity, Devices | Partial — substitute |
+| Meetings participation telemetry | SI-4, AU-2, AU-3 | Visibility & Analytics | Partial — substitute |
+| Apps Health (update channel, version telemetry) | SI-4, AU-2, AU-3 | Applications & Workloads, Visibility & Analytics | Partial — substitute |
+| Network connectivity scores (per location) | SI-4, SC-7 | Networks, Visibility & Analytics | Partial — substitute |
+| Endpoint readiness baselines (tenant-wide) | SI-4, AU-2, AU-3 | Visibility & Analytics | Partial — substitute |
+
+### 3.2 Microsoft INR (1 signal — confirmed unavailable)
+
+| Signal | Constraining controls | ZTMM pillar(s) | Rebuild verdict |
+|---|---|---|---|
+| INR real-time path metrics (latency / jitter / packet-loss) | SC-7 | Networks, Visibility & Analytics | Partial — substitute (agency-owned PEP telemetry, not Microsoft path intelligence) |
+
+### 3.3 Endpoint Analytics – Advanced (6 signals — inferred; the Event Viewer-sourced family)
+
+| Signal | Constraining controls | ZTMM pillar(s) | Rebuild verdict |
+|---|---|---|---|
+| Device boot performance / GP processing / desktop load | SI-4, SC-7 | Devices, Visibility & Analytics | Partial — substitute |
+| App reliability (crash count, hang rate, stability) | SI-4, SC-7 | Devices, Applications & Workloads | Partial — substitute |
+| Resource performance (CPU / memory spikes) | SI-4, SC-7 | Devices | Partial — substitute (high value — recovers grey-ware/miner/exfil signal) |
+| Stop-error restarts | SI-4, SC-7 | Devices, Visibility & Analytics | Partial — substitute |
+| Battery health / work-from-anywhere readiness | SI-4, SC-7 | Devices | Partial — substitute (low value) |
+| Device performance anomalies (post-config / policy / OS regression) | SI-4, SC-7 | Devices, Visibility & Analytics | Partial — substitute |
+
+### 3.4 Entra ID (3 signals — inferred)
+
+| Signal | Constraining controls | ZTMM pillar(s) | Rebuild verdict |
+|---|---|---|---|
+| Real-time risk scores / Identity Protection ML | SI-4, AU-2, AU-3, SC-7 | Identity, Visibility & Analytics | **Fixes** (minutes-to-hours, not commercial minutes; no global threat intel) |
+| Cross-tenant access telemetry (B2B, Direct Connect) | SI-4, SC-7 | Identity | **Not fixed** — irreducible |
+| Real-time CAE revocation paths (sub-second) | SI-4, AU-2, AU-3, SC-7 | Identity, Automation & Orchestration | Partial — bounded (minutes via SOAR, not sub-second) |
+
+### 3.5 Intune (3 signals — inferred)
+
+| Signal | Constraining controls | ZTMM pillar(s) | Rebuild verdict |
+|---|---|---|---|
+| App-protection policy violation analytics | SI-4, AU-2, AU-3 | Devices, Applications & Workloads | **Fixes** (snapshot-driven, not real-time behavioral) |
+| WUfB deployment health trends / per-device error codes | SI-4, SC-7 | Devices, Visibility & Analytics | **Fixes** (reporting lag vs. Microsoft real-time) |
+| EPM elevation operational analytics (process metadata) | SI-4, AU-2, AU-3 | Devices, Identity, Visibility & Analytics | **Fixes** (conditional on elevation-event collectibility) |
+
+### 3.6 M365 core / Purview (4 signals — restricted or inferred)
+
+| Signal | Constraining controls | ZTMM pillar(s) | Rebuild verdict |
+|---|---|---|---|
+| Office "Optional" diagnostic data | SI-4 | Applications & Workloads, Devices | **Not fixed** — suppressed at source |
+| Copilot / AI prompt-response telemetry richness | SI-4, AU-2, AU-3 | Applications & Workloads, Visibility & Analytics | Partial — substitute (incident counts only) |
+| Sensitivity-label usage analytics | SI-4, AU-2, AU-3 | Data, Visibility & Analytics | **Fixes** |
+| DLP behavioral richness (override, near-miss, fingerprint context) | SI-4, AU-2, AU-3 | Data, Visibility & Analytics | **Fixes** (pattern rules only, no content-fingerprint model) |
+
+### 3.7 Teams CQD (2 signals — retention-limited)
+
+| Signal | Constraining controls | ZTMM pillar(s) | Rebuild verdict |
+|---|---|---|---|
+| Long-term EUII (BSSID, public IP, subnet/building) — 28-day retention | SI-4 | Networks | **Fixes** (retention fix — export before purge) |
+| Cross-product 12+ month historical pivots | SI-4 | Visibility & Analytics | **Fixes** (agency long-retention store) |
+
+**Coverage total:** 8 fixes, 16 partial (substitute or bounded), 2 not
+fixed — the complete row-by-row verdict, with residual notes for every row,
+is [B.1.3
+§6.1](../orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd#61-complete-fix-coverage-matrix-all-26-gap-rows).
+
+## 4. Full ramifications, by impact dimension
+
+Each blocked signal in the source yaml carries claims across four
+dimensions. Grouped thematically rather than row-by-row, the ramifications
+are:
+
+### 4.1 Zero Trust — weaker inputs to every access decision
+
+Nearly every blocked signal removes a behavioral baseline Conditional
+Access and risk-based policy would otherwise consume. The sharpest,
+quantified instance: Entra Identity Protection's real-time risk detection
+— the single highest-value rebuildable signal in the matrix — degrades from
+**commercial-cloud minutes to GCC-Moderate hours-to-days** without an
+agency-built rebuild. Elsewhere the loss is qualitative but still concrete:
+no "expected communication behavior" baseline for identity verification, no
+path-aware trust for network access (INR), reduced confidence in
+remote-endpoint trust (battery/WFA), and — for real-time session revocation
+(CAE) — a token-theft exposure window that widens from under 15 minutes
+commercial to 60–90 minutes even after the SOAR-based rebuild in §5.
+
+### 4.2 Anomaly detection — some losses are total, not partial
+
+Most rows describe a *degraded* anomaly-detection capability; one is
+described in the source data as an outright **"infinite gap"**: without INR
+real-time path metrics, an agency has no native ability to detect BGP
+hijack, DNS manipulation, or man-in-the-middle path attacks at all — a
+substitute (SD-WAN/SASE path telemetry, per ADR-057) is available, but the
+underlying Microsoft signal cannot be reconstructed. Resource-performance
+telemetry loss is flagged similarly severe: hidden cryptocurrency miners or
+exfiltration tooling that bypasses antivirus can go unnoticed without
+CPU/memory anomaly detection. WUfB's rebuilt patch-posture view still lags
+Microsoft's real-time fleet view by 7–14 days.
+
+### 4.3 Insider risk — several signals are named explicitly as flight-risk or exfiltration indicators
+
+The communication-pattern loss (chat vs. email) is flagged **Critical** in
+the source data specifically for losing the "digital-disengagement /
+flight-risk" signal — a leading indicator security teams use ahead of
+insider incidents. Content-collaboration loss (attachments vs. cloud links)
+is flagged **High** for the same reason in reverse: users regressing to
+local copies to route around DLP becomes invisible. DLP behavioral richness
+loss removes override-pattern insider signal entirely absent the rebuild.
+On the endpoint side, CAE's bounded rebuild means a compromised or
+insider-abused session can persist up to 90 minutes before an automated
+revocation fires, versus near-instant commercial containment.
+
+### 4.4 Forensics — two hard limits, not gradual degradation
+
+Two items in this dimension are not "reduced visibility" but genuine
+cliffs. First, Teams CQD's 28-day EUII retention window is flagged as a
+**critical forensic cliff** — location/network forensic detail (BSSID,
+public IP, subnet/building) is gone permanently after 28 days unless an
+agency schedules export before the purge; incident response that starts
+more than four weeks after the fact has nothing to reconstruct from. Second,
+Office "Optional" diagnostic data's client-side telemetry — the
+"contextual glue" between Office and Teams app navigation used to
+reconstruct lateral movement — is **suppressed at the client before
+collection**, meaning no forensic rebuild is possible at any budget; it was
+never captured to begin with. Cross-tenant B2B/Direct Connect timeline
+reconstruction is similarly capped: the agency's own audit logs show its
+side of the interaction, never the counterpart tenant's.
+
+## 5. What the Event Hub-based rebuild recovers — and what it cannot
+
+Per [B.1.3](../orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd),
+the rebuild is a five-layer, Event Hub-anchored architecture: **Collection**
+(Diagnostic Settings and Graph exports landing in an in-boundary Event Hub
+namespace) → **Store** (a durable, retention-correct Log Analytics
+workspace) → **Analytics & ML** (KQL detection rules and, where budget and
+authorization allow, trained models) → **Response** (SOAR playbooks that
+approximate the automated containment Microsoft's SaaS layer provided) →
+**Policy feedback** (the rebuilt risk signal wired back into Conditional
+Access). That full implementation plan — phased, with effort bands, cost
+and staffing realities, and detection-engineering patterns — is out of
+scope for this paper; see B.1.3 in full.
+
+What this paper adds is the honest ceiling on that effort: **the rebuild
+recovers functional coverage, not commercial fidelity.** Of the 26 signals,
+8 reach full functional parity (mostly retention fixes and rule-based
+reconstructions of Microsoft's ML layer), 16 land as agency-owned
+substitutes that answer the same security question at reduced fidelity or
+latency, and 2 — cross-tenant access telemetry and Office "Optional"
+diagnostic data — have no rebuild path at any investment level, for reasons
+that are structural (the agency never holds the other tenant's data; the
+client never collected the data to begin with), not budgetary.
+
+## 6. Honest limits and scope {#honest-limits-and-scope}
+
+- **This paper is a synthesis, not a primary source.** Every fact above is
+  already established, in more depth, by
+  [`gcc-moderate-telemetry-gaps.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml)
+  and the [B.1](../orgcomp-series/boundary/B1-gcc-moderate-boundary-model.qmd) /
+  [B.1.1](../orgcomp-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd) /
+  [B.1.3](../orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd)
+  leaves. Where this page and those sources disagree, the yaml and the
+  leaves are authoritative — this page should be corrected to match them,
+  not the reverse.
+- **Full compensation is not achievable.** Per [B.1.3
+  §11](../orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd#11-compensation-ceiling-can-the-telemetry-location-blocks-be-fully-compensated),
+  the rebuild reaches functional parity for most signals and Advanced ZTMM
+  maturity on most pillars, but not fidelity parity on ML-driven signals
+  and not Optimal maturity on any pillar. This paper does not repeat that
+  leaf's full diminishing-returns analysis; it is the authority on the
+  question.
+- **Windows Event Viewer explains one family of six rows, not all
+  twenty-six.** §1.3's table is explicit about which signals trace to
+  on-endpoint Event Viewer/ETW data and which are cloud-native audit
+  records with no Event Viewer involvement at all — treating this paper's
+  title as implying Event Viewer is the source of every blocked signal
+  would overstate its role.
+- **Location telemetry carries additional, non-technical ceilings** — the
+  E911 dispatchable-location statutory obligation and EO 14117's
+  regulatory handling restrictions — that no telemetry rebuild touches.
+  This paper covers only the telemetry dimension; see [B.1.3
+  §11.3](../orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd#113-location-blocks-a-harder-ceiling-than-telemetry-in-general)
+  for the fuller location-specific analysis.
+- **Scope is federal civilian, GCC-Moderate baseline.** DoD environments
+  (IL4/IL5, GCC High) and non-federal compliance regimes are out of scope;
+  several products named above have GCC-High-specific availability that
+  differs from what is documented here.
+- **This is not legal or compliance advice**, and the gap matrix's
+  `documented` status for `inferred` rows is an architectural inference
+  from SI-4/AU-2/AU-3/SC-7, not a Microsoft-published statement — verify
+  current availability directly against Microsoft's GCC-Moderate service
+  descriptions before treating any specific row as load-bearing for an ATO
+  package.
+
+## Call to Action
+
+::: {.callout-important}
+## Three steps to start this quarter
+
+1. **Inventory which of the 26 rows your agency actually depends on today.**
+   Cross-reference §3's grouped tables against the dashboards your SOC and
+   IT operations teams already use — Adoption Score, Endpoint Analytics,
+   Entra ID risk scoring, Intune, Purview, Teams CQD — and flag the rows
+   your incident-response or insider-risk program has silently assumed are
+   still working.
+2. **Close the two retention cliffs first — they are the cheapest fixes in
+   the matrix.** Scheduling CQD export before the 28-day EUII purge and
+   standing up a long-retention store for 12+ month historical pivots are
+   both fully rebuildable at low cost, per §3.7, with no ML or SOAR
+   investment required.
+3. **Read [B.1.3](../orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd)
+   in full before scoping an Event Hub-based rebuild program.** This paper
+   established what is blocked and why; B.1.3 is the phased implementation
+   plan, cost model, and detection-engineering patterns for actually
+   building the Layer 1–5 stack this paper describes only at the
+   architecture level.
+:::
+
+## Cross-references
+
+- **Boundary model**: [B.1 GCC-Moderate Boundary Model](../orgcomp-series/boundary/B1-gcc-moderate-boundary-model.qmd)
+- **Three-way compliance conflict**: [B.1.1](../orgcomp-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd) — the mandate triangle and the CLAW/EO 14117 overlays
+- **In-boundary rebuild plan**: [B.1.3](../orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd) — the authoritative, phased implementation plan this paper routes to
+- **Machine-readable gap matrix**: [`gcc-moderate-telemetry-gaps.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml)
+- **Related architectural argument**: [The Session vs. Telemetry Divide](session-vs-telemetry-identity.qmd) — why identity architecture itself splits at the FedRAMP boundary
+- **Federal mandate routing**: [Federal Compliance for Moderate Agencies](federal-compliance-for-moderate-agencies.qmd) — where OMB M-21-31 (event logging) sits among the mandates this paper's Event Viewer discussion touches
