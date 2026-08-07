@@ -598,6 +598,8 @@ jobs:
     name: Assemble combined site
     needs: [render_html, render_docx, render_docx_canon, render_docx_adr, render_docx_schemas, render_docx_academy, render_docx_findings, render_md_orgcomp]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # softprops/action-gh-release: publish/update downloads-latest
     steps:
       - name: Download HTML site
         uses: actions/download-artifact@v8
@@ -888,6 +890,45 @@ jobs:
               --out _site/download \
               --date-code "$(date -u +%Y-%m-%d)" \
             || echo "::warning::OrgComp markdown kit build failed (non-fatal)"
+
+      - name: Publish download kits to GitHub Releases (not the Pages artifact)
+        # The kit zips/docx just built into _site/download/ are the single
+        # largest contributor to the Pages artifact (~1.1 GB of the ~2.8 GB
+        # total that tripped GitHub's 1 GB Pages guidance on 2026-08-06) --
+        # and every one of them is a self-contained download, not part of
+        # the browsable site itself. Ship them as assets on a single rolling
+        # release instead: same "rebuilt from source on every deploy"
+        # semantics the Download page already documents, but off the Pages
+        # artifact entirely. softprops/action-gh-release is idempotent
+        # against a fixed tag -- re-running replaces same-named assets in
+        # place rather than creating a new release each deploy, so
+        # `downloads-latest` stays a single release, not one per push.
+        # Gated the same way the kit-build steps above are (skipped in
+        # maintenance mode, when _site/download/ is never populated) and
+        # only on the paths that actually deploy (push to main / manual
+        # dispatch) so a PR preview build never touches the real release.
+        if: env.MAINTENANCE_MODE != 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: downloads-latest
+          name: "Download Kits — latest"
+          body: |
+            Rebuilt from source on every deploy to `main` — not a versioned
+            release. See the [Downloads page](https://whalermike.github.io/uiao/download/)
+            for what each file contains and how to verify a download.
+          make_latest: false
+          files: _site/download/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove published download kits from the Pages artifact
+        # Now that the same files are on the downloads-latest release,
+        # strip _site/download/ before the Pages upload so they are not
+        # shipped twice. If a kit-build step above failed non-fatally and
+        # left _site/download/ empty or partial, this is still safe --
+        # rm -rf on an already-empty/missing dir is a no-op.
+        if: env.MAINTENANCE_MODE != 'true'
+        run: rm -rf _site/download
 
       - name: Override site with maintenance page
         # MAINTENANCE SWITCH (see workflow-level `env.MAINTENANCE_MODE`).
