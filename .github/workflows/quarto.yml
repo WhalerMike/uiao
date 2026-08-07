@@ -907,6 +907,13 @@ jobs:
         # maintenance mode, when _site/download/ is never populated) and
         # only on the paths that actually deploy (push to main / manual
         # dispatch) so a PR preview build never touches the real release.
+        #
+        # `files:` is scoped to *.zip and the one standalone .docx -- NOT a
+        # bare `_site/download/*` glob. Quarto renders docs/download/
+        # index.qmd to _site/download/index.html in the same directory the
+        # kit-build scripts write into; a bare `*` glob swept that page's
+        # own HTML into the release too (caught after the fact as a stray
+        # `index.html` release asset on the first run of this step).
         if: env.MAINTENANCE_MODE != 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: softprops/action-gh-release@v3
         with:
@@ -917,18 +924,28 @@ jobs:
             release. See the [Downloads page](https://whalermike.github.io/uiao/download/)
             for what each file contains and how to verify a download.
           make_latest: false
-          files: _site/download/*
+          files: |
+            _site/download/*.zip
+            _site/download/ScubaDrift-Documentation.docx
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Remove published download kits from the Pages artifact
         # Now that the same files are on the downloads-latest release,
-        # strip _site/download/ before the Pages upload so they are not
-        # shipped twice. If a kit-build step above failed non-fatally and
-        # left _site/download/ empty or partial, this is still safe --
-        # rm -rf on an already-empty/missing dir is a no-op.
+        # strip them from _site/download/ before the Pages upload so they
+        # are not shipped twice. Deliberately scoped to *.zip and the one
+        # standalone .docx -- the same set the release-publish step above
+        # uploads, NOT the whole _site/download/ directory. That directory
+        # is also where Quarto renders docs/download/index.qmd to
+        # index.html; an earlier `rm -rf _site/download` deleted the
+        # Downloads page itself along with the kits, 404-ing
+        # /download/ on the live site until this fix. find with -delete on
+        # a pattern that matches nothing is a no-op, so this stays safe if
+        # a kit-build step above failed non-fatally.
         if: env.MAINTENANCE_MODE != 'true'
-        run: rm -rf _site/download
+        run: |
+          find _site/download -maxdepth 1 -name '*.zip' -delete
+          rm -f _site/download/ScubaDrift-Documentation.docx
 
       - name: Override site with maintenance page
         # MAINTENANCE SWITCH (see workflow-level `env.MAINTENANCE_MODE`).
