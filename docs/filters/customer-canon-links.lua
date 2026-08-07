@@ -48,10 +48,10 @@ local GH_BLOB = "https://github.com/WhalerMike/uiao/blob/main/"
 local SOURCE_DIRS = { src = true, inbox = true, scripts = true, tools = true, tests = true }
 
 -- Page directory (repo-root-relative segments, e.g. {docs, customer-documents,
--- compliance, boundary-authorization}) that on-disk-relative links resolve
+-- orgcomp-series, boundary}) that on-disk-relative links resolve
 -- against. From quarto.doc.input_file in a real render; a fixed customer-doc
 -- depth under bare pandoc so the rewrite logic stays unit-testable.
-local TEST_SEGS = { "docs", "customer-documents", "compliance", "boundary-authorization" }
+local TEST_SEGS = { "docs", "customer-documents", "orgcomp-series", "boundary" }
 
 local function page_dir_segs()
   if quarto and quarto.doc and quarto.doc.input_file then
