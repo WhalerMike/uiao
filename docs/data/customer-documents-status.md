@@ -16,7 +16,7 @@
 | `learning/` | 0 | 0 | 0 | 2 | 1 | 3 |
 | `modernization-specs/` | 0 | 0 | 6 | 0 | 1 | 7 |
 | `operational-guides/` | 0 | 1 | 16 | 33 | 17 | 67 |
-| `orgcomp-series/` | 18 | 10 | 54 | 35 | 4 | 121 |
+| `orgcomp-series/` | 18 | 10 | 53 | 36 | 4 | 121 |
 | `orglink-narrative/` | 0 | 0 | 1 | 0 | 0 | 1 |
 | `orgpath-multicloud/` | 0 | 6 | 0 | 0 | 1 | 7 |
 | `orgpath-narrative/` | 2 | 210 | 76 | 25 | 1 | 314 |
@@ -30,7 +30,7 @@
 | `uiao-orgcomp-integration/` | 0 | 0 | 7 | 7 | 1 | 15 |
 | `validation-suites/` | 0 | 3 | 48 | 0 | 1 | 52 |
 | `whitepapers/` | 0 | 0 | 8 | 22 | 1 | 31 |
-| **Total** | **21** | **303** | **317** | **145** | **53** | **839** |
+| **Total** | **21** | **303** | **316** | **146** | **53** | **839** |
 
 ## Section detail
 
@@ -303,7 +303,7 @@
 | [`docs/customer-documents/orgcomp-series/Vol_III_Book_01_OrgComp_Privileged_Access_Management.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_III_Book_01_OrgComp_Privileged_Access_Management.qmd) | 1056 | Substantial | ✅ | 7/7 | — |
 | [`docs/customer-documents/orgcomp-series/Vol_III_Book_02_OrgComp_Vulnerability_Management.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_III_Book_02_OrgComp_Vulnerability_Management.qmd) | 1147 | Substantial | ✅ | 10/10 | — |
 | [`docs/customer-documents/orgcomp-series/Vol_III_Book_03_OrgComp_Patch_Systems_Management.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_III_Book_03_OrgComp_Patch_Systems_Management.qmd) | 390 | Substantial | ✅ | 4/4 | — |
-| [`docs/customer-documents/orgcomp-series/Vol_III_Book_04_OrgComp_Cloud_Native_Posture.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_III_Book_04_OrgComp_Cloud_Native_Posture.qmd) | 238 | Authored | ✅ | 4/4 | — |
+| [`docs/customer-documents/orgcomp-series/Vol_III_Book_04_OrgComp_Cloud_Native_Posture.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_III_Book_04_OrgComp_Cloud_Native_Posture.qmd) | 250 | Substantial | ✅ | 4/4 | — |
 | [`docs/customer-documents/orgcomp-series/Vol_III_Book_05_OrgComp_Data_Protection_Purview.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_III_Book_05_OrgComp_Data_Protection_Purview.qmd) | 903 | Substantial | ✅ | 4/4 | — |
 | [`docs/customer-documents/orgcomp-series/Vol_III_Book_06_OrgComp_SIEM_XDR_Detection.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_III_Book_06_OrgComp_SIEM_XDR_Detection.qmd) | 845 | Substantial | ✅ | 4/4 | — |
 | [`docs/customer-documents/orgcomp-series/Vol_III_Book_07_OrgComp_Multi_Cloud_Evidence_Fabric.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/Vol_III_Book_07_OrgComp_Multi_Cloud_Evidence_Fabric.qmd) | 238 | Authored | ✅ | 4/4 | — |
