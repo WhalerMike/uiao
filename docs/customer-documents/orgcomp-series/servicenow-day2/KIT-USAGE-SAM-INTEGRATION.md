@@ -51,6 +51,12 @@ resolve, is **refused** (400 / 403 / 422) and **no RITM is created**. This is th
 integration's fail-closed contract — an un-correlatable or unauthenticated request
 must never become work.
 
+See `examples/sam-push-payloads.md` for concrete sample bodies (success at each
+risk tier, missing fields, an unresolvable `requested_for`, and the optional
+signed-push shape) plus the full IIQ-attribute ↔ ServiceNow-field map, and
+`atf/atf-sam-*.xml` for the ATF suite that exercises every row of the table above
+against the code.
+
 ## Correlation and lineage — what to check
 
 Every accepted push writes one lineage record (`record_type = sam_lineage`) in the
@@ -125,5 +131,8 @@ integration contract; the canon designation is the follow-up.
 - `KIT-VARIABLES-REFERENCE.md` §4 — the SAM variable set (IIQ primary, ISC secondary).
 - `KIT-IMPLEMENTATION-GUIDE.md` Phase 4 — standing up the push endpoint and SDIM.
 - `scripted-rest/sam_inbound_ritm.js`, `script-includes/SamCorrelationClient.js` — the code.
+- `examples/sam-push-payloads.md` — sample push bodies and the field map.
+- `atf/atf-sam-*.xml` — the dedicated SAM ATF suite (`atf/README.md` for the full index).
+- `update-set/README.md` — the SAM inbound objects bundled into the importable update set.
 - Vol IX Book 05 (SaaS/Lane F), Book 06 (identity governance); the Help Desk
   operations guides (the SAM/ServiceNow/PIM authority model).

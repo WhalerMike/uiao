@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE — with neither verification method configured (the shipped
+  default), and in live mode with a method configured but not yet wired to a
+  tenant, the endpoint refuses every push rather than trusting the caller's
+  assertion.
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  This is the core of the P0-7 remediation documented at the top of
+  scripted-rest/sam_inbound_ritm.js: "With NEITHER configured this endpoint
+  refuses every push — that is intended." Before this fix, approval_authority
+  / risk_tier / access_item arrived in the push body and were trusted as
+  authoritative; now they are a CLAIM the endpoint independently verifies
+  before ever touching them.
+
+  test_mode is turned OFF for the duration of this test (saved and restored,
+  same pattern as atf-negative-testmode-environment-binding.xml) because
+  fetchIdentityRequest/verifyJws only return canned success IN test_mode —
+  this test asserts the LIVE-mode fail-closed default, which is what a
+  freshly-deployed, not-yet-tenant-wired instance actually runs.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 SAM negative: pull-verify is unavailable by default and the endpoint refuses (fail closed)</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>fetchIdentityRequest and verifyJws must both refuse in live mode until a tenant wires them — an unverifiable push must never be treated as approved.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>With test_mode forced off, fetchIdentityRequest must refuse — this is the shipped, not-yet-tenant-wired default that makes an unconfigured (or freshly-deployed) instance safe.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var savedTestMode = gs.getProperty('x_fed_day2_ops.test_mode', 'false');
+  try {
+    gs.setProperty('x_fed_day2_ops.test_mode', 'false');
+    var sam = new x_fed_day2_ops.SamCorrelationClient();
+    var pulled = sam.fetchIdentityRequest('ATF-SAM-0006');
+    if (pulled.ok) {
+      stepResult.setFailed('fetchIdentityRequest reported ok in live mode with no tenant wiring — an unverifiable push must never be treated as approved');
+      return;
+    }
+    if (pulled.reason.indexOf('not implemented') === -1) {
+      stepResult.setFailed('expected the fail-closed "not implemented" reason, got: ' + pulled.reason);
+      return;
+    }
+    stepResult.setSuccess();
+  } finally {
+    gs.setProperty('x_fed_day2_ops.test_mode', savedTestMode);
+  }
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Same refusal for the JWS path: verifyJws must refuse in live mode with no signature/issuer/expiry verification wired, regardless of what the caller-supplied jws string claims.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var savedTestMode = gs.getProperty('x_fed_day2_ops.test_mode', 'false');
+  try {
+    gs.setProperty('x_fed_day2_ops.test_mode', 'false');
+    var sam = new x_fed_day2_ops.SamCorrelationClient();
+    var jws = sam.verifyJws('any-caller-supplied-token', 'any-configured-key');
+    if (jws.ok) {
+      stepResult.setFailed('verifyJws reported ok in live mode with no real signature verification wired');
+      return;
+    }
+    stepResult.setSuccess();
+  } finally {
+    gs.setProperty('x_fed_day2_ops.test_mode', savedTestMode);
+  }
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Confirm the deployment-note contract in a positive check: with both x_fed_day2_ops.iiq_verify_endpoint and x_fed_day2_ops.sam_jws_public_key unset, an operator reading the two properties can see up front why every push will be refused — this is intended, not a misconfiguration to silently work around.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var endpoint = gs.getProperty('x_fed_day2_ops.iiq_verify_endpoint', '');
+  var jwsKey = gs.getProperty('x_fed_day2_ops.sam_jws_public_key', '');
+  if (endpoint || jwsKey) {
+    stepResult.setFailed('fixture drifted: this ATF instance has a verification method configured, so this refusal path is not being exercised as intended');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>

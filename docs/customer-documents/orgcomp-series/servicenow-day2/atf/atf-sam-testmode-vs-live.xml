@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF — test_mode and live mode behave differently, on purpose, and the
+  boundary between them is the x_fed_day2_ops.test_mode property (itself
+  environment-bound by Day2Env — see P0-5 / atf-negative-testmode-
+  environment-binding.xml).
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  In test_mode: SamCorrelationClient returns deterministic canned values for
+  getRequestStatus, fetchIdentityRequest and verifyJws — no live SAM
+  connectivity required, which is what lets the rest of the SAM ATF suite run
+  with no tenant. In live mode with no SAM reachable: getRequestStatus must
+  report inconclusive (never "approved" on a failed/absent read) and
+  fetchIdentityRequest/verifyJws must refuse until a tenant wires them (see
+  atf-sam-negative-pull-verify-unavailable.xml). This test asserts the SAME
+  client instance-construction pattern flips behavior correctly when the
+  property flips — the two modes are not two different code paths that could
+  silently diverge, they are one gate.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 SAM: test_mode canned responses vs. live-mode fail-closed behavior</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>getRequestStatus/fetchIdentityRequest return canned success under test_mode and fail-closed/inconclusive results under live mode with no SAM reachable — proving the dual-mode contract SamCorrelationClient's header documents actually holds.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Precondition: this suite runs with test_mode already true on a declared non-prod instance. Under it, both getRequestStatus and fetchIdentityRequest return canned "approved" data with no live call.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var env = new x_fed_day2_ops.Day2Env();
+  if (!env.isTestMode()) { stepResult.setFailed('x_fed_day2_ops.test_mode must be true on a declared non-prod instance'); return; }
+
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var status = sam.getRequestStatus('ATF-SAM-0007');
+  if (!status.ok || status.status !== 'approved') {
+    stepResult.setFailed('getRequestStatus should return the canned approved status in test_mode: ' + JSON.stringify(status));
+    return;
+  }
+  var pulled = sam.fetchIdentityRequest('ATF-SAM-0007');
+  if (!pulled.ok) {
+    stepResult.setFailed('fetchIdentityRequest should return a canned approval in test_mode: ' + pulled.reason);
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Flip test_mode off for this step only (saved/restored). With no live SAM base URL reachable, getRequestStatus must report inconclusive rather than approved, and fetchIdentityRequest must refuse — a failed or absent read is never treated as authorization.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var savedTestMode = gs.getProperty('x_fed_day2_ops.test_mode', 'false');
+  try {
+    gs.setProperty('x_fed_day2_ops.test_mode', 'false');
+    var sam = new x_fed_day2_ops.SamCorrelationClient();
+
+    var status = sam.getRequestStatus('ATF-SAM-0007');
+    if (status.ok && status.status === 'approved') {
+      stepResult.setFailed('getRequestStatus should not report "approved" in live mode with no SAM reachable — closure would be unproven');
+      return;
+    }
+
+    var pulled = sam.fetchIdentityRequest('ATF-SAM-0007');
+    if (pulled.ok) {
+      stepResult.setFailed('fetchIdentityRequest should refuse in live mode until a tenant wires it — got ok:true');
+      return;
+    }
+    stepResult.setSuccess();
+  } finally {
+    gs.setProperty('x_fed_day2_ops.test_mode', savedTestMode);
+  }
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>After the restore in step 200's finally block, test_mode is back on — confirm the canned path returns, proving the flip is fully reversible and no state leaked between steps.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var env = new x_fed_day2_ops.Day2Env();
+  if (!env.isTestMode()) { stepResult.setFailed('test_mode should have been restored to true after step 200'); return; }
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var status = sam.getRequestStatus('ATF-SAM-0007');
+  status.ok && status.status === 'approved'
+    ? stepResult.setSuccess()
+    : stepResult.setFailed('canned test_mode response did not return after restoring the property');
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>

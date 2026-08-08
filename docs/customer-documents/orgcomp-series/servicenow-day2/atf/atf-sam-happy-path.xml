@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF SAM HAPPY PATH — "a well-formed IIQ push produces verified lineage bound
+  to a RITM, ready for the SDIM write-back"
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  Drives the ServiceNow-side half of the inbound contract end to end:
+    contract validation -> pull-verify (canned, test_mode) -> lineage written
+    FIRST (fail-closed ordering) -> RITM created -> lineage bound to the RITM.
+  This is what scripted-rest/sam_inbound_ritm.js does on a 201; this test
+  exercises the same SamCorrelationClient calls the endpoint makes, in the
+  same order, so a regression in the client is caught without a live IIQ.
+
+  PRECONDITION: x_fed_day2_ops.test_mode = 'true' (and the instance is listed
+  in x_fed_day2_ops.nonprod_instances). In test_mode, fetchIdentityRequest()
+  returns a canned "approved" IdentityRequest — see SamCorrelationClient.js —
+  so this test needs no live IIQ/ISC connectivity. NEVER enable test_mode in
+  production.
+
+  OUT OF SCOPE (needs a live instance, not this source-controlled suite): the
+  actual HTTP round trip through the Scripted REST resource (role ACL, JSON
+  parsing) and the IIQ-side write-back of the RITM number onto
+  IdentityRequest.externalTicketId, which only IIQ's SDIM performs once it
+  reads ServiceNow's response. This test proves the ServiceNow-side of that
+  contract: the lineage row ends up carrying the RITM number the SDIM would
+  write back. See the PDI live-validation runbook for the full round trip.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 SAM happy path: verified push writes lineage first, then binds the RITM</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>A well-formed SAM push validates, pull-verifies (canned in test_mode), writes lineage before any RITM exists (fail-closed ordering), then binds the lineage row to the created RITM — the exact sequence scripted-rest/sam_inbound_ritm.js follows for a 201.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert the preconditions this test depends on: test_mode is on and the instance is declared non-prod. Fail fast rather than silently exercising a real tenant.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var env = new x_fed_day2_ops.Day2Env();
+  if (!env.isTestMode()) {
+    stepResult.setFailed('x_fed_day2_ops.test_mode must be true on a declared non-prod instance — refusing to run against a live tenant');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Contract validation (clause 2 of the endpoint): a push carrying every required field must validate.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var push = {
+    sam_request_id: 'ATF-SAM-0001',
+    access_item: 'ATF-Test-Role',
+    requested_for: 'atf-correlation-0001',
+    approval_authority: 'app-owner',
+    risk_tier: '2',
+    justification: 'ATF happy-path fixture'
+  };
+  outputs.sam_request_id = push.sam_request_id;
+  outputs.requested_for = push.requested_for;
+  var v = sam.validateInboundPush(push);
+  v.ok ? stepResult.setSuccess()
+       : stepResult.setFailed('validateInboundPush should accept a fully-populated push: ' + v.reason);
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Pull-verify (clause 3): in test_mode, fetchIdentityRequest returns a canned approved IdentityRequest — the check the endpoint runs before trusting anything the caller asserted.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var pulled = sam.fetchIdentityRequest('ATF-SAM-0001');
+  if (!pulled.ok) { stepResult.setFailed('fetchIdentityRequest should return a canned approval in test_mode: ' + pulled.reason); return; }
+  var st = ('' + (pulled.data.executionStatus || pulled.data.status || '')).toLowerCase();
+  if (st !== 'approved' && st !== 'completed') { stepResult.setFailed('canned status should read approved/completed, got: ' + st); return; }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>400</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>LINEAGE FIRST, then bind the RITM (clauses 6-8, in one step so the lineage sys_id never has to cross a step boundary): write the lineage record before any RITM exists, create the RITM the same way the endpoint does (a plain sc_request insert), then bind the lineage row to it — this is the write-back ServiceNow performs so the SDIM has a RITM number to record on IdentityRequest.externalTicketId.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var lineage = sam.recordLineage(null, 'ATF-SAM-0001', 'atf-correlation-0001', {
+    verified_by: 'pull-verify',
+    verified_at: new GlideDateTime().getValue(),
+    verified_authority: 'app-owner',
+    verified_status: 'approved',
+    verified_item: 'ATF-Test-Role'
+  });
+  if (!lineage.ok) { stepResult.setFailed('recordLineage should succeed with a valid sam_request_id: ' + JSON.stringify(lineage)); return; }
+
+  var req = new GlideRecord('sc_request');
+  req.initialize();
+  req.setValue('short_description', 'ATF SAM happy-path fixture — safe to ignore');
+  var ritmSysId = req.insert();
+  if (!ritmSysId) { stepResult.setFailed('fixture RITM insert failed'); return; }
+  var ritmNumber = req.getValue('number');
+  outputs.ritm_number = ritmNumber;
+
+  var bound = sam.attachRitmToLineage(lineage.sys_id, ritmNumber, '' + ritmSysId);
+  bound.ok ? stepResult.setSuccess()
+           : stepResult.setFailed('attachRitmToLineage should bind the lineage row to the RITM: ' + JSON.stringify(bound));
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>500</order>
+    <step_config_title>Server - Record Query</step_config_title>
+    <description>Assert the lineage row now carries the RITM number end to end — this is the value the SDIM reads back and stamps onto IdentityRequest.externalTicketId.</description>
+    <inputs>
+      table = x_fed_day2_ops_integration
+      conditions = record_type=sam_lineage^sam_request_id=ATF-SAM-0001
+      assert = ritm == {ritm_number captured in step 400} AND entra_object_id == atf-correlation-0001
+    </inputs>
+  </sys_atf_step>
+</record_update>

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF — a re-push of a sam_request_id that already correlated returns the
+  existing RITM rather than creating a second one.
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  Mirrors clause 5 of scripted-rest/sam_inbound_ritm.js: idempotency is keyed
+  on sam_request_id via a GlideRecord.get() lookup. Correct behavior on a
+  retried SDIM push (the documented, expected case — "SDIM retried" in
+  KIT-USAGE-SAM-INTEGRATION.md's troubleshooting table) is to hand back the
+  already-correlated RITM, not to create a duplicate request or error.
+
+  DEPLOYMENT NOTE this test does not (and cannot, in source) cover: the
+  KIT-BUILD-SPEC / P0-7 header both call for a UNIQUE INDEX on
+  x_fed_day2_ops_integration.sam_request_id, because a check-then-insert
+  without one races under concurrent retries. That constraint is a platform
+  DDL step performed when the table is built, not something a script-include
+  method call can assert.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 SAM: a re-push of an already-correlated sam_request_id is idempotent</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>Once a sam_request_id has a lineage row bound to a RITM, a second push carrying the same sam_request_id must resolve to the SAME RITM rather than creating a second one — this is what makes an SDIM retry safe.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert test_mode is on before writing any fixture data.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var env = new x_fed_day2_ops.Day2Env();
+  if (!env.isTestMode()) {
+    stepResult.setFailed('x_fed_day2_ops.test_mode must be true on a declared non-prod instance');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Simulate the FIRST push: write lineage, create a RITM, bind them — the same sequence as atf-sam-happy-path.xml, using a distinct sam_request_id for this test.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var lineage = sam.recordLineage(null, 'ATF-SAM-0005', 'atf-correlation-0005', {
+    verified_by: 'pull-verify', verified_at: new GlideDateTime().getValue(),
+    verified_authority: 'app-owner', verified_status: 'approved', verified_item: 'ATF-Test-Role'
+  });
+  if (!lineage.ok) { stepResult.setFailed('first-push lineage write failed: ' + JSON.stringify(lineage)); return; }
+
+  var req = new GlideRecord('sc_request');
+  req.initialize();
+  req.setValue('short_description', 'ATF SAM idempotency fixture — safe to ignore');
+  var ritmSysId = req.insert();
+  if (!ritmSysId) { stepResult.setFailed('fixture RITM insert failed'); return; }
+  var ritmNumber = req.getValue('number');
+  outputs.first_ritm_number = ritmNumber;
+
+  var bound = sam.attachRitmToLineage(lineage.sys_id, ritmNumber, '' + ritmSysId);
+  bound.ok ? stepResult.setSuccess()
+           : stepResult.setFailed('first-push RITM binding failed: ' + JSON.stringify(bound));
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Simulate the RETRY: run the same lookup the endpoint's clause 5 runs (GlideRecord.get on sam_request_id) BEFORE writing anything new, and assert it finds the row from step 200 with the SAME RITM number — this is the "already correlated" 200 path, and it must short-circuit before a second lineage write or a second RITM insert.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var existing = new GlideRecord(gs.getProperty('x_fed_day2_ops.tbl_integration', 'x_fed_day2_ops_integration'));
+  if (!existing.get('sam_request_id', 'ATF-SAM-0005')) {
+    stepResult.setFailed('the retried push should find the lineage row written on the first push');
+    return;
+  }
+  var ritmOnRetry = existing.getValue('ritm');
+  // The retry must resolve to the ORIGINAL RITM — never mint a second one.
+  outputs.retry_ritm_number = ritmOnRetry;
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>400</order>
+    <step_config_title>Server - Record Query</step_config_title>
+    <description>Assert there is exactly one lineage row for this sam_request_id — a retry must never produce a second row.</description>
+    <inputs>
+      table = x_fed_day2_ops_integration
+      conditions = record_type=sam_lineage^sam_request_id=ATF-SAM-0005
+      assert = exactly one matching row, and its ritm equals both {first_ritm_number from step 200} and {retry_ritm_number from step 300}
+    </inputs>
+  </sys_atf_step>
+</record_update>

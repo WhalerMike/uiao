@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE — a caller without the explicit x_fed_day2_ops.sam_inbound role
+  is refused (403), including an admin who does not hold the role explicitly.
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  Mirrors scripted-rest/sam_inbound_ritm.js clause 1 (AuthZ): the endpoint
+  checks gs.getUser().hasRoleExactly('x_fed_day2_ops.sam_inbound'), NOT
+  gs.hasRole() or hasRole() — an ordinary hasRole() check is satisfied by any
+  admin-scoped caller, which would let an authenticated-but-wrong-role user
+  push a fabricated request.
+
+  OUT OF SCOPE (needs a live/sub-prod instance, not this source-controlled
+  suite): the actual 403 HTTP response from the Scripted REST resource. This
+  test proves the role predicate the endpoint enforces — an impersonated user
+  without the role fails the exact check clause 1 runs — without driving an
+  HTTP round trip against the resource itself. See the PDI live-validation
+  runbook for the full round trip and atf-sam-happy-path.xml's note for the
+  same scoping decision.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 SAM negative: caller without the explicit sam_inbound role fails the AuthZ check (403)</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>hasRoleExactly('x_fed_day2_ops.sam_inbound') must be false for a caller who was not explicitly granted the role, even one holding admin — hasRole() would wrongly pass such a caller.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Impersonate User</step_config_title>
+    <description>Impersonate day2.requester — an ordinary operator, not the IIQ integration user, and not granted x_fed_day2_ops.sam_inbound.</description>
+    <inputs>user = day2.requester</inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert the impersonated user fails the exact predicate clause 1 of sam_inbound_ritm.js enforces.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  if (gs.getUser().hasRoleExactly('x_fed_day2_ops.sam_inbound')) {
+    stepResult.setFailed('day2.requester should not carry the explicit sam_inbound role — fixture drifted or the role check regressed');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Impersonate User</step_config_title>
+    <description>Impersonate day2.admin — carries the admin role but was NOT explicitly granted x_fed_day2_ops.sam_inbound. hasRoleExactly() must still refuse; a plain hasRole()/gs.hasRole() check would wrongly pass this user (the bug the P0-7 remediation closed).</description>
+    <inputs>user = day2.admin</inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>400</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert admin alone does not satisfy the explicit-grant check.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  if (gs.getUser().hasRoleExactly('x_fed_day2_ops.sam_inbound')) {
+    stepResult.setFailed('admin should not satisfy hasRoleExactly(sam_inbound) without an explicit grant — this is the exact regression P0-7 closed');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>
