@@ -56,6 +56,9 @@ fall back to a default credential or a standing admin.
 | `x_fed_day2_ops.sam_flavor` | `identityiq` (primary) \| `isc` (secondary) | Selects the SAM API dialect the `sam` client speaks | CM-2 |
 | `x_fed_day2_ops.sam_base_url` | IIQ: `https://<iiq-host>/identityiq` · ISC: `https://<tenant>.api.identitynow.com` | SAM/IGA API base for correlation callbacks and status | AC-2 |
 | `x_fed_day2_ops.sam_source_id` | IIQ Application name/id for the Entra connector · ISC source id | Ties a SAM request back to the Entra object it governs | AC-2 |
+| `x_fed_day2_ops.iiq_verify_endpoint` | IIQ (or ISC) IdentityRequest/access-request status path, or any non-empty marker your build resolves | Gates the pull-verify branch of `verifyWithSam()` — with this **and** `sam_jws_public_key` unset, the SAM inbound endpoint refuses every push (fail closed, intended default) | AC-3 |
+| `x_fed_day2_ops.sam_jws_public_key` | PEM/JWK public key material | Signature key for the optional signed-push (JWS) verification mode — the alternative to pull-verify | AC-3 |
+| `x_fed_day2_ops.nonprod_instances` | comma-separated instance names, `<subprod-instance-01>,<subprod-instance-02>` | The environment allowlist `Day2Env` checks before honouring `test_mode` — a `test_mode=true` instance NOT on this list is refused, not silently trusted (P0-5) | CM-3 |
 | `x_fed_day2_ops.acme` | Connection & Credential alias | ACME cert-issuance client (credential lifecycle) | IA-5 |
 | `x_fed_day2_ops.acme_directory` | ACME directory URL | ACME endpoint | IA-5 |
 | `x_fed_day2_ops.acme_default_days` | integer, `90` | Default cert validity | IA-5 |

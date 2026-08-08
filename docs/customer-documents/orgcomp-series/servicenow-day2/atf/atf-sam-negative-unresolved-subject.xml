@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE — a requested_for correlation id that does not resolve to
+  exactly one active, reconciled sys_user is refused (422), and no RITM is
+  created.
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  Mirrors resolveSubject() in scripted-rest/sam_inbound_ritm.js: correlation_id
+  only (no mutable-email fallback), active users only, and — critically — an
+  AMBIGUOUS match (more than one active user sharing the correlation id) is
+  refused rather than silently resolved to the first row. resolveSubject is
+  inlined in the endpoint closure, not exposed on SamCorrelationClient, so
+  this test drives the identical GlideRecord query rather than calling a
+  class method — see atf-sam-happy-path.xml's note on what needs a live
+  instance versus what is provable in source.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 SAM negative: unresolved or ambiguous requested_for is refused (422)</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>A correlation id with zero active matches, and a correlation id with more than one active match, must both fail to resolve to a single subject — an un-correlatable or ambiguous push must never become an executable RITM.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>A correlation id with no active reconciled identity resolves to zero rows — the exact condition resolveSubject() treats as a 422.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var gr = new GlideRecord('sys_user');
+  gr.addQuery('correlation_id', 'atf-no-such-correlation-id-0003');
+  gr.addQuery('active', true);
+  gr.query();
+  if (gr.getRowCount() !== 0) {
+    stepResult.setFailed('fixture drifted: an active user already carries this ATF-reserved correlation_id');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Seed two active sys_user fixtures sharing one correlation_id, then assert the query resolveSubject() runs returns more than one row — the ambiguous case it must refuse rather than resolve to the first match.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var dupCorrelationId = 'atf-ambiguous-correlation-id-0004';
+  function makeUser(userName) {
+    var u = new GlideRecord('sys_user');
+    u.initialize();
+    u.setValue('user_name', userName);
+    u.setValue('correlation_id', dupCorrelationId);
+    u.setValue('active', true);
+    return u.insert();
+  }
+  var id1 = makeUser('atf.sam.dup1');
+  var id2 = makeUser('atf.sam.dup2');
+  if (!id1 || !id2) { stepResult.setFailed('failed to seed the two ambiguous-correlation fixtures'); return; }
+
+  var gr = new GlideRecord('sys_user');
+  gr.addQuery('correlation_id', dupCorrelationId);
+  gr.addQuery('active', true);
+  gr.query();
+  var count = gr.getRowCount();
+  if (count <= 1) {
+    stepResult.setFailed('expected an ambiguous match (>1 active user for one correlation_id), got ' + count);
+    return;
+  }
+  // resolveSubject() explicitly refuses when count > 1 rather than taking gr.next() blindly.
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>

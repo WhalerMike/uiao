@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF NEGATIVE — a SAM push missing a required correlation field is refused
+  (400), and no RITM is created.
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  Mirrors scripted-rest/sam_inbound_ritm.js clause 2 (contract validation):
+  sam_request_id, access_item, requested_for and approval_authority are all
+  required; a push missing any of them must be refused before pull-verify,
+  identity resolution or lineage ever run.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 SAM negative: push missing a required field is refused (400)</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>validateInboundPush must refuse a push missing any of sam_request_id, access_item, requested_for or approval_authority, and name every missing field — not just the first.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>A push missing access_item and approval_authority fails validation and names both.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var push = {
+    sam_request_id: 'ATF-SAM-0002',
+    requested_for: 'atf-correlation-0002'
+    // access_item and approval_authority deliberately omitted
+  };
+  var v = sam.validateInboundPush(push);
+  if (v.ok) { stepResult.setFailed('validateInboundPush should refuse a push missing required fields'); return; }
+  if (v.reason.indexOf('access_item') === -1 || v.reason.indexOf('approval_authority') === -1) {
+    stepResult.setFailed('refusal reason should name every missing field, got: ' + v.reason);
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>A field present but blank/whitespace-only counts as missing — the check trims before testing truthiness.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var push = {
+    sam_request_id: 'ATF-SAM-0002',
+    access_item: '   ',
+    requested_for: 'atf-correlation-0002',
+    approval_authority: 'app-owner'
+  };
+  var v = sam.validateInboundPush(push);
+  if (v.ok) { stepResult.setFailed('a whitespace-only access_item should not satisfy the required-field check'); return; }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>An empty push body is refused outright (the endpoint reads request.body.data and passes null through if absent).</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var v = sam.validateInboundPush(null);
+  if (v.ok) { stepResult.setFailed('an empty push payload should never validate'); return; }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>

@@ -116,32 +116,71 @@ SamCorrelationClient.prototype = {
     },
 
     // -------------------------------------------------------------------------
-    // NOT IMPLEMENTED — deliberate fail-closed stub, not a placeholder someone
-    // forgot. A real implementation needs this tenant's actual IIQ (or ISC)
-    // REST/SCIM contract — endpoint shape, auth, response parsing — which
-    // cannot be filled in generically. With this stub in place,
-    // sam_inbound_ritm.js's verifyWithSam() always refuses
+    // NOT IMPLEMENTED (live mode) — deliberate fail-closed stub, not a
+    // placeholder someone forgot. A real implementation needs this tenant's
+    // actual IIQ (or ISC) REST/SCIM contract — endpoint shape, auth, response
+    // parsing — which cannot be filled in generically. With this stub in
+    // place, sam_inbound_ritm.js's verifyWithSam() always refuses
     // ('verification_unavailable') whenever x_fed_day2_ops.iiq_verify_endpoint
     // is configured, which is the same safe, inert state as leaving it
     // unconfigured — a real pull-verify integration, not a functional one.
-    // Replace this method's body with a MID-routed call to the tenant's IIQ
-    // IdentityRequest / ISC access-request API before relying on it.
+    // Replace the live-mode branch below with a MID-routed call to the
+    // tenant's IIQ IdentityRequest / ISC access-request API before relying on
+    // it in production.
+    //
+    // test_mode: returns a deterministic canned "approved" IdentityRequest so
+    // the SAM ATF suite (atf/atf-sam-*.xml) can drive the full inbound push
+    // — contract validation, pull-verify, lineage, RITM creation — with no
+    // live IIQ/ISC, matching this class's header promise. test_mode is
+    // refused outside a declared non-prod instance (P0-5, see
+    // atf-negative-testmode-environment-binding.xml), so this canned path
+    // can never fire in production.
     // -------------------------------------------------------------------------
     fetchIdentityRequest: function (samRequestId) {
+        if (this.testMode) {
+            if (!samRequestId) return { ok: false, reason: 'no SAM request id — cannot correlate' };
+            return { ok: true, data: {
+                id: samRequestId,
+                executionStatus: 'Completed',
+                status: 'approved',
+                requested_for: 'test-user-0001',
+                access_item: 'ATF-Test-Role',
+                approval_authority: 'app-owner',
+                risk_tier: '2',
+                justification: 'ATF canned fixture — test_mode only'
+            } };
+        }
         return { ok: false, reason: 'fetchIdentityRequest is not implemented for this tenant — wire it to your ' +
                  'IIQ/ISC REST or SCIM API before relying on x_fed_day2_ops.iiq_verify_endpoint (fail closed)' };
     },
 
     // -------------------------------------------------------------------------
-    // NOT IMPLEMENTED — same fail-closed rationale as fetchIdentityRequest.
-    // A real implementation MUST validate: the signature against publicKey,
-    // the issuer, the expiry, AND that the claims bind to the asserted
-    // sam_request_id — a validly-signed assertion that covers a DIFFERENT
-    // request is the obvious bypass a shallow "signature checks out"
-    // implementation would miss (see sam_inbound_ritm.js's subject-mismatch
-    // check for the equivalent guard on the pull-verify path).
+    // NOT IMPLEMENTED (live mode) — same fail-closed rationale as
+    // fetchIdentityRequest. A real implementation MUST validate: the
+    // signature against publicKey, the issuer, the expiry, AND that the
+    // claims bind to the asserted sam_request_id — a validly-signed assertion
+    // that covers a DIFFERENT request is the obvious bypass a shallow
+    // "signature checks out" implementation would miss (see
+    // sam_inbound_ritm.js's subject-mismatch check for the equivalent guard
+    // on the pull-verify path).
+    //
+    // test_mode: returns a canned claim set bound to the JWS string passed in
+    // (not a real signature check) so the ATF suite can exercise the JWS
+    // branch of verifyWithSam() with no live signer. Same P0-5 guard as
+    // fetchIdentityRequest keeps this out of production.
     // -------------------------------------------------------------------------
     verifyJws: function (jws, publicKey) {
+        if (this.testMode) {
+            if (!jws) return { ok: false, reason: 'empty jws' };
+            return { ok: true, claims: {
+                sam_request_id: jws,
+                approval_authority: 'app-owner',
+                access_item: 'ATF-Test-Role',
+                risk_tier: '2',
+                justification: 'ATF canned fixture — test_mode only',
+                status: 'approved'
+            } };
+        }
         return { ok: false, reason: 'verifyJws is not implemented for this tenant — wire real JWS signature/issuer/' +
                  'expiry/subject-binding verification before relying on x_fed_day2_ops.sam_jws_public_key (fail closed)' };
     },
