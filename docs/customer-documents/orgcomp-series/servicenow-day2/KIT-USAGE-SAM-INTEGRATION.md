@@ -79,6 +79,58 @@ task does not close on an assumption. When the ServiceNow task closes, its evide
 record carries the `sam_request_id`, so the attestation pipeline (Vol VII Book 04)
 can show the access is backed by an owned SAM decision.
 
+### Optional: richer closure write-back
+
+The write-back every deployment gets for free is the RITM number onto
+`IdentityRequest.externalTicketId` (via the SDIM, when it reads the endpoint's
+`201`). Set `x_fed_day2_ops.sam_closure_writeback = true` to also push a
+**structured status/evidence summary** — verb, control, actuation leg, the
+evidence record's `sys_id` and tamper-evident hash, and the closure timestamp
+— back onto the IdentityRequest once a SAM-originated task reaches Closed
+Complete (`MacdrOrchestrator._writeSamClosureSummary` →
+`SamCorrelationClient.writeClosureSummary`). An IGA operator reading the
+IdentityRequest then sees how the request closed without crossing into
+ServiceNow.
+
+This is **optional** (default `false`) and **fail-open toward closure**: the
+call is made *after* ServiceNow has already recorded the closure evidence, is
+wrapped so any failure only logs, and can never turn a real closure into a
+stuck or failed request — an unreachable SAM at closure time is not a reason
+to withhold a closure ServiceNow has already decided. Like `fetchIdentityRequest`
+and `verifyJws`, `writeClosureSummary` is a deliberate **NOT IMPLEMENTED**
+stub in live mode until a tenant wires it to a real IIQ/ISC write API (a SCIM
+PATCH, an IIQ REST comment endpoint, or a custom workflow variable — tenant
+specific, so it cannot be filled in generically). Leaving the property `false`
+(the default) is a fully supported, safe state — the RITM-number write-back
+alone is a complete, working integration.
+
+## Monitoring the inbound endpoint
+
+Every push the endpoint sees — accepted or refused — writes one
+`record_type = sam_push_outcome` row to the integration table
+(`SamCorrelationClient.recordPushOutcome`, called from every `deny()` and every
+success path in `sam_inbound_ritm.js`). It stores the same opaque HTTP status
+and reason code the caller receives (never the detailed log-only reason —
+telemetry is not a second channel for control-surface detail), and is stamped
+`test_mode`/`synthetic` so a sub-prod ATF run never contaminates a production
+count.
+
+Three read paths, all on `SamCorrelationClient`:
+
+| Method | Answers | Use it for |
+|---|---|---|
+| `dailyOutcomeCounts(sinceDays)` | Accepted vs. refused counts over the window, refused broken down by reason code | A daily operational report — "how many pushes today, and why did the refused ones fail" |
+| `sustainedFailureCheck(windowMinutes, threshold)` | Has the endpoint refused at least `threshold` pushes in the trailing `windowMinutes`? | A Scheduled Job that pages when refusals cluster — usually a SAM-side outage (pull-verify unreachable), a rotated/expired credential, or SDIM field-map drift, not one-off caller mistakes |
+| `correlationReport(samRequestId)` | The `sam_lineage` row and every evidence row for one SAM request id, joined | "What happened to SAM request X end to end" — the dashboard/report Tier-1 item 6 asks for, expressed as a callable query rather than a platform report definition (which, like the update set, is a machine-serialized export you build on your instance — see `START-HERE.md` §1) |
+
+`sustainedFailureCheck` is a **predicate**, not an alert channel — wire its
+`alert: true`/`false` result into whatever your instance already uses for
+paging (a Scheduled Job that emails/pages, an Event + Notification, a webhook
+into your monitoring stack). A concentration of `not_approved` or
+`verification_unavailable` refusals in `dailyOutcomeCounts().refusedByReason`
+usually means the SAM verification path itself is down, not that callers are
+sending bad pushes — see the troubleshooting table below.
+
 ## Switching primary ↔ secondary (IdentityIQ ↔ ISC)
 
 The client branches on one property:

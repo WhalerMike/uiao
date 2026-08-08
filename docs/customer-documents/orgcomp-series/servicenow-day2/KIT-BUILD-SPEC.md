@@ -83,18 +83,33 @@ may repoint `tbl_integration` to it — the property exists for that.)
 
 | Column | Type | Written by | Meaning |
 |---|---|---|---|
-| `record_type` | String | all | `sam_lineage` \| `requested` \| … |
+| `record_type` | String | all | `sam_lineage` \| `sam_push_outcome` \| `requested` \| … |
 | `ritm` | String | SAM client / REST | the request item number |
+| `ritm_sys_id` | String | SAM client (`attachRitmToLineage`) | the request item's `sys_id` — set once the RITM exists; was already written by the code but missing from this table's build doc, so a build that stopped at the columns above dropped it silently |
 | `sam_flavor` | String | SAM client | `identityiq` \| `isc` |
 | `sam_request_id` | String | SAM client / REST | the SAM-side request id |
 | `sam_source_id` | String | SAM client | IIQ Application / ISC source |
 | `entra_object_id` | String | SAM client | the subject in the directory |
+| `verified_by` | String | SAM client (`recordLineage`) | `pull-verify` \| `jws` — how the push was independently verified (P0-7) |
+| `verified_at` | String (GlideDateTime value) | SAM client | when verification ran |
+| `verified_authority` | String | SAM client | the VERIFIED approval authority (never the caller-asserted one) |
+| `verified_status` | String | SAM client | the VERIFIED SAM-side status at push time |
+| `verified_item` | String | SAM client | the VERIFIED access item |
+| `test_mode` | True/False (String) | SAM client | was this row written while `test_mode` was honoured — machine-filterable, same purpose as the evidence table's stamp |
+| `synthetic` | True/False (String) | SAM client | mirrors `test_mode`; a monitoring query MUST exclude `synthetic=true` rows (see `KIT-USAGE-SAM-INTEGRATION.md` "Monitoring the inbound endpoint") |
 | `vendor` | String | native actuator | SaaS vendor (Lane F) |
 | `business_owner` | Reference (`sys_user`) | native actuator | integration owner |
-| `business_need` | String | native actuator | justification |
+| `business_need` | String | native actuator; SAM client (`sam_push_outcome` rows) | justification (native actuator) or `http_status=<n> reason=<code>` (push-outcome telemetry) |
 | `attributes_shared` | String | native actuator | directory attributes leaving the boundary (AC-20) |
-| `state` | String | native actuator | `requested` → … |
+| `state` | String | native actuator; SAM client (`sam_push_outcome` rows) | `requested` → … (native actuator), or `accepted` \| `refused` (push-outcome telemetry) |
 | `boundary` | String | all | `gcc-moderate` |
+
+> `record_type = sam_push_outcome` rows are operational telemetry (one per
+> inbound push attempt, accepted or refused) written by
+> `SamCorrelationClient.recordPushOutcome` — see "Monitoring the inbound
+> endpoint" in `KIT-USAGE-SAM-INTEGRATION.md`. They reuse this table rather
+> than a new one, distinguished by `record_type` the same way `sam_lineage`
+> and the native-actuator's `requested` rows already are.
 
 ## 3. Script Includes
 

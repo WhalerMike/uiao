@@ -35,6 +35,7 @@ SamCorrelationClient.prototype = {
         this.midServer = gs.getProperty('x_fed_day2_ops.mid_server', '');
         this.boundary = gs.getProperty('x_fed_day2_ops.boundary', 'gcc-moderate');
         this.tblIntegration = gs.getProperty('x_fed_day2_ops.tbl_integration', 'x_fed_day2_ops_integration');
+        this.env = new x_fed_day2_ops.Day2Env();
         this.log = { logErr: function (m) { gs.error('[x_fed_day2_ops.SamCorrelationClient] ' + m); } };
         this.testMode = gs.getProperty('x_fed_day2_ops.test_mode', 'false') === 'true';
     },
@@ -72,13 +73,21 @@ SamCorrelationClient.prototype = {
     // Only samRequestId is required up front. verification (optional) carries
     // the pull-verify/JWS result that authorized this lineage record, so the
     // evidence reflects what was actually confirmed, not just what was pushed.
+    //
+    // NO test_mode shortcut here (unlike fetchIdentityRequest/verifyJws/
+    // getRequestStatus): this method's only effect is a LOCAL GlideRecord
+    // write — there is no live SAM connectivity to fake, so faking it would
+    // only defeat the ATF suite's ability to assert the lineage row actually
+    // exists (atf-sam-happy-path.xml, atf-sam-idempotent-repush.xml). Rows
+    // written under test_mode are stamped test_mode/synthetic so a monitoring
+    // query (dailyOutcomeCounts / correlationReport below) can exclude them
+    // the same way the evidence table already does (Day2Env.evidenceStamp).
     recordLineage: function (ritmNumber, samRequestId, entraObjectId, verification) {
-        if (this.testMode)
-            return { ok: true, sys_id: 'test-lineage-0001', ritm: ritmNumber, sam_request: samRequestId };
         if (!samRequestId)
             return { ok: false, reason: 'lineage requires the SAM request id (AU-2)' };
         var gr = new GlideRecord(this.tblIntegration);
         if (!gr.isValid()) return { ok: false, reason: 'integration table ' + this.tblIntegration + ' not found' };
+        var stamp = this.env.evidenceStamp();
         gr.initialize();
         gr.setValue('record_type', 'sam_lineage');
         gr.setValue('ritm', ritmNumber || '');
@@ -87,6 +96,8 @@ SamCorrelationClient.prototype = {
         gr.setValue('sam_source_id', this.sourceId);
         gr.setValue('entra_object_id', entraObjectId || '');
         gr.setValue('boundary', this.boundary);
+        gr.setValue('test_mode', stamp.test_mode ? 'true' : 'false');
+        gr.setValue('synthetic', stamp.synthetic ? 'true' : 'false');
         if (verification) {
             gr.setValue('verified_by', verification.verified_by || '');
             gr.setValue('verified_at', verification.verified_at || '');
@@ -100,12 +111,12 @@ SamCorrelationClient.prototype = {
 
     // Bind a lineage record written before the RITM existed (recordLineage
     // with ritmNumber=null) to the RITM now that it's been created. Plain
-    // ServiceNow bookkeeping — no IIQ/ISC specifics required.
+    // ServiceNow bookkeeping — no IIQ/ISC specifics required, and — same
+    // reasoning as recordLineage above — no test_mode shortcut, since this is
+    // a local update with nothing external to fake.
     attachRitmToLineage: function (lineageSysId, ritmNumber, ritmSysId) {
         if (!lineageSysId || !ritmNumber || !ritmSysId)
             return { ok: false, reason: 'attachRitmToLineage requires lineageSysId, ritmNumber, and ritmSysId' };
-        if (this.testMode)
-            return { ok: true, sys_id: lineageSysId, ritm: ritmNumber };
         var gr = new GlideRecord(this.tblIntegration);
         if (!gr.get(lineageSysId))
             return { ok: false, reason: 'lineage record ' + lineageSysId + ' not found' };
@@ -183,6 +194,175 @@ SamCorrelationClient.prototype = {
         }
         return { ok: false, reason: 'verifyJws is not implemented for this tenant — wire real JWS signature/issuer/' +
                  'expiry/subject-binding verification before relying on x_fed_day2_ops.sam_jws_public_key (fail closed)' };
+    },
+
+    // -------------------------------------------------------------------------
+    // OPTIONAL closure write-back — richer than the RITM-number write the SDIM
+    // itself performs onto IdentityRequest.externalTicketId (see
+    // KIT-USAGE-SAM-INTEGRATION.md "Closure back to SAM"). Called by
+    // MacdrOrchestrator.run() when a SAM-originated task reaches Closed
+    // Complete, gated by x_fed_day2_ops.sam_closure_writeback (default false —
+    // opt in).
+    //
+    // FAIL-OPEN TOWARD CLOSURE, ON PURPOSE: this is the one place in the SAM
+    // surface where "fail closed" is the WRONG instinct. By the time this
+    // runs, ServiceNow has already decided the task is closed — SAM is the
+    // decision ORIGIN, not a dependency of ServiceNow's own closure. The
+    // caller (MacdrOrchestrator._writeSamClosureSummary) wraps this in
+    // try/catch and only logs a failure; it never reopens, blocks, or alters
+    // the already-recorded result. An unreachable SAM at closure time must
+    // never turn a real closure into a stuck or failed request.
+    //
+    // NOT IMPLEMENTED (live mode) — same rationale as fetchIdentityRequest/
+    // verifyJws: the write shape (a SCIM PATCH, an IIQ REST comment endpoint,
+    // a custom workflow variable) is tenant-specific and cannot be filled in
+    // generically. test_mode returns a canned success so the ATF suite can
+    // assert the call site invokes it with the right shape, with no live SAM.
+    //
+    // summary._forceWritebackFailure (test_mode only): an explicit, narrow
+    // ATF hook that forces this call to fail even under test_mode, so
+    // atf-sam-closure-writeback.xml can prove the fail-open contract above
+    // without needing a live SAM outage to exercise it.
+    // -------------------------------------------------------------------------
+    writeClosureSummary: function (samRequestId, summary) {
+        summary = summary || {};
+        if (!samRequestId) return { ok: false, reason: 'no SAM request id — cannot write back' };
+        if (this.testMode) {
+            if (summary._forceWritebackFailure)
+                return { ok: false, reason: 'forced failure for ATF (test_mode only)' };
+            return { ok: true, method: 'test_mode', sam_request_id: samRequestId };
+        }
+        return { ok: false, reason: 'writeClosureSummary is not implemented for this tenant — wire it to your ' +
+                 'IIQ/ISC write API before enabling x_fed_day2_ops.sam_closure_writeback (fail closed)' };
+    },
+
+    // -------------------------------------------------------------------------
+    // OPERATIONAL TELEMETRY — one row per inbound push ATTEMPT, accepted or
+    // refused, written by scripted-rest/sam_inbound_ritm.js at every deny()
+    // and at every success. This is what dailyOutcomeCounts()/
+    // sustainedFailureCheck() below read, and what an operator joins against
+    // the sam_lineage rows and the evidence table (see correlationReport())
+    // to answer "what happened to SAM request X" end to end. Only the OPAQUE
+    // reason code is stored (the same code already returned to the caller in
+    // the response body) — never the detailed log-only reason string, so
+    // telemetry never becomes a second channel for the control-surface detail
+    // sam_inbound_ritm.js's design goal #6 deliberately keeps out of
+    // responses.
+    //
+    // Best effort: NEVER throws. A telemetry write failure must not turn a
+    // real accept/refuse decision into a 500, or hide that decision from the
+    // caller — the caller already has its real HTTP response before this
+    // runs (see sam_inbound_ritm.js's deny()).
+    // -------------------------------------------------------------------------
+    recordPushOutcome: function (samRequestId, outcome, httpStatus, reasonCode) {
+        try {
+            var gr = new GlideRecord(this.tblIntegration);
+            if (!gr.isValid()) return { ok: false, reason: 'integration table ' + this.tblIntegration + ' not found' };
+            var stamp = this.env.evidenceStamp();
+            gr.initialize();
+            gr.setValue('record_type', 'sam_push_outcome');
+            gr.setValue('sam_request_id', samRequestId || '');
+            gr.setValue('sam_flavor', this.flavor);
+            gr.setValue('sam_source_id', this.sourceId);
+            gr.setValue('boundary', this.boundary);
+            gr.setValue('state', outcome === 'accepted' ? 'accepted' : 'refused');
+            gr.setValue('business_need', 'http_status=' + httpStatus + ' reason=' + Day2Env.scrub(reasonCode || ''));
+            gr.setValue('test_mode', stamp.test_mode ? 'true' : 'false');
+            gr.setValue('synthetic', stamp.synthetic ? 'true' : 'false');
+            var id = gr.insert();
+            return { ok: !!id, sys_id: '' + id };
+        } catch (e) {
+            this.log.logErr('recordPushOutcome failed: ' + e);
+            return { ok: false };
+        }
+    },
+
+    // Daily/periodic accepted-vs-refused counts for the inbound endpoint —
+    // "Monitoring the inbound endpoint" in KIT-USAGE-SAM-INTEGRATION.md.
+    // Excludes synthetic (test_mode) rows so a sub-prod ATF run never shows up
+    // as production traffic. Returns { ok, sinceDays, accepted, refused,
+    // refusedByReason: {code: count} }.
+    dailyOutcomeCounts: function (sinceDays) {
+        sinceDays = sinceDays || 1;
+        var since = new GlideDateTime();
+        since.addDaysUTC(-1 * sinceDays);
+
+        var counts = { accepted: 0, refused: 0, refusedByReason: {} };
+        var gr = new GlideRecord(this.tblIntegration);
+        gr.addQuery('record_type', 'sam_push_outcome');
+        gr.addQuery('synthetic', 'false');
+        gr.addQuery('sys_created_on', '>=', since);
+        gr.query();
+        while (gr.next()) {
+            var state = gr.getValue('state');
+            if (state === 'accepted') { counts.accepted++; continue; }
+            counts.refused++;
+            var note = gr.getValue('business_need') || '';
+            var m = /reason=(\S+)/.exec(note);
+            var code = m ? m[1] : 'unknown';
+            counts.refusedByReason[code] = (counts.refusedByReason[code] || 0) + 1;
+        }
+        return { ok: true, sinceDays: sinceDays, accepted: counts.accepted, refused: counts.refused,
+                 refusedByReason: counts.refusedByReason };
+    },
+
+    // Alert predicate for a scheduled job: has the endpoint refused at least
+    // `threshold` pushes in the trailing `windowMinutes`? A sustained run of
+    // refusals — not one-off caller errors — usually means a SAM-side outage
+    // (pull-verify unreachable), a rotated/expired credential, or an SDIM
+    // field-map drift, all of which are worth paging on rather than
+    // discovering the next time someone reads the system log.
+    sustainedFailureCheck: function (windowMinutes, threshold) {
+        windowMinutes = windowMinutes || 15;
+        threshold = threshold || 5;
+        var since = new GlideDateTime();
+        since.addSeconds(-60 * windowMinutes);
+
+        var gr = new GlideRecord(this.tblIntegration);
+        gr.addQuery('record_type', 'sam_push_outcome');
+        gr.addQuery('state', 'refused');
+        gr.addQuery('synthetic', 'false');
+        gr.addQuery('sys_created_on', '>=', since);
+        gr.query();
+        var refused = gr.getRowCount();
+        return { ok: true, windowMinutes: windowMinutes, threshold: threshold, refused: refused,
+                 alert: refused >= threshold };
+    },
+
+    // Joins a SAM request id across the lineage row and the evidence table for
+    // an operator/report: "what happened to SAM request X end to end" —
+    // Tier-2 item 6's "simple dashboard or report that joins SAM request id
+    // <-> RITM <-> evidence record", expressed as a callable query rather than
+    // a platform report definition (which is a machine-serialized export, not
+    // authorable text — see START-HERE.md §1).
+    correlationReport: function (samRequestId) {
+        if (!samRequestId) return { ok: false, reason: 'no SAM request id' };
+        var report = { ok: true, sam_request_id: samRequestId, lineage: null, evidence: [] };
+
+        var lin = new GlideRecord(this.tblIntegration);
+        lin.addQuery('record_type', 'sam_lineage');
+        lin.addQuery('sam_request_id', samRequestId);
+        lin.query();
+        if (lin.next()) {
+            report.lineage = {
+                sys_id: lin.getUniqueValue(), ritm: lin.getValue('ritm'),
+                entra_object_id: lin.getValue('entra_object_id'),
+                verified_by: lin.getValue('verified_by'), verified_authority: lin.getValue('verified_authority')
+            };
+        }
+
+        var tblEvidence = gs.getProperty('x_fed_day2_ops.tbl_evidence', 'x_fed_day2_ops_evidence');
+        var ev = new GlideRecord(tblEvidence);
+        ev.addQuery('sam_request_id', samRequestId);
+        ev.orderBy('sys_created_on');
+        ev.query();
+        while (ev.next()) {
+            report.evidence.push({
+                sys_id: ev.getUniqueValue(), verb: ev.getValue('verb'), control: ev.getValue('control'),
+                closed: ev.getValue('closed'), stopped_at: ev.getValue('stopped_at'), hash: ev.getValue('hash')
+            });
+        }
+        return report;
     },
 
     // Validate an inbound IIQ-pushed payload (used by the scripted REST endpoint).

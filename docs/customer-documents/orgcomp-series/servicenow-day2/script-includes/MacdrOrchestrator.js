@@ -33,6 +33,7 @@ MacdrOrchestrator.prototype = {
     initialize: function () {
         this.gate = new x_fed_day2_ops.EntraHelpdeskGate();
         this.pim = new x_fed_day2_ops.PimActivationClient();
+        this.sam = new x_fed_day2_ops.SamCorrelationClient();
         this.env = new x_fed_day2_ops.Day2Env();
         this.tblEvidence = gs.getProperty('x_fed_day2_ops.tbl_evidence', 'x_fed_day2_ops_evidence');
         this.tblIntegration = gs.getProperty('x_fed_day2_ops.tbl_integration', 'x_fed_day2_ops_integration');
@@ -109,8 +110,56 @@ MacdrOrchestrator.prototype = {
         trail.closed = true;
         trail.activationId = act.activationId;
         var ev = this._writeEvidence(request, trail);
+
+        // ---- optional: SAM closure write-back --------------------------------
+        // Best effort and NEVER allowed to affect the result already decided
+        // above (SEE _writeSamClosureSummary) — SAM is the decision origin,
+        // not a dependency of ServiceNow's own closure.
+        if (origin.origin === 'sam' && gs.getProperty('x_fed_day2_ops.sam_closure_writeback', 'false') === 'true') {
+            this._writeSamClosureSummary(origin.sam_request_id, request, trail, ev);
+        }
+
         return { ok: true, clause: 'closed', evidence_sys_id: ev.sys_id || null,
                  evidence_hash: ev.hash || null, trail: trail };
+    },
+
+    // -------------------------------------------------------------------------
+    // Tier-1 item 4 (closure write-back enrichment). Pushes a structured
+    // status/evidence summary back onto the SAM IdentityRequest — richer than
+    // the RITM-number write the SDIM already performs onto
+    // IdentityRequest.externalTicketId (see KIT-USAGE-SAM-INTEGRATION.md
+    // "Closure back to SAM"). Optional (x_fed_day2_ops.sam_closure_writeback,
+    // default false) and fail-OPEN toward closure: the try/catch here exists
+    // specifically so an unreachable or slow SAM at closure time cannot turn
+    // an already-decided closure into a stuck or failed request — closure was
+    // already recorded by _writeEvidence above by the time this runs.
+    // -------------------------------------------------------------------------
+    _writeSamClosureSummary: function (samRequestId, request, trail, ev) {
+        try {
+            var summary = {
+                closed: true,
+                verb: request.verb || '',
+                control: request.control || '',
+                ksi: request.ksi || '',
+                ritm: request.ritm || '',
+                actuation_leg: request.actuation_leg || '',
+                boundary: gs.getProperty('x_fed_day2_ops.boundary', 'gcc-moderate'),
+                evidence_sys_id: ev.sys_id || '',
+                evidence_hash: ev.hash || '',
+                closed_at: new GlideDateTime().getValue(),
+                // ATF-only hook — see SamCorrelationClient.writeClosureSummary.
+                // Never set by a real catalog form or the SAM push endpoint.
+                _forceWritebackFailure: !!request._forceWritebackFailure
+            };
+            var wrote = this.sam.writeClosureSummary(samRequestId, summary);
+            if (!wrote.ok) {
+                this.log.err('SAM closure write-back failed for ' + Day2Env.scrub(samRequestId) +
+                              ' (closure already recorded and unaffected): ' + wrote.reason);
+            }
+        } catch (e) {
+            this.log.err('SAM closure write-back threw for ' + Day2Env.scrub(samRequestId) +
+                          ' (closure already recorded and unaffected): ' + e);
+        }
     },
 
     // -------------------------------------------------------------------------
