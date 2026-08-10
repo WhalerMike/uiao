@@ -50,10 +50,17 @@ from generate_images import (  # noqa: E402
 )
 
 GENERATOR = "claude-svg-v1"
-DEFAULT_SCALE = 3.0  # rasterize at 3x the SVG viewBox — enough pixels to stay
+DEFAULT_SCALE = 2.0  # rasterize at 2x the SVG viewBox — enough pixels to stay
 # crisp when a reader pinch-zooms an embedded PNG in a .docx on a phone (a raster
-# has no detail beyond its own resolution; 3x ≈ 550 ppi at a 6.5in display).
-MAX_WIDTH = 3600  # cap output width (px)
+# has no detail beyond its own resolution; 2x ≈ 400 ppi at a 6.5in display).
+# Was 3x (~550 ppi) until 2026-08-07: with ~900 figures feeding both the HTML
+# site and every per-page DOCX render, 3x pushed the GitHub Pages artifact
+# over its 1 GB guidance. 2x trades some headroom above typical print/retina
+# density (~300 ppi) for a measured ~35% smaller PNG per figure, verified on
+# a sample diagram (378 KB -> 244 KB) -- PNG compression itself was already
+# near-optimal (re-compressing the same pixels saved <1%), so resolution was
+# the only lever that actually moved the artifact size.
+MAX_WIDTH = 2400  # cap output width (px) -- was 3600, scaled down with DEFAULT_SCALE
 SCAN_ROOTS = [REPO_ROOT / "docs", REPO_ROOT / "src" / "uiao" / "canon"]
 SKIP_PARTS = {"_site", "_freeze", ".quarto", "node_modules", ".git", ".venv"}
 
