@@ -39,14 +39,19 @@
 //     x_fed_day2_ops.sam_jws_public_key. With NEITHER configured this endpoint
 //     refuses every push — that is intended.
 //   * ACL the resource to x_fed_day2_ops.sam_inbound.
+//
+// TELEMETRY: every accept and refuse writes a sam_push_outcome row via
+// SamCorrelationClient.recordPushOutcome — see "Monitoring the inbound
+// endpoint" in KIT-USAGE-SAM-INTEGRATION.md. Best effort; never affects the
+// response.
 // =============================================================================
 (function process(request, response) {
     // Top-level guard: every call this handler makes into SamCorrelationClient
-    // (recordLineage/attachRitmToLineage/fetchIdentityRequest/verifyJws) now
-    // returns {ok:false} rather than throwing, so this shouldn't normally
-    // fire. It exists as defense in depth so an unexpected exception (a
-    // GlideRecord API misuse, a future refactor) returns the same opaque
-    // error shape as every deliberate refusal in this file, never a stack
+    // (recordLineage/attachRitmToLineage/fetchIdentityRequest/verifyJws/
+    // recordPushOutcome) now returns {ok:false} rather than throwing, so this
+    // shouldn't normally fire. It exists as defense in depth so an unexpected
+    // exception (a GlideRecord API misuse, a future refactor) returns the same
+    // opaque error shape as every deliberate refusal in this file, never a stack
     // trace or script path, to an authenticated-but-hostile caller (design
     // goal #6 above).
     try {
@@ -65,6 +70,12 @@
 
     function deny(status, code) {
         response.setStatus(status);
+        // Telemetry: one row per refused push (Tier-2 item 6 — see
+        // KIT-USAGE-SAM-INTEGRATION.md "Monitoring the inbound endpoint").
+        // Only the opaque code goes to telemetry, same as the response body —
+        // recordPushOutcome itself never throws, so this cannot turn a real
+        // refusal into a 500.
+        sam.recordPushOutcome(body && body.sam_request_id, 'refused', status, code);
         return { ok: false, error: code };   // opaque code; detail goes to the log
     }
     function logRefusal(reason) {
@@ -103,6 +114,7 @@
     var existing = new GlideRecord(gs.getProperty('x_fed_day2_ops.tbl_integration', 'x_fed_day2_ops_integration'));
     if (existing.get('sam_request_id', body.sam_request_id)) {
         response.setStatus(200);
+        sam.recordPushOutcome(body.sam_request_id, 'accepted', 200, 'idempotent');
         return { ok: true, correlated: true, ritm: existing.getValue('ritm'), note: 'already correlated' };
     }
 
@@ -144,6 +156,7 @@
     sam.attachRitmToLineage(lineage.sys_id, ritmNumber, '' + ritmSysId);
 
     response.setStatus(201);
+    sam.recordPushOutcome(body.sam_request_id, 'accepted', 201, 'created');
     return {
         ok: true,
         ritm: ritmNumber,

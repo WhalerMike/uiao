@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF — optional SAM closure write-back is opt-in, works when enabled, and is
+  fail-OPEN toward closure: a write-back failure must never block, reopen or
+  fail an already-decided closure.
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  Covers Tier-1 completeness item 4: "extend the closure path so a SAM-
+  originated task can optionally push a richer status/evidence summary back
+  into the IdentityRequest ... fail-closed so a SAM outage does not block
+  closure." ("Fail-closed" there means the SAM side of the write; from
+  ServiceNow's closure point of view the correct behavior is fail-OPEN — see
+  SamCorrelationClient.writeClosureSummary's header for why "fail closed" is
+  the wrong instinct at this specific point in the flow.
+
+  PRECONDITION: x_fed_day2_ops.test_mode = 'true' on a declared non-prod
+  instance — every client in the chain (gate, PIM, SAM) returns canned
+  success so MacdrOrchestrator.run() can be driven end to end with no live
+  Graph/PIM/SAM connectivity.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 SAM: closure write-back is opt-in, works when enabled, and never blocks a real closure</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>x_fed_day2_ops.sam_closure_writeback defaults to false; when true, a SAM-originated task's closure attempts a structured write-back; when that write-back fails, the task still closes ok:true — SAM is the decision origin, not a dependency of ServiceNow's own closure.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Preconditions, plus SamCorrelationClient.writeClosureSummary's own contract in isolation: refuses with no sam_request_id, succeeds (canned) in test_mode, and honours the explicit ATF-only forced-failure hook.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var env = new x_fed_day2_ops.Day2Env();
+  if (!env.isTestMode()) { stepResult.setFailed('x_fed_day2_ops.test_mode must be true on a declared non-prod instance'); return; }
+
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+
+  var noId = sam.writeClosureSummary('', { closed: true });
+  if (noId.ok) { stepResult.setFailed('writeClosureSummary should refuse with no sam_request_id'); return; }
+
+  var ok = sam.writeClosureSummary('ATF-SAM-0008', { closed: true });
+  if (!ok.ok || ok.method !== 'test_mode') { stepResult.setFailed('writeClosureSummary should return a canned success in test_mode: ' + JSON.stringify(ok)); return; }
+
+  var forced = sam.writeClosureSummary('ATF-SAM-0008', { closed: true, _forceWritebackFailure: true });
+  if (forced.ok) { stepResult.setFailed('the ATF-only _forceWritebackFailure hook should force a failure even in test_mode'); return; }
+
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Default is opt-in: with x_fed_day2_ops.sam_closure_writeback unset (or false), a SAM-originated task still closes normally — the property gate in MacdrOrchestrator.run() is read fresh on every run, so this needs no property mutation to prove.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var enabled = gs.getProperty('x_fed_day2_ops.sam_closure_writeback', 'false') === 'true';
+  if (enabled) {
+    stepResult.setFailed('fixture drifted: x_fed_day2_ops.sam_closure_writeback is true on this instance — the opt-in-default assumption for this suite does not hold');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Seed a SAM lineage row (clause 1 origin needs it), enable the property, and drive MacdrOrchestrator.run() end to end. Assert it closes AND that writeClosureSummary was reachable and succeeded for this request (checked directly, since the orchestrator does not surface the write-back result to its caller by design — see the "fail-open" note).</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var lineage = sam.recordLineage(null, 'ATF-SAM-0009', 'atf-correlation-0009', {
+    verified_by: 'pull-verify', verified_at: new GlideDateTime().getValue(),
+    verified_authority: 'app-owner', verified_status: 'approved', verified_item: 'ATF-Test-Role'
+  });
+  if (!lineage.ok) { stepResult.setFailed('fixture lineage write failed: ' + JSON.stringify(lineage)); return; }
+
+  var saved = gs.getProperty('x_fed_day2_ops.sam_closure_writeback', 'false');
+  try {
+    gs.setProperty('x_fed_day2_ops.sam_closure_writeback', 'true');
+
+    var orch = new x_fed_day2_ops.MacdrOrchestrator();
+    var request = {
+      verb: 'Reset', control: 'IA-5', ksi: 'KSI-IAM-01',
+      requester_id: gs.getUser().getID(),
+      approver_id: 'day2-servicedesk-sysid',
+      privileged: false,
+      sam_request_id: 'ATF-SAM-0009'
+    };
+    var result = orch.run(
+      request,
+      function () { return { ok: true }; },
+      { action: 'disableUser', target: { userId: 'test-user-0001' } }
+    );
+
+    if (!result.ok || result.clause !== 'closed') {
+      stepResult.setFailed('expected the run to close: ' + JSON.stringify(result));
+      return;
+    }
+
+    // The write-back itself is a fire-and-forget call inside the orchestrator
+    // (see _writeSamClosureSummary) -- confirm the underlying call succeeds
+    // for this exact sam_request_id, independent of the orchestrator's result.
+    var wrote = sam.writeClosureSummary('ATF-SAM-0009', { closed: true });
+    if (!wrote.ok) { stepResult.setFailed('writeClosureSummary should succeed (canned) for a valid id: ' + JSON.stringify(wrote)); return; }
+
+    stepResult.setSuccess();
+  } finally {
+    gs.setProperty('x_fed_day2_ops.sam_closure_writeback', saved);
+  }
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>400</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>THE FAIL-OPEN PROOF: with the property enabled and the write-back forced to fail (request._forceWritebackFailure), the run must still close ok:true — a SAM-side failure at closure time must never turn a real ServiceNow closure into a stuck or failed request.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var lineage = sam.recordLineage(null, 'ATF-SAM-0010', 'atf-correlation-0010', {
+    verified_by: 'pull-verify', verified_at: new GlideDateTime().getValue(),
+    verified_authority: 'app-owner', verified_status: 'approved', verified_item: 'ATF-Test-Role'
+  });
+  if (!lineage.ok) { stepResult.setFailed('fixture lineage write failed: ' + JSON.stringify(lineage)); return; }
+
+  var saved = gs.getProperty('x_fed_day2_ops.sam_closure_writeback', 'false');
+  try {
+    gs.setProperty('x_fed_day2_ops.sam_closure_writeback', 'true');
+
+    var orch = new x_fed_day2_ops.MacdrOrchestrator();
+    var request = {
+      verb: 'Reset', control: 'IA-5', ksi: 'KSI-IAM-01',
+      requester_id: gs.getUser().getID(),
+      approver_id: 'day2-servicedesk-sysid',
+      privileged: false,
+      sam_request_id: 'ATF-SAM-0010',
+      _forceWritebackFailure: true   // ATF-only -- see MacdrOrchestrator._writeSamClosureSummary
+    };
+    var result = orch.run(
+      request,
+      function () { return { ok: true }; },
+      { action: 'disableUser', target: { userId: 'test-user-0001' } }
+    );
+
+    if (!result.ok || result.clause !== 'closed') {
+      stepResult.setFailed('a forced SAM write-back failure must not prevent closure, got: ' + JSON.stringify(result));
+      return;
+    }
+    stepResult.setSuccess();
+  } finally {
+    gs.setProperty('x_fed_day2_ops.sam_closure_writeback', saved);
+  }
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>

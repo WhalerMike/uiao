@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF — inbound-endpoint telemetry: every push writes a sam_push_outcome row,
+  test_mode ("synthetic") rows are excluded from monitoring counts, real rows
+  ARE counted, and correlationReport joins a SAM request id across the
+  lineage row and the evidence table.
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  Covers Tier-2 completeness item 6: daily/periodic accepted-vs-refused
+  counts, an alert predicate for sustained refusals, and a report joining
+  SAM request id <-> RITM <-> evidence record. See "Monitoring the inbound
+  endpoint" in KIT-USAGE-SAM-INTEGRATION.md.
+
+  All counting assertions use a BEFORE/AFTER DELTA rather than an absolute
+  count, because this table may carry real data on a shared sub-prod
+  instance — an absolute assertion would be fragile in exactly the way this
+  suite otherwise avoids.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 SAM: push telemetry excludes synthetic rows from monitoring counts and correlationReport joins lineage to evidence</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>recordPushOutcome writes a stamped row per attempt; dailyOutcomeCounts/sustainedFailureCheck must exclude synthetic (test_mode) rows and must count non-synthetic ones; correlationReport joins a SAM request id across the lineage row and the evidence table.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Precondition, plus recordPushOutcome's own contract: it writes a real row (this method has no test_mode short-circuit — see its header) stamped record_type=sam_push_outcome and synthetic=true, since this whole run is under test_mode.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var env = new x_fed_day2_ops.Day2Env();
+  if (!env.isTestMode()) { stepResult.setFailed('x_fed_day2_ops.test_mode must be true on a declared non-prod instance'); return; }
+
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var written = sam.recordPushOutcome('ATF-SAM-MON-0001', 'refused', 422, 'unresolved_subject');
+  if (!written.ok) { stepResult.setFailed('recordPushOutcome should succeed: ' + JSON.stringify(written)); return; }
+
+  var gr = new GlideRecord(gs.getProperty('x_fed_day2_ops.tbl_integration', 'x_fed_day2_ops_integration'));
+  if (!gr.get(written.sys_id)) { stepResult.setFailed('the row recordPushOutcome reported writing does not exist'); return; }
+  if (gr.getValue('record_type') !== 'sam_push_outcome') { stepResult.setFailed('wrong record_type: ' + gr.getValue('record_type')); return; }
+  if (gr.getValue('synthetic') !== 'true') { stepResult.setFailed('a row written under test_mode must be stamped synthetic=true'); return; }
+  if (gr.getValue('state') !== 'refused') { stepResult.setFailed('wrong state: ' + gr.getValue('state')); return; }
+
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Monitoring must exclude synthetic rows: write three more refused outcomes under test_mode (synthetic=true), then assert dailyOutcomeCounts and sustainedFailureCheck report the SAME numbers as before writing them — a sub-prod ATF run must never move a production dashboard.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+
+  var before = sam.dailyOutcomeCounts(1);
+  var beforeCheck = sam.sustainedFailureCheck(15, 1);
+
+  sam.recordPushOutcome('ATF-SAM-MON-0002', 'refused', 422, 'unresolved_subject');
+  sam.recordPushOutcome('ATF-SAM-MON-0003', 'refused', 400, 'bad_request');
+  sam.recordPushOutcome('ATF-SAM-MON-0004', 'accepted', 201, 'created');
+
+  var after = sam.dailyOutcomeCounts(1);
+  var afterCheck = sam.sustainedFailureCheck(15, 1);
+
+  if (after.refused !== before.refused || after.accepted !== before.accepted) {
+    stepResult.setFailed('synthetic rows leaked into dailyOutcomeCounts: before=' + JSON.stringify(before) + ' after=' + JSON.stringify(after));
+    return;
+  }
+  if (afterCheck.refused !== beforeCheck.refused) {
+    stepResult.setFailed('synthetic rows leaked into sustainedFailureCheck: before=' + beforeCheck.refused + ' after=' + afterCheck.refused);
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Monitoring DOES count real (non-synthetic) rows: insert one push-outcome row directly with synthetic=false (simulating a production write, since recordPushOutcome itself always stamps synthetic=true while test_mode is on for this run) and assert the counts move by exactly one.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var before = sam.dailyOutcomeCounts(1);
+
+  var gr = new GlideRecord(gs.getProperty('x_fed_day2_ops.tbl_integration', 'x_fed_day2_ops_integration'));
+  gr.initialize();
+  gr.setValue('record_type', 'sam_push_outcome');
+  gr.setValue('sam_request_id', 'ATF-SAM-MON-0005');
+  gr.setValue('sam_flavor', gs.getProperty('x_fed_day2_ops.sam_flavor', 'identityiq'));
+  gr.setValue('boundary', gs.getProperty('x_fed_day2_ops.boundary', 'gcc-moderate'));
+  gr.setValue('state', 'refused');
+  gr.setValue('business_need', 'http_status=409 reason=atf_monitoring_fixture');
+  gr.setValue('test_mode', 'false');
+  gr.setValue('synthetic', 'false');
+  var id = gr.insert();
+  if (!id) { stepResult.setFailed('fixture row insert failed'); return; }
+
+  var after = sam.dailyOutcomeCounts(1);
+  if (after.refused !== before.refused + 1) {
+    stepResult.setFailed('expected refused count to increase by exactly 1, before=' + before.refused + ' after=' + after.refused);
+    return;
+  }
+  var beforeReason = before.refusedByReason.atf_monitoring_fixture || 0;
+  var afterReason = after.refusedByReason.atf_monitoring_fixture || 0;
+  if (afterReason !== beforeReason + 1) {
+    stepResult.setFailed('expected refusedByReason.atf_monitoring_fixture to increase by exactly 1, before=' + beforeReason + ' after=' + afterReason);
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>400</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>correlationReport joins a SAM request id across the lineage row and the evidence table -- the dashboard/report Tier-2 item 6 asks for.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var samRequestId = 'ATF-SAM-MON-0006';
+
+  var lineage = sam.recordLineage(null, samRequestId, 'atf-correlation-mon-0006', {
+    verified_by: 'pull-verify', verified_at: new GlideDateTime().getValue(),
+    verified_authority: 'app-owner', verified_status: 'approved', verified_item: 'ATF-Test-Role'
+  });
+  if (!lineage.ok) { stepResult.setFailed('fixture lineage write failed: ' + JSON.stringify(lineage)); return; }
+  var boundRitm = sam.attachRitmToLineage(lineage.sys_id, 'RITM0099999', 'fixture-ritm-sys-id');
+  if (!boundRitm.ok) { stepResult.setFailed('fixture RITM binding failed: ' + JSON.stringify(boundRitm)); return; }
+
+  var ev = new GlideRecord(gs.getProperty('x_fed_day2_ops.tbl_evidence', 'x_fed_day2_ops_evidence'));
+  ev.initialize();
+  ev.setValue('verb', 'Add');
+  ev.setValue('control', 'AC-2');
+  ev.setValue('sam_request_id', samRequestId);
+  ev.setValue('ritm', 'RITM0099999');
+  ev.setValue('closed', 'true');
+  ev.setValue('hash', 'atf-fixture-hash-0006');
+  if (!ev.insert()) { stepResult.setFailed('fixture evidence write failed'); return; }
+
+  var report = sam.correlationReport(samRequestId);
+  if (!report.ok) { stepResult.setFailed('correlationReport should succeed: ' + JSON.stringify(report)); return; }
+  if (!report.lineage || report.lineage.ritm !== 'RITM0099999') {
+    stepResult.setFailed('correlationReport.lineage should show the bound RITM: ' + JSON.stringify(report.lineage));
+    return;
+  }
+  if (!report.evidence.length || report.evidence[0].control !== 'AC-2') {
+    stepResult.setFailed('correlationReport.evidence should include the fixture evidence row: ' + JSON.stringify(report.evidence));
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+</record_update>

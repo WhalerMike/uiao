@@ -34,6 +34,8 @@ happy path plus the negative tests that prove the safety gates actually fire.
 | **SAM — idempotent re-push** | A second push carrying a `sam_request_id` that already correlated resolves to the SAME RITM rather than creating a second one — the SDIM-retry case the troubleshooting table documents as safe. |
 | **SAM negative — pull-verify unavailable** | With neither `iiq_verify_endpoint` nor `sam_jws_public_key` configured (the shipped default), and in live mode generally, `fetchIdentityRequest`/`verifyJws` refuse rather than trust the caller's assertion — "refuses every push" is the intended state, not a bug to work around. |
 | **SAM — test_mode vs. live mode** | `getRequestStatus`/`fetchIdentityRequest` return canned "approved" data under `test_mode` and fail-closed/inconclusive results under live mode with no SAM reachable, and the flip is fully reversible — the dual-mode contract `SamCorrelationClient`'s header promises actually holds. |
+| **SAM — closure write-back** | `writeClosureSummary` refuses with no id, succeeds (canned) in `test_mode`, and honours its ATF-only forced-failure hook; `x_fed_day2_ops.sam_closure_writeback` defaults `false`; and — the core proof — a SAM-originated `MacdrOrchestrator.run()` still closes `ok:true` even when the write-back is forced to fail. Fail-open toward closure, on purpose. |
+| **SAM — monitoring telemetry** | `recordPushOutcome` writes a stamped row per attempt; `dailyOutcomeCounts`/`sustainedFailureCheck` exclude `synthetic` (test_mode) rows and DO count real ones (before/after deltas, not absolute counts); `correlationReport` joins a SAM request id across the lineage row and the evidence table. |
 
 The four **hybrid** rows cover the Current State (AD-mastered) edition's router and
 AD leg (`AdHybridClient`). They **ship only with the Active Directory (Current
@@ -42,7 +44,7 @@ suites plus the non-hybrid negatives are all it carries.
 
 ## Build
 
-The 24 tests above are **authored as `sys_atf_test` records** in this folder —
+The 26 tests above are **authored as `sys_atf_test` records** in this folder —
 one file per test, each driving the "Governed Day-2 Request" flow with the catalog
 inputs that trigger the asserted path:
 
@@ -72,18 +74,20 @@ inputs that trigger the asserted path:
 | `atf-sam-idempotent-repush.xml` | a re-push of a correlated `sam_request_id` resolves to the same RITM, not a duplicate |
 | `atf-sam-negative-pull-verify-unavailable.xml` | unconfigured (or unwired live-mode) verification refuses every push |
 | `atf-sam-testmode-vs-live.xml` | canned `test_mode` responses vs. fail-closed live-mode behavior, and the flip is reversible |
+| `atf-sam-closure-writeback.xml` | closure write-back is opt-in, works when enabled, and never blocks a real closure even when forced to fail |
+| `atf-sam-monitoring-telemetry.xml` | push telemetry excludes synthetic rows from monitoring counts, counts real ones, and correlationReport joins lineage to evidence |
 
 They are `test_mode`-driven, so a sub-prod/CI run needs **no tenant credentials**.
 Import them into the scoped app and add them to a Test Suite; the negatives are the
 ones that prove the safety gates actually fire — a suite of only happy paths proves
-nothing about a control. 21 of 24 pass as authored against the remediated code;
+nothing about a control. 23 of 26 pass as authored against the remediated code;
 `atf-negative-unreconciled-target.xml` needs a live instance to exercise its
 catalog/UI path, and the two `verify-read-failure`/`verify-wrong-state` tests are
 flagged open above (see `../CURRENT-STATE-START-HERE.md` §5 for the design
-question blocking them). See the PDI live-validation runbook for running all 24
+question blocking them). See the PDI live-validation runbook for running all 26
 for real, not just reading the assertions.
 
-The seven **SAM** tests exercise `SamCorrelationClient` and `sam_inbound_ritm.js`'s
+The nine **SAM** tests exercise `SamCorrelationClient`, `MacdrOrchestrator` and `sam_inbound_ritm.js`'s
 gates directly (contract validation, role predicate, identity resolution,
 idempotency lookup, verification mode) rather than driving a live HTTP round trip
 through the Scripted REST resource — the same scoping choice this repo already
