@@ -38,14 +38,7 @@ except ImportError:  # pragma: no cover
     sys.exit("PyYAML required: pip install pyyaml")
 
 HERE = Path(__file__).resolve().parent
-REGISTRY = (
-    HERE.parent
-    / "docs"
-    / "customer-documents"
-    / "whitepapers"
-    / "data"
-    / "federal-legal-stack-sources.yml"
-)
+REGISTRY = HERE.parent / "docs" / "customer-documents" / "whitepapers" / "data" / "federal-legal-stack-sources.yml"
 
 
 def main() -> int:
