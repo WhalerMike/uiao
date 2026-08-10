@@ -1,0 +1,40 @@
+name: Legal-Stack Chart Authority Freshness
+
+# docs/customer-documents/whitepapers/data/federal-legal-stack-sources.yml is
+# the SSOT for every external legal source the federal cybersecurity
+# legal-stack chart (index.html + federal-compliance-for-moderate-agencies.qmd)
+# cites, each with its source URL and a last_verified date.
+#
+# Verification is a human/agent act against the issuing source — it cannot be
+# automated reliably (agency pages move, redirect, and bot-wall; see
+# .lycheeignore). What CAN be automated is making SKIPPED verification
+# visible: this weekly job fails when any entry's last_verified is older than
+# 90 days. A red run means: open each flagged source, confirm (or correct)
+# the citation, bump last_verified.
+#
+# Mirrors docs/customer-documents/orgcomp-series/ AAN Authority Freshness
+# workflow, scoped to this chart's own source registry.
+
+on:
+  schedule:
+    - cron: "0 14 * * 1" # Mondays 14:00 UTC — offset from the AAN freshness job (12:00) and ScubaGear tracker (13:00)
+  workflow_dispatch:
+
+jobs:
+  legal-stack-authority-freshness:
+    name: Fail if any legal-stack chart source is unverified for >90 days
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Registry freshness (strict)
+        run: python scripts/check_legal_stack_freshness.py --strict-fresh --max-age 90
