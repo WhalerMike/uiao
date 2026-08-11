@@ -756,6 +756,8 @@ jobs:
             .github/maintenance
             docs/customer-documents/orgcomp-series
             infoblox-ddi-book
+            index.html
+            assets/diagrams
           sparse-checkout-cone-mode: false
           path: _repo
 
@@ -946,6 +948,22 @@ jobs:
         run: |
           find _site/download -maxdepth 1 -name '*.zip' -delete
           rm -f _site/download/ScubaDrift-Documentation.docx
+
+      - name: Publish the marketing landing page
+        # The repo-root index.html (a hand-styled marketing/overview page,
+        # distinct from the Quarto-rendered docs homepage this job already
+        # produces at _site/index.html) previously lived only in the repo —
+        # nothing copied it into the Pages artifact, so it was never actually
+        # reachable on the live site. Publish it at /landing/ instead of
+        # overwriting the real docs homepage. Its <img> reference to
+        # assets/diagrams/*.svg is a relative path, so the SVG has to land
+        # at the matching relative location under _site/landing/.
+        if: env.MAINTENANCE_MODE != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p _site/landing/assets/diagrams
+          cp _repo/index.html _site/landing/index.html
+          cp _repo/assets/diagrams/*.svg _site/landing/assets/diagrams/
 
       - name: Override site with maintenance page
         # MAINTENANCE SWITCH (see workflow-level `env.MAINTENANCE_MODE`).
