@@ -382,7 +382,7 @@
 | [`docs/customer-documents/orgpath-multicloud/04-vmware-and-the-three-plane-proof.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-multicloud/04-vmware-and-the-three-plane-proof.qmd) | 50 | Brief | ✅ | — | — |
 | [`docs/customer-documents/orgpath-multicloud/05-zero-trust-across-vendors.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-multicloud/05-zero-trust-across-vendors.qmd) | 44 | Brief | ✅ | — | — |
 | [`docs/customer-documents/orgpath-multicloud/06-adopting-without-replacing.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-multicloud/06-adopting-without-replacing.qmd) | 46 | Brief | ✅ | — | — |
-| [`docs/customer-documents/orgpath-multicloud/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-multicloud/index.qmd) | 65 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/orgpath-multicloud/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgpath-multicloud/index.qmd) | 60 | Navigation hub | ✅ | — | — |
 
 ### `orgpath-narrative/`
 
