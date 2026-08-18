@@ -11,7 +11,7 @@
 > **The base kit is the [2027 Target State edition](#the-two-editions).** Keep it
 > as the goal; run *this* edition now.
 
-**Date Code:** 2026-07-23 06:46 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
+**Date Code:** 2026-08-18 08:32 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
 **Audience:** the implementer and operators running day-2 tasks on today's hybrid estate
 
 ## 0. What changed, in one paragraph
@@ -128,10 +128,10 @@ advice, no warranty) apply unchanged. Additionally:
    loudly. **What remains genuinely open, and requires real infrastructure or a
    decision only the author can make — not more code review:**
    - The `ecc_queue` insert ACL on the target instance — anyone who can insert a
-     `topic = 'PowerShell'` / `agent = 'mid.server.<x>'` record can drive AD
-     writes directly, bypassing the Flow entirely. This is an instance
-     platform-configuration fact, not something the scoped app controls (see
-     `CURRENT-STATE-BUILD-DELTA.md` §5).
+     `topic = 'Command'` / `name = 'Invoke-Day2AdAction'` /
+     `agent = 'mid.server.<x>'` record can drive AD writes directly, bypassing
+     the Flow entirely. This is an instance platform-configuration fact, not
+     something the scoped app controls (see `CURRENT-STATE-BUILD-DELTA.md` §5).
    - The delegated AD rights themselves are asserted in code comments, never
      verified — an effective-permissions dump against a real domain is still
      outstanding.

@@ -5,7 +5,7 @@
 > promotion. Deploy small, prove it on real people, expand on evidence — never a
 > big-bang enablement.
 
-**Date Code:** 2026-07-22 12:00 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
+**Date Code:** 2026-08-18 08:32 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
 **Audience:** the implementation lead + the ISSO/approver for the pilot
 
 ## 0. Entry criteria (do not start the pilot until all are true)
@@ -21,9 +21,11 @@
   service account holds only the **delegated, least-privilege rights** on the
   pilot OUs (never Domain Admin).
 - The instance's **`ecc_queue` insert ACL has been reviewed and restricted** —
-  who can write `topic = 'PowerShell'` / `agent = 'mid.server.' + ad_mid_server`
-  records, ideally scoped to this kit's own MID/agent identifiers. This queue
-  insert is the AD leg's actual write channel (`AdHybridClient._ps`,
+  who can write `topic = 'Command'` / `name = 'Invoke-Day2AdAction'` /
+  `agent = 'mid.server.' + ad_mid_server` records, scoped to this kit's own
+  `name`/`agent` identifiers (`topic = 'Command'` alone is the platform's
+  generic MID command topic and does not identify this channel). This queue
+  insert is the AD leg's actual write channel (`AdHybridClient._dispatch`,
   `CURRENT-STATE-BUILD-DELTA` §5); an unreviewed ACL is a way to drive AD writes
   that bypasses the Flow, PIM, and the evidence record.
 - A **rollback owner** and a **go/no-go approver** (ISSO) are named.

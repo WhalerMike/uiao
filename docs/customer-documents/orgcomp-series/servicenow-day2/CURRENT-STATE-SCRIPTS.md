@@ -6,7 +6,7 @@
 > reused unchanged. The two editions are the same scripts with `hybrid_mode`
 > deciding the path, not a fork.
 
-**Date Code:** 2026-07-23 06:46 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
+**Date Code:** 2026-08-18 08:32 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
 **Audience:** ServiceNow platform admins
 
 ## 1. `AdHybridClient` — the AD leg
@@ -28,6 +28,18 @@ exactly — `Class.create`, config from `gs.getProperty`, MID-routed transport,
 | `moveUserOuAd(id, ou)` | `Move-ADObject` | Mover — OU change |
 | `addGroupMemberAd(g, m)` / `removeGroupMemberAd(g, m)` | `Add-/Remove-ADGroupMember` | AD-sourced group membership |
 | `isAdMastered(entraUser)` | — | The routing predicate: `onPremisesSyncEnabled === true` |
+
+Every write above returns `{ ok, dispatched, ecc_sys_id }` and asserts nothing
+about post-state. Closure comes from the read-back half of the class, added by
+the P0-4 remediation:
+
+| Method | Reads | Serves |
+|---|---|---|
+| `getUserAd(id, properties)` | `Get-ADUser` on the pinned DC | VERIFY — the on-prem post-state after a lifecycle / attribute / password write |
+| `getGroupMembersAd(g, recursive)` | `Get-ADGroupMember` on the pinned DC | VERIFY — membership after a group write |
+| `isGroupMemberAd(g, m, recursive)` | — | Direct membership assertion. **Tri-state:** `true` / `false` / `null`, where `null` is INCONCLUSIVE — never conflate it with `false` at the call site |
+| `resolveDispatch(eccSysId)` | the ECC response record | Parses one dispatch's result. Fails closed: missing, errored, or unparseable is `ok:false`, never an assumed success |
+| `awaitDispatch(eccSysId, maxMs)` | — | Bounded poll (`x_fed_day2_ops.ad_await_ms`, capped at 60s) for ATF and synchronous scripts. A timeout is *inconclusive*, not *verified*. The production path is the Flow's own asynchronous VERIFY step, not this |
 
 **Transport (remediated, commit `7d2423c74`).** `_dispatch(action, identity,
 callerArgs)` validates `callerArgs` against a per-action allowlist
@@ -58,9 +70,9 @@ fail-closed contract (any error → `ok:false`).
 is *intended* to hold **delegated, least-privilege AD rights** on the specific OUs
 it manages — never Domain Admin — though that delegation is currently asserted in
 comments, not verified by anything in the kit (an effective-permissions dump is a
-pre-production must-do, not optional). The write and the (not-yet-implemented)
-verify re-read are designed to hit the same DC (`x_fed_day2_ops.ad_dc`) to avoid
-replication-lag false reads once the re-read exists.
+pre-production must-do, not optional). The write and the verify re-read both hit
+the same DC (`x_fed_day2_ops.ad_dc`), so a post-state read cannot return a stale
+answer from a replica that has not caught up yet.
 
 ## 2. The router — choosing the leg
 
@@ -169,12 +181,14 @@ cloud-native path is:
 
 ## 7. Production: migrating the AD leg to the Integration Hub AD Spoke
 
-`AdHybridClient._ps` is a **starter skeleton** — it renders a PowerShell command
-string and dispatches it to the AD MID through the ECC queue. For production,
-replace that transport with the **Integration Hub Active Directory (v2) spoke**,
-which ServiceNow builds and maintains. The client's method surface does not
-change; only `_ps` is swapped for spoke-action calls, so the router, the control
-maps, and the ATF suites all stand.
+`AdHybridClient._dispatch` is a **starter skeleton** — it emits a structured JSON
+job to the AD MID through the ECC queue (`topic = 'Command'`,
+`name = 'Invoke-Day2AdAction'`), which `mid/Invoke-Day2AdAction.ps1` binds via
+splatting (§1). For production, replace that transport with the **Integration Hub
+Active Directory (v2) spoke**, which ServiceNow builds and maintains. The
+client's method surface does not change; only `_dispatch` is swapped for
+spoke-action calls, so the router, the control maps, and the ATF suites all
+stand.
 
 | `AdHybridClient` method | Skeleton cmdlet | Integration Hub AD spoke action |
 |---|---|---|
@@ -185,6 +199,28 @@ maps, and the ATF suites all stand.
 | `moveUserOuAd` | `Move-ADObject` | **Move Object** |
 | `addGroupMemberAd` | `Add-ADGroupMember` | **Add to Group** |
 | `removeGroupMemberAd` | `Remove-ADGroupMember` | **Remove from Group** |
+| `getUserAd` | `Get-ADUser` | **Look Up Object** / **Query Objects** |
+| `getGroupMembersAd` | `Get-ADGroupMember` | the spoke's group-membership read |
+
+**Migrate the read-backs too, not just the writes.** The four write rows are the
+visible half; closure depends on the read half (§1). A migration that swaps the
+writes to spoke actions and leaves the reads on the ECC path — or drops them —
+turns every evidence record back into an assertion. Two things to confirm
+against **your** spoke version before you commit to the migration:
+
+1.  **The action names above are the mapping to check, not a guarantee.** Read
+    action naming has varied across AD spoke versions; verify against the
+    version installed on your instance.
+2.  **The spoke must let you pin the domain controller.** The same-DC guarantee
+    (`x_fed_day2_ops.ad_dc`) is what keeps a post-state read off a replica that
+    has not caught up. If the spoke's connection targets a domain rather than a
+    named DC, you have traded an injection-surface problem for a
+    replication-lag one, and VERIFY can report a false negative on a write that
+    actually succeeded. Resolve this before migrating, not after.
+
+`resolveDispatch` and `awaitDispatch` are ECC-queue mechanics and have no spoke
+equivalent — they disappear with the queue, and the spoke action's own return
+value takes their place as the observation VERIFY reads.
 
 **Why the spoke for production**
 
