@@ -104,8 +104,12 @@ def test_bundle_doc_names_composes_repo_stem_to_numbered_name() -> None:
     assert current["CURRENT-STATE-BUILD-DELTA"] == "2_Build_Delta"
     # Same shared doc, different slot in the other edition's reading order.
     assert bdkd.bundle_doc_names("target")["KIT-VARIABLES-REFERENCE"] == "2_Variables_Reference"
+    # The shared Scripts Manifest fills slot 8 in the current edition: the
+    # shipped Implementation Guide points at it, so leaving it out produced
+    # dangling "(not in this bundle)" references.
+    assert current["KIT-SCRIPTS"] == "8_Scripts_Manifest"
     # Docs the edition does not ship are absent, not mapped to a wrong name.
-    assert "KIT-SCRIPTS" not in current
+    assert "KIT-USAGE-OPERATOR" not in current  # target-only
     assert "CURRENT-STATE-BUILD-DELTA" not in bdkd.bundle_doc_names("target")
 
 
@@ -125,13 +129,27 @@ def test_rewrite_retargets_links_and_bare_names() -> None:
 
 
 def test_rewrite_annotates_references_to_docs_this_edition_omits() -> None:
-    body = "Every script is described in the [Scripts Manifest](./KIT-SCRIPTS.md).\n"
+    # KIT-USAGE-OPERATOR is target-only, so the current edition genuinely cannot
+    # ship it -- unlike KIT-SCRIPTS, which was absent by omission and now fills
+    # slot 8.
+    body = "Per-task use lives in the [Usage Operator](./KIT-USAGE-OPERATOR.md) guide.\n"
     out, _, absent = bdkd.rewrite_doc_references(body, "current")
 
     # Flattened to plain text rather than left pointing at a file that is not here.
     assert "](./" not in out
-    assert f"Scripts Manifest ({bdkd._ABSENT_NOTE})" in out
-    assert absent == {"KIT-SCRIPTS": 1}
+    assert f"Usage Operator ({bdkd._ABSENT_NOTE})" in out
+    assert absent == {"KIT-USAGE-OPERATOR": 1}
+
+
+def test_scripts_manifest_reference_resolves_in_the_current_bundle() -> None:
+    """The dangling reference that motivated filling slot 8."""
+    body = "Every script is described in the [Scripts Manifest](./KIT-SCRIPTS.md).\n"
+    out, n, absent = bdkd.rewrite_doc_references(body, "current")
+
+    assert "(./8_Scripts_Manifest.md)" in out
+    assert bdkd._ABSENT_NOTE not in out
+    assert absent == {}
+    assert n == 1
 
 
 def test_rewrite_leaves_kit_source_paths_alone() -> None:

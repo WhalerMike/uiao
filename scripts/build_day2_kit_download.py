@@ -89,7 +89,15 @@ CURRENT_DOCX_SET = {
     "OrgComp_Day2_Kit_Current_1_Operator_Usage": "5_Operator_Usage.docx",
     "OrgComp_Day2_Kit_5_Usage_SAM_Integration": "6_Usage_SAM_Integration.docx",
     "OrgComp_Day2_Kit_6_Build_Specification": "7_Build_Specification.docx",
-    "OrgComp_Operator_Runbook_Day2_Compliant": "8_Operator_Runbook.docx",
+    # Slot 8 was 8_Operator_Runbook.docx, dropped: no .md source in the kit, so
+    # the doc-name map could only ever list 9 of 10; superseded by
+    # 5_Operator_Usage (11 tasks vs 8); and it carried a team byline and a Draft
+    # Proposal block in a de-branded kit. It still renders to the site from its
+    # own .qmd -- this stops it being BUNDLED, not published.
+    # Replaced by the shared Scripts Manifest, which 4_Implementation_Guide
+    # references and this edition did not ship, so those references were
+    # flattened to "(not in this bundle)".
+    "OrgComp_Day2_Kit_2_Scripts_Manifest": "8_Scripts_Manifest.docx",
     "OrgComp_Day2_Kit_Current_4_Pilot_Rollout": "9_Pilot_Rollout.docx",
     # Appended rather than slotted before the pilot: renumbering 0..9 would
     # churn every existing filename for a reading-order nicety. Sequence is
