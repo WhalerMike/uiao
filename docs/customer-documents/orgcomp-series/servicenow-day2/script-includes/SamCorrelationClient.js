@@ -167,13 +167,25 @@ SamCorrelationClient.prototype = {
 
     // -------------------------------------------------------------------------
     // NOT IMPLEMENTED (live mode) — same fail-closed rationale as
-    // fetchIdentityRequest. A real implementation MUST validate: the
-    // signature against publicKey, the issuer, the expiry, AND that the
-    // claims bind to the asserted sam_request_id — a validly-signed assertion
-    // that covers a DIFFERENT request is the obvious bypass a shallow
-    // "signature checks out" implementation would miss (see
-    // sam_inbound_ritm.js's subject-mismatch check for the equivalent guard
-    // on the pull-verify path).
+    // fetchIdentityRequest. A real implementation MUST validate the signature
+    // against publicKey, the issuer, and the expiry, and MUST return a claim
+    // set that binds ALL THREE of:
+    //
+    //   1. sam_request_id — a validly-signed assertion covering a DIFFERENT
+    //      request is the obvious bypass a shallow "signature checks out"
+    //      implementation would miss.
+    //   2. requested_for — the SUBJECT. Without it the endpoint has only the
+    //      caller-supplied, unsigned body value, so a valid assertion for one
+    //      person can be redirected to another. sam_inbound_ritm.js REFUSES a
+    //      claim set with no requested_for (signature_subject_unbound); this is
+    //      a hard requirement on your signer, not a nicety.
+    //   3. status — the DECISION. A correctly-signed DENIAL is still a denial.
+    //      The endpoint gates on it exactly as the pull-verify path does.
+    //
+    // Items 2 and 3 were absent from this contract until they were added
+    // alongside the endpoint guards: the pull-verify branch checked subject and
+    // decision while the JWS branch checked neither, so an implementer
+    // following the old text would have built the permissive version.
     //
     // test_mode: returns a canned claim set bound to the JWS string passed in
     // (not a real signature check) so the ATF suite can exercise the JWS
@@ -183,8 +195,13 @@ SamCorrelationClient.prototype = {
     verifyJws: function (jws, publicKey) {
         if (this.testMode) {
             if (!jws) return { ok: false, reason: 'empty jws' };
+            // Mirrors fetchIdentityRequest's canned subject so both verification
+            // paths are drivable from one fixture. requested_for is present
+            // because the endpoint now REFUSES a claim set without it — a canned
+            // set missing it would make every ATF JWS push fail closed.
             return { ok: true, claims: {
                 sam_request_id: jws,
+                requested_for: 'test-user-0001',
                 approval_authority: 'app-owner',
                 access_item: 'ATF-Test-Role',
                 risk_tier: '2',
@@ -261,11 +278,29 @@ SamCorrelationClient.prototype = {
             var stamp = this.env.evidenceStamp();
             gr.initialize();
             gr.setValue('record_type', 'sam_push_outcome');
-            gr.setValue('sam_request_id', samRequestId || '');
+            // sam_request_REF, not sam_request_id. The integration table's
+            // sam_request_id is reserved for sam_lineage rows so that (a) the
+            // inbound endpoint's idempotency lookup cannot match telemetry and
+            // silently drop a retried request, and (b) the REQUIRED unique
+            // index on sam_request_id is implementable at all — this method
+            // writes a row per push ATTEMPT, so many telemetry rows share one
+            // request id. See KIT-BUILD-SPEC.md §2b.
+            gr.setValue('sam_request_ref', samRequestId || '');
             gr.setValue('sam_flavor', this.flavor);
             gr.setValue('sam_source_id', this.sourceId);
             gr.setValue('boundary', this.boundary);
             gr.setValue('state', outcome === 'accepted' ? 'accepted' : 'refused');
+            // The canonical reason code and status get their OWN columns. They
+            // used to be packed into business_need as
+            // 'http_status=<n> reason=<code>' and recovered by /reason=(\S+)/,
+            // which broke on any code containing whitespace -- note that
+            // Day2Env.scrub REPLACES [\r\n\t] WITH A SPACE, so it can create
+            // the very separator that truncates the match, bucketing a real
+            // code as a wrong one or as 'unknown'. A governance table should
+            // not require a regex to read its own key field.
+            gr.setValue('reason_code', Day2Env.scrub(reasonCode || 'unknown'));
+            gr.setValue('http_status', httpStatus || 0);
+            // Human-readable prose only; no longer parsed by anything.
             gr.setValue('business_need', 'http_status=' + httpStatus + ' reason=' + Day2Env.scrub(reasonCode || ''));
             gr.setValue('test_mode', stamp.test_mode ? 'true' : 'false');
             gr.setValue('synthetic', stamp.synthetic ? 'true' : 'false');
@@ -279,29 +314,57 @@ SamCorrelationClient.prototype = {
 
     // Daily/periodic accepted-vs-refused counts for the inbound endpoint —
     // "Monitoring the inbound endpoint" in KIT-USAGE-SAM-INTEGRATION.md.
-    // Excludes synthetic (test_mode) rows so a sub-prod ATF run never shows up
-    // as production traffic. Returns { ok, sinceDays, accepted, refused,
-    // refusedByReason: {code: count} }.
+    // Excludes rows KNOWN to be synthetic (synthetic != 'true') so a sub-prod
+    // ATF run never shows up as production traffic. Deliberately not
+    // synthetic == 'false': that form requires proof of non-syntheticness and
+    // drops every row where the field is unpopulated — rows predating the
+    // column, rows from another writer, rows a future refactor forgets to
+    // stamp. An alerting predicate that under-reports is worse than none: it
+    // shows a green board during an outage. Fail toward counting, not silence.
+    // Returns { ok, sinceDays, accepted, refused, refusedByReason: {code: count} }.
     dailyOutcomeCounts: function (sinceDays) {
         sinceDays = sinceDays || 1;
         var since = new GlideDateTime();
         since.addDaysUTC(-1 * sinceDays);
+        // .getValue() -- pass the STRING, never the GlideDateTime object. An
+        // object here may or may not coerce; if it does not, the window filter
+        // silently matches the whole table and the alert numbers are wrong
+        // with no error raised.
+        var sinceStr = since.getValue();
 
         var counts = { accepted: 0, refused: 0, refusedByReason: {} };
-        var gr = new GlideRecord(this.tblIntegration);
-        gr.addQuery('record_type', 'sam_push_outcome');
-        gr.addQuery('synthetic', 'false');
-        gr.addQuery('sys_created_on', '>=', since);
-        gr.query();
-        while (gr.next()) {
-            var state = gr.getValue('state');
-            if (state === 'accepted') { counts.accepted++; continue; }
-            counts.refused++;
-            var note = gr.getValue('business_need') || '';
-            var m = /reason=(\S+)/.exec(note);
-            var code = m ? m[1] : 'unknown';
-            counts.refusedByReason[code] = (counts.refusedByReason[code] || 0) + 1;
+
+        // GlideAggregate, not a row walk. This table takes one row per inbound
+        // push ATTEMPT and is the highest-volume table in the app; the previous
+        // implementation iterated every row in the window with no setLimit,
+        // from a scheduled job.
+        var byState = new GlideAggregate(this.tblIntegration);
+        byState.addQuery('record_type', 'sam_push_outcome');
+        byState.addQuery('synthetic', '!=', 'true');
+        byState.addQuery('sys_created_on', '>=', sinceStr);
+        byState.addAggregate('COUNT');
+        byState.groupBy('state');
+        byState.query();
+        while (byState.next()) {
+            var n = parseInt(byState.getAggregate('COUNT'), 10) || 0;
+            if (byState.getValue('state') === 'accepted') counts.accepted += n;
+            else counts.refused += n;
         }
+
+        // Grouping on reason_code replaces the business_need regex outright.
+        var byReason = new GlideAggregate(this.tblIntegration);
+        byReason.addQuery('record_type', 'sam_push_outcome');
+        byReason.addQuery('synthetic', '!=', 'true');
+        byReason.addQuery('state', 'refused');
+        byReason.addQuery('sys_created_on', '>=', sinceStr);
+        byReason.addAggregate('COUNT');
+        byReason.groupBy('reason_code');
+        byReason.query();
+        while (byReason.next()) {
+            var code = byReason.getValue('reason_code') || 'unknown';
+            counts.refusedByReason[code] = parseInt(byReason.getAggregate('COUNT'), 10) || 0;
+        }
+
         return { ok: true, sinceDays: sinceDays, accepted: counts.accepted, refused: counts.refused,
                  refusedByReason: counts.refusedByReason };
     },
@@ -318,13 +381,16 @@ SamCorrelationClient.prototype = {
         var since = new GlideDateTime();
         since.addSeconds(-60 * windowMinutes);
 
-        var gr = new GlideRecord(this.tblIntegration);
-        gr.addQuery('record_type', 'sam_push_outcome');
-        gr.addQuery('state', 'refused');
-        gr.addQuery('synthetic', 'false');
-        gr.addQuery('sys_created_on', '>=', since);
-        gr.query();
-        var refused = gr.getRowCount();
+        // See dailyOutcomeCounts for why this is a string, an aggregate, and
+        // a != 'true' test rather than a == 'false' one.
+        var ga = new GlideAggregate(this.tblIntegration);
+        ga.addQuery('record_type', 'sam_push_outcome');
+        ga.addQuery('state', 'refused');
+        ga.addQuery('synthetic', '!=', 'true');
+        ga.addQuery('sys_created_on', '>=', since.getValue());
+        ga.addAggregate('COUNT');
+        ga.query();
+        var refused = ga.next() ? (parseInt(ga.getAggregate('COUNT'), 10) || 0) : 0;
         return { ok: true, windowMinutes: windowMinutes, threshold: threshold, refused: refused,
                  alert: refused >= threshold };
     },

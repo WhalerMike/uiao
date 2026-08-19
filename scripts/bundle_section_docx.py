@@ -166,8 +166,27 @@ VOLUME_THEMES = {
 }
 
 
+def _url_safe(text: str) -> str:
+    """Collapse any run of non-alphanumerics to a single hyphen.
+
+    Bundle filenames become GitHub Release asset names, and a release asset
+    name is a URL path segment. GitHub rewrites spaces, commas and ampersands
+    to ``.`` on upload, so a themed filename like
+    ``Vol_I-Foundation & Transport-Bundle.docx`` is STORED as
+    ``Vol_I-Foundation.Transport-Bundle.docx`` -- while the docs linked to the
+    percent-encoded original and 404'd. Generating a name that needs no
+    encoding makes the link and the asset agree by construction instead of
+    depending on a rewrite rule nothing in this repo controls.
+    """
+    return re.sub(r"[^A-Za-z0-9]+", "-", text).strip("-")
+
+
 def _volume_bundle_filename(vol_id: str) -> str:
     """Per-volume bundle filename: ``Vol_<N>-<Theme>-Bundle.docx``.
+
+    The theme is URL-safed (see :func:`_url_safe`); the readable form with its
+    commas and ampersands is still stamped into the document's running header,
+    so the prose a reader sees is unchanged -- only the filename is constrained.
 
     A volume with no registered theme falls back to the themeless
     ``Vol_<N>-bundle.docx`` form so an unmapped volume still bundles.
@@ -176,7 +195,7 @@ def _volume_bundle_filename(vol_id: str) -> str:
     theme = VOLUME_THEMES.get(vol_id)
     if theme is None:
         return f"Vol_{vol_id}-bundle.docx"
-    return f"Vol_{vol_id}-{theme}-Bundle.docx"
+    return f"Vol_{vol_id}-{_url_safe(theme)}-Bundle.docx"
 
 
 # Leading volume identifier in a series page filename,

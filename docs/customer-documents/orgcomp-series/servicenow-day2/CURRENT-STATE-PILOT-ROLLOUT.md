@@ -28,6 +28,17 @@
   insert is the AD leg's actual write channel (`AdHybridClient._dispatch`,
   `CURRENT-STATE-BUILD-DELTA` §5); an unreviewed ACL is a way to drive AD writes
   that bypasses the Flow, PIM, and the evidence record.
+- The **ServiceNow PDI validation track is complete**
+  (`CURRENT-STATE-PDI-VALIDATION.md`). The ATF suite proves the kit against a
+  mock harness executing the real scripts over fixture data — a different thing
+  from a real instance. Do not treat green ATF as a substitute for this track.
+- The **AD lab validation track is complete**
+  (`CURRENT-STATE-AD-LAB-VALIDATION.md`), **or explicitly waived by the ISSO
+  with the waiver recorded** alongside the go/no-go decision. This is the only
+  step that exercises the AD leg against a real domain controller: the
+  delegated rights are otherwise asserted in code comments and never verified,
+  and the VERIFY read-back has never run against a live DC. Waiving it is a
+  legitimate risk decision; leaving it undone silently is not.
 - A **rollback owner** and a **go/no-go approver** (ISSO) are named.
 
 ## 1. Choose the pilot cohort

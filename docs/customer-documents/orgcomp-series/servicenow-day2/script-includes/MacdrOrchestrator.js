@@ -28,6 +28,19 @@
 //         instance carrying the property.
 // =============================================================================
 var MacdrOrchestrator = Class.create();
+// Keys a CALLER may not supply on a request object. Same doctrine as
+// AdHybridClient.RESERVED (P0-2): a field that changes control behaviour is
+// refused if it arrives from the caller, rather than trusted because a comment
+// says no real form sets it.
+//
+// _forceWritebackFailure is an ATF hook that suppresses the SAM closure
+// write-back. It is inert in production today only because
+// SamCorrelationClient.writeClosureSummary's live branch is an unimplemented
+// stub -- the moment a tenant wires up a real write-back, an unguarded
+// caller-supplied field becomes a suppression switch on closure evidence.
+// Compared lower-case, like AdHybridClient's list.
+MacdrOrchestrator.RESERVED = ['_forcewritebackfailure'];
+
 MacdrOrchestrator.prototype = {
 
     initialize: function () {
@@ -47,6 +60,16 @@ MacdrOrchestrator.prototype = {
     //             verb, ritm, sam_request_id, entra_user, ... }
     // actuate : function() -> { ok, ... }
     // verifyArgs : { action, target }
+    // Reserved keys present on a caller-supplied request object, if any.
+    _reservedKeysIn: function (request) {
+        var found = [];
+        for (var k in request) {
+            if (!request.hasOwnProperty(k)) continue;
+            if (MacdrOrchestrator.RESERVED.indexOf(('' + k).toLowerCase()) !== -1) found.push(k);
+        }
+        return found;
+    },
+
     run: function (request, actuate, verifyArgs) {
         request = request || {};
         verifyArgs = verifyArgs || {};
@@ -54,6 +77,21 @@ MacdrOrchestrator.prototype = {
 
         var guard = this.env.guard();
         if (!guard.ok) { trail.environment = guard; return this._stop('environment', trail, request); }
+
+        // Reserved keys are an ATF affordance and must never arrive from a real
+        // caller. Refused outside test_mode rather than everywhere, because the
+        // suite legitimately sets them (atf-sam-closure-writeback.xml) -- so the
+        // hook keeps working in the harness while the production path stops
+        // depending on a comment. Folded into the environment clause: this is a
+        // precondition failure, not a new stop reason for the docs to enumerate.
+        if (!this.testMode) {
+            var reserved = this._reservedKeysIn(request);
+            if (reserved.length) {
+                trail.environment = { ok: false,
+                    reason: 'reserved key supplied by caller: ' + reserved.join(', ') };
+                return this._stop('environment', trail, request);
+            }
+        }
 
         // ---- clause 1 — ORIGIN (fail closed) --------------------------------
         var origin = this._clauseOrigin(request);
@@ -148,8 +186,12 @@ MacdrOrchestrator.prototype = {
                 evidence_hash: ev.hash || '',
                 closed_at: new GlideDateTime().getValue(),
                 // ATF-only hook — see SamCorrelationClient.writeClosureSummary.
-                // Never set by a real catalog form or the SAM push endpoint.
-                _forceWritebackFailure: !!request._forceWritebackFailure
+                // Gated on THIS class's own test_mode state, not on the callee's
+                // test_mode branch: run() already refuses the key from a caller
+                // outside test_mode (see RESERVED), and this makes the forward
+                // conditional too, so the production path cannot carry it even
+                // if that check is ever bypassed.
+                _forceWritebackFailure: this.testMode && !!request._forceWritebackFailure
             };
             var wrote = this.sam.writeClosureSummary(samRequestId, summary);
             if (!wrote.ok) {

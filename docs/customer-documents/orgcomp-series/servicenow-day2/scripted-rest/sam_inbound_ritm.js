@@ -13,6 +13,9 @@
 //
 // What changed:
 //   1. PULL-VERIFY. The push is now a NOTIFICATION, not an authorization. We
+//      (JWS path: the signed claims must bind the request id, the SUBJECT and
+//      an approved decision — signature validity alone answers "is this
+//      authentic", not "does it authorise THIS grant for THIS person".)
 //      call back to IIQ on sam_request_id, confirm the request exists, is
 //      approved, and matches the asserted subject/item, and record OUR
 //      VERIFICATION — not the caller's claim — as the evidence. Optional JWS
@@ -23,8 +26,11 @@
 //   3. IDENTITY RESOLUTION. correlation_id only (no mutable-email fallback),
 //      active users only, and an ambiguous match is refused rather than
 //      silently resolved to the first row.
-//   4. IDEMPOTENCY. Still keyed on sam_request_id, but the check is paired with
-//      a REQUIRED unique index (see the deployment note) because check-then-
+//   4. IDEMPOTENCY. Keyed on (record_type='sam_lineage', sam_request_id) — the
+//      integration table also holds sam_push_outcome telemetry rows carrying
+//      the same sam_request_id, so an unscoped lookup matches a prior refusal
+//      and silently drops the retried request (see clause 5). Paired with a
+//      REQUIRED unique index (see the deployment note) because check-then-
 //      insert alone races.
 //   5. ROLE CHECK. gs.hasRole() returns true for admin, so the defensive
 //      assertion was satisfied by any admin-scoped caller. Now checks explicit
@@ -35,6 +41,13 @@
 //
 // DEPLOYMENT NOTES (required, not optional):
 //   * Create a UNIQUE INDEX on <integration table>.sam_request_id.
+//     This is only safe because sam_request_id is now written by LINEAGE ROWS
+//     ONLY — telemetry carries the id in sam_request_ref instead (see
+//     KIT-BUILD-SPEC.md §2b). Before that split the index was unimplementable:
+//     recordPushOutcome() writes a row on every refusal and every accept, so
+//     many rows shared one sam_request_id and a unique index — on the column
+//     alone OR on (record_type, sam_request_id) — would have rejected every
+//     telemetry insert after the first, silently, inside its own try/catch.
 //   * Configure x_fed_day2_ops.iiq_verify_endpoint + the credential alias, or
 //     x_fed_day2_ops.sam_jws_public_key. With NEITHER configured this endpoint
 //     refuses every push — that is intended.
@@ -110,9 +123,30 @@
     var subject = resolveSubject(body.requested_for);
     if (!subject.ok) { logRefusal('subject resolution: ' + subject.reason); return deny(422, 'unresolved_subject'); }
 
-    // 5. Idempotency (paired with the unique index).
+    // 5. Idempotency. MUST be scoped to record_type = 'sam_lineage'.
+    //
+    //    The integration table is shared. Telemetry now carries its id in
+    //    sam_request_ref, not sam_request_id, so this lookup can no longer
+    //    collide — but the filter stays as defence in depth, because the
+    //    failure it prevents is silent: recordPushOutcome() writes a
+    //    'sam_push_outcome' row on EVERY accept and refuse, and those rows
+    //    never carry a ritm. An unscoped
+    //    lookup therefore matches this request's own earlier refusal telemetry
+    //    and short-circuits with ritm:'' — reporting {ok:true, correlated:true}
+    //    for a request that was never created. A push refused once (e.g. before
+    //    iiq_verify_endpoint was configured) could never afterwards succeed:
+    //    the retry would be swallowed and the caller told it had correlated.
+    //    That inverts this file's fail-closed, lineage-first ordering, so the
+    //    record_type filter is load-bearing, not hygiene.
+    //
+    //    Only 'sam_lineage' rows represent a correlated request. correlationReport()
+    //    in SamCorrelationClient scopes the same way.
     var existing = new GlideRecord(gs.getProperty('x_fed_day2_ops.tbl_integration', 'x_fed_day2_ops_integration'));
-    if (existing.get('sam_request_id', body.sam_request_id)) {
+    existing.addQuery('record_type', 'sam_lineage');
+    existing.addQuery('sam_request_id', body.sam_request_id);
+    existing.setLimit(1);
+    existing.query();
+    if (existing.next()) {
         response.setStatus(200);
         sam.recordPushOutcome(body.sam_request_id, 'accepted', 200, 'idempotent');
         return { ok: true, correlated: true, ritm: existing.getValue('ritm'), note: 'already correlated' };
@@ -173,14 +207,46 @@
     // Verify the decision independently of the caller. Two supported methods;
     // if neither is configured we refuse, because an unverifiable push is
     // exactly the condition this fix exists to stop.
+    // One predicate, both branches. These checks diverging is exactly the
+    // defect this shares a commit with: pull-verify gated on approval and JWS
+    // did not, so a signed-but-DENIED assertion was accepted.
+    function isApprovedStatus(raw) {
+        var st = ('' + (raw || '')).toLowerCase();
+        return st === 'approved' || st === 'verified' || st === 'complete';
+    }
+
     function verifyWithSam(b) {
         var jwsKey = gs.getProperty('x_fed_day2_ops.sam_jws_public_key', '');
         if (jwsKey && b.jws) {
-            var jws = sam.verifyJws(b.jws, jwsKey);   // must validate sig, iss, exp, and bind to sam_request_id
+            // The signer must bind, at minimum: the request id, the SUBJECT and
+            // the decision. Signature validity alone answers "is this assertion
+            // authentic", never "does it authorise THIS grant for THIS person".
+            var jws = sam.verifyJws(b.jws, jwsKey);
             if (!jws.ok) return { ok: false, status: 401, code: 'bad_signature', reason: jws.reason };
+
             if (jws.claims.sam_request_id !== b.sam_request_id)
                 return { ok: false, status: 400, code: 'signature_subject_mismatch',
                          reason: 'signed payload does not bind to the asserted sam_request_id' };
+
+            // SUBJECT BINDING. Required, not optional-if-present: the claim set
+            // is the whole authority on this path (there is no second source to
+            // cross-check against, unlike pull-verify). A signer that omits the
+            // subject leaves requested_for unsigned and caller-controlled, so a
+            // valid assertion for one person could be redirected to another.
+            if (!jws.claims.requested_for)
+                return { ok: false, status: 400, code: 'signature_subject_unbound',
+                         reason: 'signed payload carries no requested_for claim — the subject would be ' +
+                                 'caller-asserted and unsigned; refusing (fail closed)' };
+            if (('' + jws.claims.requested_for).toLowerCase() !== ('' + b.requested_for).toLowerCase())
+                return { ok: false, status: 409, code: 'subject_mismatch',
+                         reason: 'signed requested_for does not match the pushed requested_for' };
+
+            // DECISION. A validly-signed DENIAL is still a denial.
+            if (!isApprovedStatus(jws.claims.status))
+                return { ok: false, status: 409, code: 'not_approved',
+                         reason: 'signed payload reports status "' +
+                                 ('' + (jws.claims.status || '')).toLowerCase() + '" — not an approved request' };
+
             return { ok: true, method: 'jws',
                      approval_authority: jws.claims.approval_authority,
                      access_item: jws.claims.access_item,
@@ -200,7 +266,7 @@
             return { ok: false, status: 502, code: 'verification_unavailable', reason: pulled.reason };
 
         var st = ('' + (pulled.data.executionStatus || pulled.data.status || '')).toLowerCase();
-        if (st !== 'approved' && st !== 'verified' && st !== 'complete')
+        if (!isApprovedStatus(st))
             return { ok: false, status: 409, code: 'not_approved',
                      reason: 'SAM reports status "' + st + '" — not an approved request' };
 

@@ -5,7 +5,10 @@
   Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
 
   Mirrors clause 5 of scripted-rest/sam_inbound_ritm.js: idempotency is keyed
-  on sam_request_id via a GlideRecord.get() lookup. Correct behavior on a
+  on (record_type='sam_lineage', sam_request_id). The record_type filter is
+  load-bearing — the integration table also holds sam_push_outcome telemetry,
+  and an unscoped lookup matched it. Retry-after-REFUSAL is the case that
+  exposed it; see atf-sam-idempotent-repush-after-refusal.xml. Correct behavior on a
   retried SDIM push (the documented, expected case — "SDIM retried" in
   KIT-USAGE-SAM-INTEGRATION.md's troubleshooting table) is to hand back the
   already-correlated RITM, not to create a duplicate request or error.
@@ -76,7 +79,11 @@
     <inputs><![CDATA[
 (function(outputs, steps, stepResult) {
   var existing = new GlideRecord(gs.getProperty('x_fed_day2_ops.tbl_integration', 'x_fed_day2_ops_integration'));
-  if (!existing.get('sam_request_id', 'ATF-SAM-0005')) {
+  existing.addQuery('record_type', 'sam_lineage');
+  existing.addQuery('sam_request_id', 'ATF-SAM-0005');
+  existing.setLimit(1);
+  existing.query();
+  if (!existing.next()) {
     stepResult.setFailed('the retried push should find the lineage row written on the first push');
     return;
   }

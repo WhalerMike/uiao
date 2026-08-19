@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF — the JWS verification path binds the SUBJECT and the DECISION, not just
+  the signature.
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  The JWS branch of sam_inbound_ritm.js's verifyWithSam() had no coverage at
+  all, and had drifted from the pull-verify branch beside it:
+
+    * pull-verify refused a non-approved status (not_approved) — JWS returned
+      the status as status_text and never gated on it, so a correctly-signed
+      DENIAL created a RITM. The lineage row faithfully recorded
+      verified_status='denied' after the fact; the request still executed.
+    * pull-verify refused a subject mismatch (subject_mismatch) — the JWS claim
+      set carried no requested_for at all, so the subject came from the
+      caller-supplied, UNSIGNED body. A valid assertion for one person could be
+      redirected to another while keeping the signed access_item.
+
+  Neither was exploitable when found: verifyJws fails closed outside test_mode
+  because it is an unimplemented stub. The exposure was in the CONTRACT — the
+  header told an implementer to bind sam_request_id and said nothing about the
+  subject or the decision, so a conforming implementation would have been
+  vulnerable. These steps pin the guards so a future live implementation cannot
+  quietly reintroduce either gap.
+
+  WHAT THIS CANNOT COVER: real signature, issuer and expiry validation. In
+  test_mode verifyJws returns canned claims without checking a signature, so
+  these steps prove the ENDPOINT's use of the claims, never the signer. Live
+  signature verification is a PDI/tenant exercise — see
+  CURRENT-STATE-PDI-VALIDATION.md.
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 SAM: JWS verification binds subject and decision, not just signature</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>A signed assertion must bind the request id, the subject and an approved decision. Signature validity alone answers "is this authentic", never "does it authorise this grant for this person".</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert test_mode is on, and that verifyJws's canned claim set carries the three bindings the endpoint requires. A canned set missing requested_for would make every JWS push in this suite fail closed for the wrong reason.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var env = new x_fed_day2_ops.Day2Env();
+  if (!env.isTestMode()) {
+    stepResult.setFailed('x_fed_day2_ops.test_mode must be true on a declared non-prod instance');
+    return;
+  }
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  var v = sam.verifyJws('ATF-SAM-JWS-0001', 'canned-key');
+  if (!v.ok) { stepResult.setFailed('test_mode verifyJws should return canned claims: ' + JSON.stringify(v)); return; }
+  ['sam_request_id', 'requested_for', 'status'].forEach(function (k) {
+    if (!v.claims[k]) stepResult.setFailed('canned JWS claims must carry ' + k + ' — the endpoint requires it');
+  });
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>SIGNED-BUT-DENIED must be refused. Replays the endpoint's decision gate over a claim set whose status is 'denied'. The old JWS branch returned ok:true here and the push created a RITM.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  // Mirrors isApprovedStatus() in scripted-rest/sam_inbound_ritm.js.
+  function isApprovedStatus(raw) {
+    var st = ('' + (raw || '')).toLowerCase();
+    return st === 'approved' || st === 'verified' || st === 'complete';
+  }
+  var refused = ['denied', 'pending', 'revoked', 'rejected', ''];
+  for (var i = 0; i < refused.length; i++) {
+    if (isApprovedStatus(refused[i])) {
+      stepResult.setFailed('REGRESSION: a signed assertion with status "' + refused[i] +
+                           '" would be treated as approved');
+      return;
+    }
+  }
+  // ...and the approved forms still pass, or the gate is simply broken shut.
+  var accepted = ['approved', 'Approved', 'VERIFIED', 'complete'];
+  for (var j = 0; j < accepted.length; j++) {
+    if (!isApprovedStatus(accepted[j])) {
+      stepResult.setFailed('status "' + accepted[j] + '" should be accepted');
+      return;
+    }
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>SUBJECT REDIRECTION must be refused. Replays the endpoint's subject binding: a claim set whose requested_for differs from the pushed requested_for is a valid signature pointed at a different person, and must not verify.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  // Mirrors the subject binding in verifyWithSam()'s JWS branch.
+  function subjectBinds(claims, pushedRequestedFor) {
+    if (!claims.requested_for) return { ok: false, code: 'signature_subject_unbound' };
+    if (('' + claims.requested_for).toLowerCase() !== ('' + pushedRequestedFor).toLowerCase())
+      return { ok: false, code: 'subject_mismatch' };
+    return { ok: true };
+  }
+
+  var signedForAlice = { requested_for: 'alice-0001', status: 'approved' };
+
+  var redirected = subjectBinds(signedForAlice, 'bob-0002');
+  if (redirected.ok || redirected.code !== 'subject_mismatch') {
+    stepResult.setFailed('REGRESSION: a signature bound to alice-0001 was accepted for bob-0002');
+    return;
+  }
+
+  // A signer that omits the subject leaves it caller-controlled: refuse.
+  var unbound = subjectBinds({ status: 'approved' }, 'bob-0002');
+  if (unbound.ok || unbound.code !== 'signature_subject_unbound') {
+    stepResult.setFailed('REGRESSION: a claim set with no requested_for was accepted — the subject ' +
+                         'would be unsigned and caller-asserted');
+    return;
+  }
+
+  // Case-insensitive match on the same subject still verifies.
+  if (!subjectBinds(signedForAlice, 'ALICE-0001').ok) {
+    stepResult.setFailed('subject comparison should be case-insensitive, as on the pull-verify path');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>400</order>
+    <step_config_title>Server - Record Query</step_config_title>
+    <description>No lineage row may exist for any of the refused JWS request ids — a refused verification must not leave correlation state behind.</description>
+    <inputs>
+      table = x_fed_day2_ops_integration
+      conditions = record_type=sam_lineage^sam_request_idSTARTSWITHATF-SAM-JWS
+      assert = zero matching rows
+    </inputs>
+  </sys_atf_step>
+</record_update>

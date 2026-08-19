@@ -160,4 +160,40 @@
 })(outputs, steps, stepResult);
     ]]></inputs>
   </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>500</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>P1-E: _forceWritebackFailure is a RESERVED key. It suppresses closure write-back, so a caller must not be able to supply it — the same doctrine AdHybridClient.RESERVED enforces (P0-2), rather than trusting a comment that says no real form sets it. Outside test_mode run() refuses any request carrying it; that branch cannot be exercised from a suite that requires test_mode, so this step asserts the detector the refusal is built on, and asserts the forward is gated on the orchestrator's OWN test_mode state.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var orch = new x_fed_day2_ops.MacdrOrchestrator();
+
+  // 1. The key is on the reserved list at all.
+  if (x_fed_day2_ops.MacdrOrchestrator.RESERVED.indexOf('_forcewritebackfailure') === -1) {
+    stepResult.setFailed('_forceWritebackFailure must be on MacdrOrchestrator.RESERVED');
+    return;
+  }
+
+  // 2. The detector finds it on a caller-supplied request object, case-insensitively.
+  var hit = orch._reservedKeysIn({ verb: 'Change', _forceWritebackFailure: true });
+  if (!hit.length) {
+    stepResult.setFailed('_reservedKeysIn should flag a caller-supplied _forceWritebackFailure');
+    return;
+  }
+
+  // 3. A clean request is not flagged — the guard must not refuse normal traffic.
+  if (orch._reservedKeysIn({ verb: 'Change', ritm: 'RITM0012345' }).length) {
+    stepResult.setFailed('_reservedKeysIn flagged an ordinary request');
+    return;
+  }
+
+  // NOT COVERED HERE, by construction: the production refusal itself. run()
+  // only refuses when test_mode is false, and this suite asserts test_mode is
+  // true in step 100. Exercising it needs an instance with test_mode off —
+  // see CURRENT-STATE-PDI-VALIDATION.md.
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
 </record_update>

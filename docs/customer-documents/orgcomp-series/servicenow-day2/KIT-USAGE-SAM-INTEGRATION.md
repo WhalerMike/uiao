@@ -115,6 +115,15 @@ telemetry is not a second channel for control-surface detail), and is stamped
 `test_mode`/`synthetic` so a sub-prod ATF run never contaminates a production
 count.
 
+Both counting methods exclude rows **known** to be synthetic
+(`synthetic != 'true'`) rather than requiring `synthetic == 'false'`. The
+difference matters operationally: the stricter form drops every row where the
+field is unpopulated — rows written before the column existed, rows from
+another writer, rows a future change forgets to stamp — so it under-reports.
+A monitoring predicate that under-reports shows a green board during an
+outage, which is worse than no monitoring at all. These queries fail toward
+counting, not toward silence.
+
 Three read paths, all on `SamCorrelationClient`:
 
 | Method | Answers | Use it for |
@@ -130,6 +139,16 @@ into your monitoring stack). A concentration of `not_approved` or
 `verification_unavailable` refusals in `dailyOutcomeCounts().refusedByReason`
 usually means the SAM verification path itself is down, not that callers are
 sending bad pushes — see the troubleshooting table below.
+
+Three codes mean something different and should be treated as security
+signals, not availability ones. `signature_subject_unbound` means a signer
+returned a claim set with no `requested_for`: the subject would have been
+caller-asserted and unsigned, so the push was refused. `subject_mismatch`
+means a validly-signed assertion was pushed for a *different* person than it
+was signed for. `not_approved` on the JWS path means a correctly-signed
+**denial** was pushed as if it were an approval. None of these is a
+misconfiguration to wave through — a run of them is worth reading the raw
+pushes over.
 
 ## Switching primary ↔ secondary (IdentityIQ ↔ ISC)
 
@@ -154,7 +173,7 @@ correlation contract and the approval-authority mapping are identical.
 | Push returns **400** | Missing a required correlation field | Fix the SDIM field map |
 | Push returns **422** | `requested_for` does not resolve to a reconciled identity | Correct the correlation id, or reconcile the identity first |
 | RITM created but no lineage (**202**) | Integration table write incomplete | Check `x_fed_day2_ops.tbl_integration` exists and the table has the lineage columns |
-| Duplicate pushes | SDIM retried | The endpoint is idempotent on `sam_request_id` — it returns the existing RITM, safe |
+| Duplicate pushes | SDIM retried | The endpoint is idempotent on the `sam_lineage` row for that `sam_request_id` — it returns the existing RITM, safe. The lookup is scoped to `record_type=sam_lineage` on purpose: `sam_push_outcome` telemetry must never satisfy it, or a push refused once could never succeed on retry |
 | Status read inconclusive | SAM API unreachable / auth expired | Fix the `sam` alias credential; the task correctly did **not** close on the failed read |
 | Everything returns canned values | `x_fed_day2_ops.test_mode = true` | Expected in sub-prod; set `false` in production |
 
