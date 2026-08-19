@@ -48,8 +48,6 @@ import re
 import sys
 from pathlib import Path
 
-import yaml
-
 ALLOW_MARKER = "adr-ref-allow"
 
 # Files whose ADR references must resolve. Globs are relative to the repo root.
@@ -112,36 +110,56 @@ RELATION_FIELDS = ("supersedes", "superseded_by", "amends")
 INVERSE = {"supersedes": "superseded_by", "superseded_by": "supersedes"}
 
 
-def parse_frontmatter(text: str) -> dict | None:
-    """Return the YAML frontmatter block as a dict, or None if absent/unparseable."""
+# Stdlib-only frontmatter reading, deliberately. This guard's workflow does a
+# bare setup-python with no dependency install, matching its sibling guards, so
+# importing PyYAML here would fail in CI while passing locally. Only three short
+# scalar/list fields are needed, and the id regex below does the real work — a
+# full YAML parse would buy nothing.
+FRONTMATTER_KEY_RE = re.compile(r"^(?P<key>[A-Za-z_][A-Za-z0-9_]*):(?P<rest>.*)$")
+ADR_ID_IN_VALUE_RE = re.compile(r"[Aa][Dd][Rr]-(\d{3})\b")
+
+
+def frontmatter_block(text: str) -> str | None:
+    """Return the raw frontmatter block, or None when the file has none."""
     if not text.startswith("---"):
         return None
     parts = text.split("---", 2)
-    if len(parts) < 3:
-        return None
-    try:
-        loaded = yaml.safe_load(parts[1])
-    except yaml.YAMLError:
-        return None
-    return loaded if isinstance(loaded, dict) else None
+    return parts[1] if len(parts) >= 3 else None
 
 
-def adr_ids_in(value: object) -> set[str]:
-    """Extract 3-digit ADR ids from a relationship value.
+def field_text(block: str, field: str) -> str | None:
+    """Return one top-level field's raw value text, or None when absent.
+
+    Captures the rest of the ``key:`` line plus any following indented list or
+    continuation lines, so both the scalar form (``amends: adr-066``) and the
+    block-list form (``amends:\\n  - adr-063-….md``) are covered. Absent is
+    distinct from present-but-null — the presence rule needs to tell them apart.
+    """
+    collected: list[str] | None = None
+    for line in block.splitlines():
+        match = FRONTMATTER_KEY_RE.match(line)
+        if match:
+            if collected is not None:
+                break  # next top-level key ends this value
+            if match.group("key") == field:
+                collected = [match.group("rest")]
+        elif collected is not None:
+            if line.strip() and not line[:1].isspace():
+                break
+            collected.append(line)
+    return "\n".join(collected) if collected is not None else None
+
+
+def adr_ids_in(value: str | None) -> set[str]:
+    """Extract 3-digit ADR ids from a relationship field's raw value text.
 
     Tolerates every shape the corpus actually uses: ``null``, ``[]``, a bare id
-    (``adr-066``), a filename (``adr-092-active-governance.md``), a list, and
-    prose entries like ``["ADR-025 §D7 (federal/commercial firewall)"]``.
+    (``adr-066``), a filename (``adr-092-active-governance.md``), a block list,
+    and prose entries like ``["ADR-025 §D7 (federal/commercial firewall)"]``.
     """
-    if value is None:
+    if not value:
         return set()
-    items = value if isinstance(value, (list, tuple)) else [value]
-    ids: set[str] = set()
-    for item in items:
-        if not isinstance(item, str):
-            continue
-        ids.update(m.group(1) for m in re.finditer(r"[Aa][Dd][Rr]-(\d{3})\b", item))
-    return ids
+    return {m.group(1) for m in ADR_ID_IN_VALUE_RE.finditer(value)}
 
 
 def scan_relationships(root: Path, valid: set[str]) -> tuple[list[str], list[str]]:
@@ -156,15 +174,16 @@ def scan_relationships(root: Path, valid: set[str]) -> tuple[list[str], list[str
             continue
         self_id = match.group(1)
         rel = path.relative_to(root).as_posix()
-        frontmatter = parse_frontmatter(path.read_text(encoding="utf-8", errors="replace"))
-        if frontmatter is None:
-            warnings.append(f"{rel}: frontmatter missing or unparseable — relationship fields not checked")
+        block = frontmatter_block(path.read_text(encoding="utf-8", errors="replace"))
+        if block is None:
+            warnings.append(f"{rel}: no frontmatter block — relationship fields not checked")
             continue
 
-        graph[self_id] = {field: adr_ids_in(frontmatter.get(field)) for field in RELATION_FIELDS}
+        raw = {field: field_text(block, field) for field in RELATION_FIELDS}
+        graph[self_id] = {field: adr_ids_in(raw[field]) for field in RELATION_FIELDS}
 
         for field in ("supersedes", "superseded_by"):
-            if field not in frontmatter:
+            if raw[field] is None:
                 warnings.append(f"{rel}: no '{field}:' field (backfill pending, issue #1427)")
 
         for field in RELATION_FIELDS:
