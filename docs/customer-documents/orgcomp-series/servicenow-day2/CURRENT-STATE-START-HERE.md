@@ -11,7 +11,7 @@
 > **The base kit is the [2027 Target State edition](#the-two-editions).** Keep it
 > as the goal; run *this* edition now.
 
-**Date Code:** 2026-08-18 08:32 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
+**Date Code:** 2026-08-19 10:22 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
 **Audience:** the implementer and operators running day-2 tasks on today's hybrid estate
 
 ## 0. What changed, in one paragraph
@@ -87,6 +87,14 @@ documents unchanged; the **Current-State docs** cover only the delta.
   Mover task from escaping the OUs your GPO/LAPS/delegation/audit scoping covers.
 - **Entra Connect** configured and healthy, with **password writeback** enabled if
   you intend to actuate password resets in Entra rather than AD.
+- **Three columns and one index on the integration table**
+  (`x_fed_day2_ops_integration`), specified in `KIT-BUILD-SPEC.md` §2b/§2b-i:
+  `sam_request_ref`, `reason_code`, `http_status`, and a **UNIQUE INDEX on
+  `sam_request_id`**. This is called out here as well as in the build spec
+  because **ServiceNow silently ignores a write to a column that does not
+  exist** — with these missing the SAM endpoint looks healthy while dropping
+  its telemetry, and the inbound idempotency check has no database-level
+  backstop. Nothing errors; the evidence simply is not there.
 
 ## 5. Disclaimers specific to this edition
 

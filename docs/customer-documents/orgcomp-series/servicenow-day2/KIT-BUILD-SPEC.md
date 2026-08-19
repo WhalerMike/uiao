@@ -15,7 +15,7 @@
 > hand-authored one would look importable and then fail or drift — worse than a
 > spec. So you build them from this spec and export the real thing.
 
-**Date Code:** 2026-07-22 11:00 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
+**Date Code:** 2026-08-19 10:22 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
 **Audience:** the implementation team (ServiceNow + Entra/Azure + SAM)
 
 ## 0. Build order (summary)

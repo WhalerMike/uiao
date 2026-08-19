@@ -8,7 +8,7 @@
 > admin / IGA operator, not the service-desk operator (see `KIT-USAGE-OPERATOR.md`
 > for the catalog tasks).
 
-**Date Code:** 2026-07-21 16:30 ET · **Audience:** IGA / integration admin ·
+**Date Code:** 2026-08-19 10:22 ET · **Audience:** IGA / integration admin ·
 **Primary: SailPoint IdentityIQ (on-prem)** · Secondary: Identity Security Cloud
 
 ## The decision-to-execution path
