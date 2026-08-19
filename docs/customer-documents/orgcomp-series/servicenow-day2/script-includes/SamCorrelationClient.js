@@ -167,13 +167,25 @@ SamCorrelationClient.prototype = {
 
     // -------------------------------------------------------------------------
     // NOT IMPLEMENTED (live mode) — same fail-closed rationale as
-    // fetchIdentityRequest. A real implementation MUST validate: the
-    // signature against publicKey, the issuer, the expiry, AND that the
-    // claims bind to the asserted sam_request_id — a validly-signed assertion
-    // that covers a DIFFERENT request is the obvious bypass a shallow
-    // "signature checks out" implementation would miss (see
-    // sam_inbound_ritm.js's subject-mismatch check for the equivalent guard
-    // on the pull-verify path).
+    // fetchIdentityRequest. A real implementation MUST validate the signature
+    // against publicKey, the issuer, and the expiry, and MUST return a claim
+    // set that binds ALL THREE of:
+    //
+    //   1. sam_request_id — a validly-signed assertion covering a DIFFERENT
+    //      request is the obvious bypass a shallow "signature checks out"
+    //      implementation would miss.
+    //   2. requested_for — the SUBJECT. Without it the endpoint has only the
+    //      caller-supplied, unsigned body value, so a valid assertion for one
+    //      person can be redirected to another. sam_inbound_ritm.js REFUSES a
+    //      claim set with no requested_for (signature_subject_unbound); this is
+    //      a hard requirement on your signer, not a nicety.
+    //   3. status — the DECISION. A correctly-signed DENIAL is still a denial.
+    //      The endpoint gates on it exactly as the pull-verify path does.
+    //
+    // Items 2 and 3 were absent from this contract until they were added
+    // alongside the endpoint guards: the pull-verify branch checked subject and
+    // decision while the JWS branch checked neither, so an implementer
+    // following the old text would have built the permissive version.
     //
     // test_mode: returns a canned claim set bound to the JWS string passed in
     // (not a real signature check) so the ATF suite can exercise the JWS
@@ -183,8 +195,13 @@ SamCorrelationClient.prototype = {
     verifyJws: function (jws, publicKey) {
         if (this.testMode) {
             if (!jws) return { ok: false, reason: 'empty jws' };
+            // Mirrors fetchIdentityRequest's canned subject so both verification
+            // paths are drivable from one fixture. requested_for is present
+            // because the endpoint now REFUSES a claim set without it — a canned
+            // set missing it would make every ATF JWS push fail closed.
             return { ok: true, claims: {
                 sam_request_id: jws,
+                requested_for: 'test-user-0001',
                 approval_authority: 'app-owner',
                 access_item: 'ATF-Test-Role',
                 risk_tier: '2',

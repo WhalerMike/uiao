@@ -13,6 +13,9 @@
 //
 // What changed:
 //   1. PULL-VERIFY. The push is now a NOTIFICATION, not an authorization. We
+//      (JWS path: the signed claims must bind the request id, the SUBJECT and
+//      an approved decision — signature validity alone answers "is this
+//      authentic", not "does it authorise THIS grant for THIS person".)
 //      call back to IIQ on sam_request_id, confirm the request exists, is
 //      approved, and matches the asserted subject/item, and record OUR
 //      VERIFICATION — not the caller's claim — as the evidence. Optional JWS
@@ -204,14 +207,46 @@
     // Verify the decision independently of the caller. Two supported methods;
     // if neither is configured we refuse, because an unverifiable push is
     // exactly the condition this fix exists to stop.
+    // One predicate, both branches. These checks diverging is exactly the
+    // defect this shares a commit with: pull-verify gated on approval and JWS
+    // did not, so a signed-but-DENIED assertion was accepted.
+    function isApprovedStatus(raw) {
+        var st = ('' + (raw || '')).toLowerCase();
+        return st === 'approved' || st === 'verified' || st === 'complete';
+    }
+
     function verifyWithSam(b) {
         var jwsKey = gs.getProperty('x_fed_day2_ops.sam_jws_public_key', '');
         if (jwsKey && b.jws) {
-            var jws = sam.verifyJws(b.jws, jwsKey);   // must validate sig, iss, exp, and bind to sam_request_id
+            // The signer must bind, at minimum: the request id, the SUBJECT and
+            // the decision. Signature validity alone answers "is this assertion
+            // authentic", never "does it authorise THIS grant for THIS person".
+            var jws = sam.verifyJws(b.jws, jwsKey);
             if (!jws.ok) return { ok: false, status: 401, code: 'bad_signature', reason: jws.reason };
+
             if (jws.claims.sam_request_id !== b.sam_request_id)
                 return { ok: false, status: 400, code: 'signature_subject_mismatch',
                          reason: 'signed payload does not bind to the asserted sam_request_id' };
+
+            // SUBJECT BINDING. Required, not optional-if-present: the claim set
+            // is the whole authority on this path (there is no second source to
+            // cross-check against, unlike pull-verify). A signer that omits the
+            // subject leaves requested_for unsigned and caller-controlled, so a
+            // valid assertion for one person could be redirected to another.
+            if (!jws.claims.requested_for)
+                return { ok: false, status: 400, code: 'signature_subject_unbound',
+                         reason: 'signed payload carries no requested_for claim — the subject would be ' +
+                                 'caller-asserted and unsigned; refusing (fail closed)' };
+            if (('' + jws.claims.requested_for).toLowerCase() !== ('' + b.requested_for).toLowerCase())
+                return { ok: false, status: 409, code: 'subject_mismatch',
+                         reason: 'signed requested_for does not match the pushed requested_for' };
+
+            // DECISION. A validly-signed DENIAL is still a denial.
+            if (!isApprovedStatus(jws.claims.status))
+                return { ok: false, status: 409, code: 'not_approved',
+                         reason: 'signed payload reports status "' +
+                                 ('' + (jws.claims.status || '')).toLowerCase() + '" — not an approved request' };
+
             return { ok: true, method: 'jws',
                      approval_authority: jws.claims.approval_authority,
                      access_item: jws.claims.access_item,
@@ -231,7 +266,7 @@
             return { ok: false, status: 502, code: 'verification_unavailable', reason: pulled.reason };
 
         var st = ('' + (pulled.data.executionStatus || pulled.data.status || '')).toLowerCase();
-        if (st !== 'approved' && st !== 'verified' && st !== 'complete')
+        if (!isApprovedStatus(st))
             return { ok: false, status: 409, code: 'not_approved',
                      reason: 'SAM reports status "' + st + '" — not an approved request' };
 

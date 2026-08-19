@@ -140,6 +140,16 @@ into your monitoring stack). A concentration of `not_approved` or
 usually means the SAM verification path itself is down, not that callers are
 sending bad pushes — see the troubleshooting table below.
 
+Three codes mean something different and should be treated as security
+signals, not availability ones. `signature_subject_unbound` means a signer
+returned a claim set with no `requested_for`: the subject would have been
+caller-asserted and unsigned, so the push was refused. `subject_mismatch`
+means a validly-signed assertion was pushed for a *different* person than it
+was signed for. `not_approved` on the JWS path means a correctly-signed
+**denial** was pushed as if it were an approval. None of these is a
+misconfiguration to wave through — a run of them is worth reading the raw
+pushes over.
+
 ## Switching primary ↔ secondary (IdentityIQ ↔ ISC)
 
 The client branches on one property:
