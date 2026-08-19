@@ -54,6 +54,8 @@ from typing import Any
 
 import yaml
 
+from _console import use_utf8_stdout
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REGISTRY_PATH = REPO_ROOT / "src" / "uiao" / "canon" / "document-registry.yaml"
@@ -305,6 +307,7 @@ def _table(entries: list[DocEntry]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    use_utf8_stdout()
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
     parser.add_argument(
         "--output",

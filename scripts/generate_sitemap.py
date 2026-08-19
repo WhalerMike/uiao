@@ -50,6 +50,8 @@ from pathlib import Path
 
 import yaml
 
+from _console import use_utf8_stdout
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 # Quarto's project root is docs/ (that is where _quarto.yml lives), so
@@ -243,6 +245,7 @@ def render() -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    use_utf8_stdout()
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
     parser.add_argument(
         "--output",

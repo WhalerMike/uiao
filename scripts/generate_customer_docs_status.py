@@ -57,6 +57,8 @@ from pathlib import Path
 
 import yaml
 
+from _console import use_utf8_stdout
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CUSTOMER_DOCS = REPO_ROOT / "docs" / "customer-documents"
@@ -380,6 +382,7 @@ def render(entries: list[DocEntry]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    use_utf8_stdout()
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
     parser.add_argument(
         "--output",
