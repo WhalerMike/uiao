@@ -393,12 +393,17 @@ CONTENTS
                      CURRENT-STATE-*.md docs cover the hybrid delta; shared KIT-*
                      docs (variables, implementation, scripts, build spec, SAM) apply
                      to both editions. Every doc in the docx/ set below ships here as
-                     its *.md source with a rendered .docx sibling; the RunBook/,
-                     lab/ and examples/ material is Markdown and scripts only.
-    RunBook/         the live-validation runbook and its cover sheet.
-    lab/             New-Day2AdLab.ps1 — stands up a throwaway AD lab for the AD
-                     leg validation track.
-    examples/        sample SAM push payloads for exercising the inbound endpoint.
+                     its *.md source WITH a rendered .docx sibling. The three
+                     directories below are the exception and carry Markdown and
+                     scripts, with one .docx of their own noted where it exists.
+    RunBook/         the live-validation RunBook (all three tracks), its cover
+                     sheet, and a README index. The RunBook itself also ships as
+                     Day2Kit-Live-Validation-RunBook.docx; the cover and README
+                     are Markdown only.
+    lab/             New-Day2AdLab.ps1 — stands up a throwaway Hyper-V AD lab for
+                     the AD leg validation track. The single canonical copy.
+    examples/        sample SAM push payloads (and a README) for exercising the
+                     inbound endpoint. Markdown and JSON only.
   docx/              the Current State doc set as Word, in reading order (0..11),
                      including a diagram for every catalog task's current-state
                      write path (Operator Usage) and both live-validation tracks.
