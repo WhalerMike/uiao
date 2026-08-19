@@ -5,7 +5,7 @@
 > promotion. Deploy small, prove it on real people, expand on evidence — never a
 > big-bang enablement.
 
-**Date Code:** 2026-08-18 08:32 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
+**Date Code:** 2026-08-19 10:22 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
 **Audience:** the implementation lead + the ISSO/approver for the pilot
 
 ## 0. Entry criteria (do not start the pilot until all are true)
@@ -39,6 +39,14 @@
   delegated rights are otherwise asserted in code comments and never verified,
   and the VERIFY read-back has never run against a live DC. Waiving it is a
   legitimate risk decision; leaving it undone silently is not.
+- The integration table carries the **`sam_request_ref`, `reason_code` and
+  `http_status` columns and the UNIQUE INDEX on `sam_request_id`**
+  (`KIT-BUILD-SPEC.md` §2b/§2b-i) — **verified by inspecting the table, not by
+  a green ATF run**. ServiceNow ignores writes to columns that do not exist
+  without raising anything, so every SAM suite can pass while push telemetry is
+  silently discarded and the inbound idempotency check runs with no
+  database-level backstop. This is the one entry criterion a passing test suite
+  cannot demonstrate.
 - A **rollback owner** and a **go/no-go approver** (ISSO) are named.
 
 ## 1. Choose the pilot cohort
