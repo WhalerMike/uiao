@@ -227,6 +227,7 @@
 - [OrgLink — Link Object Class for External Interconnection Governance; Candidate Fourth Org-Family Pillar](adr/adr-132-orglink-link-object-class.html)
 - [GovRAMP Reciprocity Vertical Pack — State/Local Eligibility as a Crosswalk, and the state-local Boundary](adr/adr-133-govramp-reciprocity-vertical-pack.html)
 - [OrgLink Pillar Elevation — The Fourth Org-Family Pillar Goes Live](adr/adr-134-orglink-pillar-elevation.html)
+- [SailPoint ISC Governance — Option-B Ratification and Native Cloud IAM/RBAC Reconciliation Binding](adr/adr-135-sailpoint-isc-governance-option-b-ratification.html)
 
 ## Schema Reference
 
