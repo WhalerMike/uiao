@@ -95,7 +95,7 @@ writeback target:
 | `enterprise:User.manager.value` | `manager` | DN-resolved | See §4 |
 | `enterprise:User.employeeNumber` | `employeeID` | direct | |
 | `usageLocation` | `c` (country) | direct | ISO-3166 alpha-2 |
-| `extensionAttribute1` (OrgPath) | `extensionAttribute1` | direct | Preserved across the boundary |
+| `extensionAttribute15` (derived OrgPath) | `extensionAttribute15` | direct | Preserved across the boundary |
 | `extensionAttribute2` (worker-type tag) | `extensionAttribute2` | direct | |
 | `accountEnabled` | `userAccountControl` (bit 2) | bit-mapped | true = bit clear; false = bit set |
 | (computed) | `sAMAccountName` | derived | See §3 |

@@ -86,7 +86,7 @@ Estimated Duration: 3–5 business days. Owner: Identity Engineer.
 
 Steps:
 
-For each user, write the OrgPath value to extensionAttribute1.
+For each user, write the OrgPath facet values to extensionAttribute1-10 and the derived canonical path to extensionAttribute15 (ADR-127).
 
 Write role code to extensionAttribute2 based on role mapping.
 
@@ -120,7 +120,7 @@ Validate group membership counts against expected user populations.
 
 Update migration status.
 
-# Create a dynamic security group $GroupParams = @{     DisplayName     = "OrgTree-FIN-All"     Description     = "All Finance Division members including subdepartments"     MailEnabled     = $false     MailNickname    = "OrgTree-FIN-All"     SecurityEnabled = $true     GroupTypes      = @("DynamicMembership")     MembershipRule  = '(user.extensionAttribute1 -eq "ORG-FIN") or (user.extensionAttribute1 -startsWith "ORG-FIN-")'     MembershipRuleProcessingState = "On" } New-MgGroup -BodyParameter $GroupParams  # Verify group creation $CreatedGroup = Get-MgGroup -Filter "displayName eq 'OrgTree-FIN-All'" Write-Verbose "Group created: $($CreatedGroup.DisplayName), Id: $($CreatedGroup.Id)"  # Check membership after processing delay $Members = Get-MgGroupMember -GroupId $CreatedGroup.Id -All Write-Verbose "OrgTree-FIN-All membership count: $($Members.Count)"  # Validate membership rule matches canonical definition $CanonicalRule = '(user.extensionAttribute1 -eq "ORG-FIN") or (user.extensionAttribute1 -startsWith "ORG-FIN-")' if ($CreatedGroup.MembershipRule -ne $CanonicalRule) {     Write-Error "Membership rule drift detected for OrgTree-FIN-All" }
+# Create a dynamic security group $GroupParams = @{     DisplayName     = "OrgTree-FIN-All"     Description     = "All Finance Division members including subdepartments"     MailEnabled     = $false     MailNickname    = "OrgTree-FIN-All"     SecurityEnabled = $true     GroupTypes      = @("DynamicMembership")     MembershipRule  = '(user.extensionAttribute15 -startsWith "Department=Finance|")'     MembershipRuleProcessingState = "On" } New-MgGroup -BodyParameter $GroupParams  # Verify group creation $CreatedGroup = Get-MgGroup -Filter "displayName eq 'OrgTree-FIN-All'" Write-Verbose "Group created: $($CreatedGroup.DisplayName), Id: $($CreatedGroup.Id)"  # Check membership after processing delay $Members = Get-MgGroupMember -GroupId $CreatedGroup.Id -All Write-Verbose "OrgTree-FIN-All membership count: $($Members.Count)"  # Validate membership rule matches canonical definition $CanonicalRule = '(user.extensionAttribute15 -startsWith "Department=Finance|")' if ($CreatedGroup.MembershipRule -ne $CanonicalRule) {     Write-Error "Membership rule drift detected for OrgTree-FIN-All" }
 
 Validation Criteria: All groups from Appendix B exist in tenant; membership rules match canonical definitions exactly; membership counts are non-zero for populated OrgPaths.
 
@@ -144,7 +144,7 @@ Create scoped role assignments per Appendix D role matrix.
 
 Validate AU membership and role assignment accuracy.
 
-# Create Administrative Unit $AUParams = @{     DisplayName = "AU-FIN"     Description = "Administrative Unit for Finance Division (ORG-FIN)"     MembershipType = "Dynamic"     MembershipRule = '(user.extensionAttribute1 -eq "ORG-FIN") or (user.extensionAttribute1 -startsWith "ORG-FIN-")'     MembershipRuleProcessingState = "On" } $NewAU = New-MgDirectoryAdministrativeUnit -BodyParameter $AUParams Write-Verbose "AU created: $($NewAU.DisplayName), Id: $($NewAU.Id)"  # Assign scoped role $RoleDefinition = Get-MgRoleManagementDirectoryRoleDefinition -Filter "displayName eq 'User Administrator'" $AssigneeGroup = Get-MgGroup -Filter "displayName eq 'OrgTree-FIN-Admins'"  $RoleAssignment = @{     RoleDefinitionId = $RoleDefinition.Id     PrincipalId      = $AssigneeGroup.Id     DirectoryScopeId = "/administrativeUnits/$($NewAU.Id)" } New-MgRoleManagementDirectoryRoleAssignment -BodyParameter $RoleAssignment  # Validate $AUMembers = Get-MgDirectoryAdministrativeUnitMember -AdministrativeUnitId $NewAU.Id -All Write-Verbose "AU-FIN member count: $($AUMembers.Count)"
+# Create Administrative Unit $AUParams = @{     DisplayName = "AU-FIN"     Description = "Administrative Unit for Finance Division (ORG-FIN)"     MembershipType = "Dynamic"     MembershipRule = '(user.extensionAttribute15 -startsWith "Department=Finance|")'     MembershipRuleProcessingState = "On" } $NewAU = New-MgDirectoryAdministrativeUnit -BodyParameter $AUParams Write-Verbose "AU created: $($NewAU.DisplayName), Id: $($NewAU.Id)"  # Assign scoped role $RoleDefinition = Get-MgRoleManagementDirectoryRoleDefinition -Filter "displayName eq 'User Administrator'" $AssigneeGroup = Get-MgGroup -Filter "displayName eq 'OrgTree-FIN-Admins'"  $RoleAssignment = @{     RoleDefinitionId = $RoleDefinition.Id     PrincipalId      = $AssigneeGroup.Id     DirectoryScopeId = "/administrativeUnits/$($NewAU.Id)" } New-MgRoleManagementDirectoryRoleAssignment -BodyParameter $RoleAssignment  # Validate $AUMembers = Get-MgDirectoryAdministrativeUnitMember -AdministrativeUnitId $NewAU.Id -All Write-Verbose "AU-FIN member count: $($AUMembers.Count)"
 
 Validation Criteria: All AUs from Appendix D exist with correct membership rules; all role assignments from matrix are active; restricted management flags are set correctly.
 

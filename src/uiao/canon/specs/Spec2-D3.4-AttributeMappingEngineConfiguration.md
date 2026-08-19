@@ -147,7 +147,7 @@ Pass-through fields (D1.1 → SCIM):
 | Output field | Computation |
 |---|---|
 | `userName` (UPN) | UPN generator (D1.5; D3.2 §3.3) |
-| `extensionAttribute1` | OrgPath calculator (D3.2 §3.2; ADR-035 codebook + ADR-048 attribute selection) |
+| `extensionAttribute1`–`10` + `extensionAttribute15` | OrgPath calculator (D3.2 §3.2; ADR-035 codebook, ADR-078 facets, ADR-127 derived path) |
 | `enterprise:User.employeeNumber` | = `externalId` (Microsoft requires both) |
 | `active` | derived from D1.1 `employmentStatus` per D2.x rules |
 | `accountEnabled` (AD) | = `active` |

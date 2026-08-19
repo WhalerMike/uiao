@@ -15,6 +15,8 @@ publication_style: include
 published_at: docs/adr/adr-078-orgpath-attribute-schema-15-facet.html
 ---
 
+<!-- orgpath-slot-allow-file: the Model A/B/C comparison table quotes the retired bindings verbatim -->
+
 # ADR-078: OrgPath Attribute Schema — 15-Facet Multi-Attribute Model Supersedes Composite Path
 
 ## Status

@@ -325,7 +325,7 @@ OrgPath preservation under retention is a hard rule:
 
 | Attribute | Preserved during retention? | Reason |
 |---|---|---|
-| `extensionAttribute1` (OrgPath) | YES | Audit traceability |
+| `extensionAttribute15` (derived OrgPath) | YES | Audit traceability |
 | `department` | YES | Audit traceability |
 | `manager.value` | YES (frozen at termination) | Audit traceability |
 | `displayName` | YES | Audit traceability |

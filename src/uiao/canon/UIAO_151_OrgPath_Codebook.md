@@ -18,6 +18,8 @@ provenance_flatten:
   flattened_by: "ADR-060"
 ---
 
+<!-- orgpath-slot-allow-file: the Model C banner quotes the retired Model A binding it replaced -->
+
 # Appendix A — OrgPath Codebook (Model C)
 
 > **Model C (15-facet multi-attribute) is the canonical OrgPath schema for new UIAO adoption.** Per [ADR-078](adr/adr-078-orgpath-attribute-schema-15-facet.md), the prior Model A composite-hyphen path (`extensionAttribute1: ORG-FIN-AP-EAST`) is superseded. Per [ADR-127](adr/adr-127-orgpath-hybrid-derived-path.md) the model is **Hybrid-C+Path**: the facets are the governance layer on slots 1–14, and slot 15 carries a **derived canonical OrgPath** (the inheritance layer) recomputed from the hierarchy facets, with the trailing `|` always present. The executable canon at [`data/orgpath/codebook.yaml`](data/orgpath/codebook.yaml) is `schema_version: 2.1.0`, validated by [`schemas/orgpath/codebook.schema.json`](../schemas/orgpath/codebook.schema.json), and loaded into a `Codebook` / `Facet` / `FacetValue` Python API at [`uiao.modernization.orgtree.codebook`](../modernization/orgtree/codebook.py).

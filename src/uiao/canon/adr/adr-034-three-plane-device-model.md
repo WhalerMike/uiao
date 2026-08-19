@@ -23,6 +23,8 @@ publication_style: include
 published_at: docs/adr/adr-034-three-plane-device-model.html
 ---
 
+<!-- orgpath-slot-allow-file: pre-ADR-078 decision; describes the composite-path era it was written in -->
+
 # ADR-031: Three-Plane Device Model and OrgPath Plane-Aware Architecture
 
 ## Status

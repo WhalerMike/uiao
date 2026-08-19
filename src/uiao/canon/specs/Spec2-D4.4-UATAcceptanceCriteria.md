@@ -129,7 +129,7 @@ Operator verifies (within 5 minutes of `terminationDate` reaching today):
 | All sessions revoked (active session terminated) | Pre-existing session test |
 | Removed from statically-assigned groups | Group membership lookup |
 | Mailbox archived → shared | Exchange admin center |
-| OrgPath FROZEN at termination value | M365 admin center extensionAttribute1 inspection over time |
+| OrgPath FROZEN at termination value | M365 admin center facet + `extensionAttribute15` inspection over time |
 | Direct reports' manager-reassignment ticket exists | Operator queue inspection |
 | Litigation hold applied (if flagged) | Purview compliance page |
 
@@ -138,7 +138,7 @@ Operator verifies (within 5 minutes of `terminationDate` reaching today):
 | Criterion | How verified |
 |---|---|
 | `department` updated | M365 admin center |
-| `extensionAttribute1` (OrgPath) updated within 15 min p95 | Inspect attribute |
+| `extensionAttribute15` (derived OrgPath) updated within 15 min p95 | Inspect attribute |
 | Old department's dynamic group memberships removed within 30 min | Group lookup |
 | New department's dynamic group memberships added within 30 min | Group lookup |
 | Intune policy targeting reflects new dept within 1h | Intune assignment-list page |

@@ -1,0 +1,49 @@
+name: OrgPath Slot Binding
+
+# Fails when canon prose binds a non-derived extensionAttribute slot to the
+# OrgPath *value* — the retired Model A/B shape ADR-078 replaced with facets and
+# ADR-127 moved to extensionAttribute15. A spec that says "stamp OrgPath into
+# extensionAttribute1" reads fine and configures a mapping engine to write the
+# whole path into the region slot; issue #1426 found 46 such files.
+#
+# Enforced with --strict over src/uiao/canon (the SSOT), which is clean. The
+# authored docs/ corpus still carries ~80 Model A examples needing a per-example
+# semantic remap; that backlog is reported advisory-only until it lands, so it
+# stays visible without blocking unrelated PRs.
+#
+# To resolve a failing run: fix the binding against
+# src/uiao/canon/data/orgpath/codebook.yaml, or — for content deliberately
+# describing the retired era — append 'orgpath-slot-allow' to the line, or
+# 'orgpath-slot-allow-file' in an HTML comment for a whole historical document.
+# Run locally:
+#     python scripts/check_orgpath_slot_binding.py --strict --path src/uiao/canon
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - 'src/uiao/canon/**'
+      - 'docs/**/*.md'
+      - 'docs/**/*.qmd'
+      - 'scripts/check_orgpath_slot_binding.py'
+      - 'tests/test_orgpath_slot_binding.py'
+
+jobs:
+  orgpath-slot-binding:
+    name: Check OrgPath slot bindings match the codebook
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Enforce canon (blocking)
+        run: python scripts/check_orgpath_slot_binding.py --strict --path src/uiao/canon
+
+      - name: Report docs backlog (advisory)
+        run: python scripts/check_orgpath_slot_binding.py --path docs

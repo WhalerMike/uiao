@@ -22,6 +22,8 @@ publication_style: include
 published_at: docs/adr/adr-063-orgpath-storage-slot-binding.html
 ---
 
+<!-- orgpath-slot-allow-file: this ADR IS the composite-path slot binding; amended by ADR-127 per its banner -->
+
 # ADR-063: OrgPath Storage Slot — extensionAttribute1 Binding
 
 ## Status

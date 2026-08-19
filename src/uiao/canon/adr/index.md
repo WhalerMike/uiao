@@ -1,3 +1,4 @@
+<!-- orgpath-slot-allow-file: quotes ADR-063's title, which contains the slot name as a proper noun -->
 # Architectural Decision Records (ADRs)
 
 This index lists all UIAO Architectural Decision Records.

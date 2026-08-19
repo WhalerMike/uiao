@@ -102,7 +102,7 @@ Out of scope:
 
 | Property | Value |
 |---|---|
-| Definition | An Entra user's `extensionAttribute1` (OrgPath) was emitted by a calculator version older than the currently-deployed calculator version, AND re-running the current calculator on the user's current HR record produces a different value |
+| Definition | An Entra user's `extensionAttribute15` (derived OrgPath) was emitted by a calculator version older than the currently-deployed calculator version, AND re-running the current calculator on the user's current HR record produces a different value |
 | Severity | Medium (Sev 3) |
 | Cadence | After codebook update (ADR-035 per-update); daily background pass |
 | Expected action | Re-stamp affected records via on-demand recompute. The middleware exposes a `uiao orgpath restamp <externalId>` CLI for targeted re-stamping |
