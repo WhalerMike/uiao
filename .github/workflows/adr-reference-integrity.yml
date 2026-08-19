@@ -1,13 +1,21 @@
 name: ADR Reference Integrity
 
-# Fails when any ADR-NNN reference in canon, docs, or the root agent files has
-# no matching src/uiao/canon/adr/adr-NNN-*.md — a typo or a hallucinated
-# decision record. Tests don't cover prose, so this is the gate that keeps a
-# confident-but-wrong canon citation from merging silently. The corpus resolves
-# cleanly today, so this guards against regressions only.
+# Two guards, one script.
 #
-# To resolve a failing run: fix the reference, add the missing ADR, or — for an
-# intended placeholder — append 'adr-ref-allow' to the line. Run locally:
+# 1. Fails when any ADR-NNN reference in canon, docs, or the root agent files has
+#    no matching src/uiao/canon/adr/adr-NNN-*.md — a typo or a hallucinated
+#    decision record. Tests don't cover prose, so this is the gate that keeps a
+#    confident-but-wrong canon citation from merging silently.
+# 2. Fails when the ADR relationship graph (supersedes / superseded_by / amends
+#    frontmatter) has an edge that doesn't resolve, names itself, or is recorded
+#    from one end only. Presence gaps are advisory until the backfill completes
+#    (issue #1427).
+#
+# Both resolve cleanly today, so this guards against regressions only.
+#
+# To resolve a failing run: fix the reference, add the missing ADR, record the
+# missing inverse edge, or — for an intended placeholder — append
+# 'adr-ref-allow' to the line. Run locally:
 #     python scripts/check_adr_references.py
 
 # Always runs on PRs (no path filter) so the required check always reports;
@@ -26,6 +34,7 @@ on:
       - 'README.md'
       - 'CONTRIBUTING.md'
       - 'scripts/check_adr_references.py'
+      - 'tests/test_adr_relationship_graph.py'
 
 jobs:
   adr-reference-integrity:

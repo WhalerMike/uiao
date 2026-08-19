@@ -4,6 +4,8 @@ adr: "ADR-025"
 status: ACCEPTED
 date: "2026-03-05"
 deciders: ["UIAO Governance Board"]
+supersedes: null
+superseded_by: ["ADR-028 §D7 (federal/commercial firewall with uiao-gos)"]
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-025-adapter-health-liveness.html
