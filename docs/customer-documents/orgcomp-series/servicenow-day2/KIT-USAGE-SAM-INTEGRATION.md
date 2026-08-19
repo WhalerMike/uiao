@@ -115,6 +115,15 @@ telemetry is not a second channel for control-surface detail), and is stamped
 `test_mode`/`synthetic` so a sub-prod ATF run never contaminates a production
 count.
 
+Both counting methods exclude rows **known** to be synthetic
+(`synthetic != 'true'`) rather than requiring `synthetic == 'false'`. The
+difference matters operationally: the stricter form drops every row where the
+field is unpopulated — rows written before the column existed, rows from
+another writer, rows a future change forgets to stamp — so it under-reports.
+A monitoring predicate that under-reports shows a green board during an
+outage, which is worse than no monitoring at all. These queries fail toward
+counting, not toward silence.
+
 Three read paths, all on `SamCorrelationClient`:
 
 | Method | Answers | Use it for |

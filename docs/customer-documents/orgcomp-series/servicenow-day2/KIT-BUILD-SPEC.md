@@ -97,10 +97,12 @@ may repoint `tbl_integration` to it — the property exists for that.)
 | `verified_status` | String | SAM client | the VERIFIED SAM-side status at push time |
 | `verified_item` | String | SAM client | the VERIFIED access item |
 | `test_mode` | True/False (String) | SAM client | was this row written while `test_mode` was honoured — machine-filterable, same purpose as the evidence table's stamp |
-| `synthetic` | True/False (String) | SAM client | mirrors `test_mode`; a monitoring query MUST exclude `synthetic=true` rows (see `KIT-USAGE-SAM-INTEGRATION.md` "Monitoring the inbound endpoint") |
+| `synthetic` | True/False (String) | SAM client | mirrors `test_mode`; a monitoring query MUST **exclude `synthetic=true`** rows — i.e. `synthetic != 'true'`, never `synthetic == 'false'`. The latter requires proof of non-syntheticness and silently drops any row where the field is unpopulated (rows predating the column, rows from another writer, rows a future refactor forgets to stamp), under-reporting an outage as a green board (see `KIT-USAGE-SAM-INTEGRATION.md` "Monitoring the inbound endpoint") |
 | `vendor` | String | native actuator | SaaS vendor (Lane F) |
 | `business_owner` | Reference (`sys_user`) | native actuator | integration owner |
-| `business_need` | String | native actuator; SAM client (`sam_push_outcome` rows) | justification (native actuator) or `http_status=<n> reason=<code>` (push-outcome telemetry) |
+| `reason_code` | String | SAM client (`recordPushOutcome`) | the opaque reason code for this attempt (`unverified`, `unresolved_subject`, `created`, `idempotent`, …). **Its own column on purpose.** It was previously packed into `business_need` and recovered with `/reason=(\S+)/`, which truncates at the first space — and `Day2Env.scrub` replaces `[\r\n\t]` *with a space*, so scrubbing could itself create the separator that broke the parse, bucketing a real code as a wrong one or as `unknown`. `dailyOutcomeCounts` groups on this column |
+| `http_status` | Integer | SAM client (`recordPushOutcome`) | the HTTP status returned to the caller for this attempt |
+| `business_need` | String | native actuator; SAM client (`sam_push_outcome` rows) | justification (native actuator) or `http_status=<n> reason=<code>` (push-outcome telemetry). **Prose only** — nothing parses it any more; read `reason_code` / `http_status` instead |
 | `attributes_shared` | String | native actuator | directory attributes leaving the boundary (AC-20) |
 | `state` | String | native actuator; SAM client (`sam_push_outcome` rows) | `requested` → … (native actuator), or `accepted` \| `refused` (push-outcome telemetry) |
 | `boundary` | String | all | `gcc-moderate` |
