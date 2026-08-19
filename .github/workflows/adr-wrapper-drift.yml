@@ -1,0 +1,63 @@
+name: ADR Wrapper Drift
+
+# Fails when the committed ADR wrapper pages, index, or sidebar snippet differ
+# from what scripts/generate_adr_qmd_wrappers.py produces.
+#
+# This gate exists because of issue #1429. PR #1421 moved the section .docx
+# bundles to GitHub Releases by hand-editing the 85 generated pages, but did
+# not update the generator that produces them — so the next person to run it
+# silently reverted #1421 on docs/adr/adr-index.qmd. Nothing caught that,
+# because "generated file was hand-edited" is invisible to every other gate:
+# the file is committed, well-formed, and internally consistent.
+#
+# The invariant is simple and worth stating: for a generated artifact,
+# regenerating on a clean checkout must be a no-op. Anything else means the
+# committed file and its generator disagree, and one of them is wrong.
+#
+# To resolve a failing run:
+#     python scripts/generate_adr_qmd_wrappers.py
+# then commit what it changes — or, if the generator is the thing that is
+# wrong, fix the generator instead. Do not hand-edit the output.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - 'src/uiao/canon/adr/**'
+      - 'docs/adr/**'
+      - 'tools/publication-gaps/adr-sidebar-snippet.yaml'
+      - 'scripts/generate_adr_qmd_wrappers.py'
+      - '.github/workflows/quarto.yml'
+
+jobs:
+  adr-wrapper-drift:
+    name: Regenerate ADR wrappers and check for drift
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --quiet pyyaml
+
+      - name: Regenerate
+        run: python scripts/generate_adr_qmd_wrappers.py
+
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code -- docs/adr tools/publication-gaps/adr-sidebar-snippet.yaml; then
+            echo "::error::ADR wrappers/index/sidebar are stale or were hand-edited."
+            echo "Run: python scripts/generate_adr_qmd_wrappers.py — then commit the result."
+            exit 1
+          fi
+          if [ -n "$(git status --porcelain -- docs/adr)" ]; then
+            echo "::error::The generator emitted an untracked ADR page (an ADR with no committed wrapper)."
+            git status --porcelain -- docs/adr
+            exit 1
+          fi

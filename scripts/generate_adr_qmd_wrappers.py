@@ -38,6 +38,32 @@ from typing import Any
 import yaml
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+# Section .docx bundles are published as GitHub Release assets, not to Pages
+# (PR #1421). The release tag is owned by the deploy workflow; read it from
+# there rather than keeping a second copy that can silently drift — which is
+# exactly what happened: #1421 hand-edited the 85 generated pages but not this
+# generator, so re-running it reverted the change (issue #1429).
+QUARTO_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "quarto.yml"
+DOWNLOADS_RELEASE_TAG_FALLBACK = "downloads-latest"
+RELEASE_ASSET_BASE = "https://github.com/WhalerMike/uiao/releases/download"
+
+
+def downloads_release_tag() -> str:
+    """Read the release tag the deploy workflow publishes bundles under."""
+    try:
+        text = QUARTO_WORKFLOW.read_text(encoding="utf-8")
+    except OSError:
+        return DOWNLOADS_RELEASE_TAG_FALLBACK
+    match = re.search(r"^\s*tag_name:\s*(\S+)\s*$", text, re.M)
+    return match.group(1) if match else DOWNLOADS_RELEASE_TAG_FALLBACK
+
+
+def bundle_url(name: str) -> str:
+    """Absolute Release-asset URL for a section bundle, e.g. adr-bundle.docx."""
+    return f"{RELEASE_ASSET_BASE}/{downloads_release_tag()}/{name}"
+
+
 ADR_SOURCE_DIR = REPO_ROOT / "src" / "uiao" / "canon" / "adr"
 ADR_OUTPUT_DIR = REPO_ROOT / "docs" / "adr"
 SIDEBAR_SNIPPET = REPO_ROOT / "tools" / "publication-gaps" / "adr-sidebar-snippet.yaml"
@@ -241,7 +267,7 @@ date: 2026-05-14
 
 ::: {{.callout-tip}}
 ## Download the full section
-**[adr-bundle.docx](adr-bundle.docx)** — every ADR in this section concatenated
+**[adr-bundle.docx]({bundle_url("adr-bundle.docx")})** — every ADR in this section concatenated
 into one Word document. Regenerated on every site deploy. Each ADR below is also
 downloadable individually as its own `.docx` from its page.
 :::
