@@ -57,6 +57,8 @@ import re
 import sys
 from pathlib import Path
 
+from _console import use_utf8_stdout
+
 ALLOW_MARKER = "orgpath-slot-allow"
 # A whole document may legitimately describe the retired era — ADR-063 *is* the
 # composite-path slot binding, ADR-078's comparison table quotes Model A/B
@@ -170,11 +172,7 @@ def iter_scan_files(root: Path, subpath: str | None = None) -> list[Path]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    # Canon prose carries box-drawing, arrows, and en-dashes. On a Windows
-    # cp1252 console an un-encodable char raises mid-print, truncating the
-    # findings list — which reads as "fewer findings" rather than as a crash.
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    use_utf8_stdout()
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strict", action="store_true", help="exit 1 when any finding remains")
