@@ -110,8 +110,15 @@ def test_canon_is_clean_under_strict() -> None:
 
 
 def test_guard_imports_no_third_party_modules() -> None:
+    """The workflow runs a bare setup-python with no dependency install.
+
+    First-party siblings under ``scripts/`` are fine — they ship in the
+    checkout. Only a genuinely third-party import would break CI.
+    """
+    stdlib = {"argparse", "re", "sys", "pathlib"}
+    first_party = {"_console"}
     source = (Path(__file__).parent.parent / "scripts" / "check_orgpath_slot_binding.py").read_text(encoding="utf-8")
     for line in source.splitlines():
         if line.startswith(("import ", "from ")) and "__future__" not in line:
             module = line.split()[1].split(".")[0]
-            assert module in {"argparse", "re", "sys", "pathlib"}, f"would break CI: {line!r}"
+            assert module in stdlib | first_party, f"third-party import would break CI: {line!r}"
