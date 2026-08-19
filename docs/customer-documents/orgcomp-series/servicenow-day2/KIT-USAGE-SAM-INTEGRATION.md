@@ -154,7 +154,7 @@ correlation contract and the approval-authority mapping are identical.
 | Push returns **400** | Missing a required correlation field | Fix the SDIM field map |
 | Push returns **422** | `requested_for` does not resolve to a reconciled identity | Correct the correlation id, or reconcile the identity first |
 | RITM created but no lineage (**202**) | Integration table write incomplete | Check `x_fed_day2_ops.tbl_integration` exists and the table has the lineage columns |
-| Duplicate pushes | SDIM retried | The endpoint is idempotent on `sam_request_id` — it returns the existing RITM, safe |
+| Duplicate pushes | SDIM retried | The endpoint is idempotent on the `sam_lineage` row for that `sam_request_id` — it returns the existing RITM, safe. The lookup is scoped to `record_type=sam_lineage` on purpose: `sam_push_outcome` telemetry must never satisfy it, or a push refused once could never succeed on retry |
 | Status read inconclusive | SAM API unreachable / auth expired | Fix the `sam` alias credential; the task correctly did **not** close on the failed read |
 | Everything returns canned values | `x_fed_day2_ops.test_mode = true` | Expected in sub-prod; set `false` in production |
 

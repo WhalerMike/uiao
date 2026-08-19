@@ -72,6 +72,7 @@ inputs that trigger the asserted path:
 | `atf-sam-negative-missing-role.xml` | caller without the explicit `sam_inbound` grant fails AuthZ, including `admin` (403) |
 | `atf-sam-negative-unresolved-subject.xml` | zero-match and ambiguous-match `requested_for` both fail to resolve (422) |
 | `atf-sam-idempotent-repush.xml` | a re-push of a correlated `sam_request_id` resolves to the same RITM, not a duplicate |
+| `atf-sam-idempotent-repush-after-refusal.xml` | a push REFUSED once still creates a RITM on retry — refusal telemetry must never satisfy the idempotency check (regression: an unscoped clause 5 matched it and silently dropped the request) |
 | `atf-sam-negative-pull-verify-unavailable.xml` | unconfigured (or unwired live-mode) verification refuses every push |
 | `atf-sam-testmode-vs-live.xml` | canned `test_mode` responses vs. fail-closed live-mode behavior, and the flip is reversible |
 | `atf-sam-closure-writeback.xml` | closure write-back is opt-in, works when enabled, and never blocks a real closure even when forced to fail |

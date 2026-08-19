@@ -23,8 +23,11 @@
 //   3. IDENTITY RESOLUTION. correlation_id only (no mutable-email fallback),
 //      active users only, and an ambiguous match is refused rather than
 //      silently resolved to the first row.
-//   4. IDEMPOTENCY. Still keyed on sam_request_id, but the check is paired with
-//      a REQUIRED unique index (see the deployment note) because check-then-
+//   4. IDEMPOTENCY. Keyed on (record_type='sam_lineage', sam_request_id) — the
+//      integration table also holds sam_push_outcome telemetry rows carrying
+//      the same sam_request_id, so an unscoped lookup matches a prior refusal
+//      and silently drops the retried request (see clause 5). Paired with a
+//      REQUIRED unique index (see the deployment note) because check-then-
 //      insert alone races.
 //   5. ROLE CHECK. gs.hasRole() returns true for admin, so the defensive
 //      assertion was satisfied by any admin-scoped caller. Now checks explicit
@@ -35,6 +38,13 @@
 //
 // DEPLOYMENT NOTES (required, not optional):
 //   * Create a UNIQUE INDEX on <integration table>.sam_request_id.
+//     This is only safe because sam_request_id is now written by LINEAGE ROWS
+//     ONLY — telemetry carries the id in sam_request_ref instead (see
+//     KIT-BUILD-SPEC.md §2b). Before that split the index was unimplementable:
+//     recordPushOutcome() writes a row on every refusal and every accept, so
+//     many rows shared one sam_request_id and a unique index — on the column
+//     alone OR on (record_type, sam_request_id) — would have rejected every
+//     telemetry insert after the first, silently, inside its own try/catch.
 //   * Configure x_fed_day2_ops.iiq_verify_endpoint + the credential alias, or
 //     x_fed_day2_ops.sam_jws_public_key. With NEITHER configured this endpoint
 //     refuses every push — that is intended.
@@ -110,9 +120,30 @@
     var subject = resolveSubject(body.requested_for);
     if (!subject.ok) { logRefusal('subject resolution: ' + subject.reason); return deny(422, 'unresolved_subject'); }
 
-    // 5. Idempotency (paired with the unique index).
+    // 5. Idempotency. MUST be scoped to record_type = 'sam_lineage'.
+    //
+    //    The integration table is shared. Telemetry now carries its id in
+    //    sam_request_ref, not sam_request_id, so this lookup can no longer
+    //    collide — but the filter stays as defence in depth, because the
+    //    failure it prevents is silent: recordPushOutcome() writes a
+    //    'sam_push_outcome' row on EVERY accept and refuse, and those rows
+    //    never carry a ritm. An unscoped
+    //    lookup therefore matches this request's own earlier refusal telemetry
+    //    and short-circuits with ritm:'' — reporting {ok:true, correlated:true}
+    //    for a request that was never created. A push refused once (e.g. before
+    //    iiq_verify_endpoint was configured) could never afterwards succeed:
+    //    the retry would be swallowed and the caller told it had correlated.
+    //    That inverts this file's fail-closed, lineage-first ordering, so the
+    //    record_type filter is load-bearing, not hygiene.
+    //
+    //    Only 'sam_lineage' rows represent a correlated request. correlationReport()
+    //    in SamCorrelationClient scopes the same way.
     var existing = new GlideRecord(gs.getProperty('x_fed_day2_ops.tbl_integration', 'x_fed_day2_ops_integration'));
-    if (existing.get('sam_request_id', body.sam_request_id)) {
+    existing.addQuery('record_type', 'sam_lineage');
+    existing.addQuery('sam_request_id', body.sam_request_id);
+    existing.setLimit(1);
+    existing.query();
+    if (existing.next()) {
         response.setStatus(200);
         sam.recordPushOutcome(body.sam_request_id, 'accepted', 200, 'idempotent');
         return { ok: true, correlated: true, ritm: existing.getValue('ritm'), note: 'already correlated' };

@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ATF — a push REFUSED once must still be able to succeed on retry.
+  Scope: x_fed_day2_ops.  STARTER SKELETON (see atf/README.md).
+
+  REGRESSION TEST. This covers the gap atf-sam-idempotent-repush.xml leaves:
+  that spec only exercises retry-after-SUCCESS. The dangerous case is
+  retry-after-REFUSAL, because both paths write to the same integration table.
+
+  The defect it pins (fixed in this build):
+
+    1. A push arrives before iiq_verify_endpoint / sam_jws_public_key is
+       configured. deny(422,'unverified') fires, and deny() calls
+       recordPushOutcome(), writing a sam_push_outcome row.
+    2. The operator configures verification. SDIM retries the same push.
+    3. The retry passes contract validation, passes pull-verify, resolves the
+       subject, and reaches clause 5.
+    4. Clause 5's lookup — if it is not scoped — matches the REFUSAL TELEMETRY
+       row from step 1, because telemetry used to carry sam_request_id too.
+    5. The endpoint returns 200 {ok:true, correlated:true, ritm:''} and stops.
+       Telemetry rows never carry a ritm.
+
+  No RITM is ever created, and the caller is told the request correlated. A
+  governed access request disappears while the endpoint reports success —
+  inverting the endpoint's own fail-closed, lineage-first ordering.
+
+  Two independent guards must both hold, so this test asserts both:
+    * telemetry writes sam_request_REF, never sam_request_id (the structural
+      partition — see KIT-BUILD-SPEC.md §2b);
+    * clause 5 filters record_type='sam_lineage' (defence in depth).
+-->
+<record_update table="sys_atf_test">
+  <sys_atf_test action="INSERT_OR_UPDATE">
+    <name>Day-2 SAM: a refused push can still succeed on retry (telemetry must not satisfy idempotency)</name>
+    <sys_scope>x_fed_day2_ops</sys_scope>
+    <active>true</active>
+    <description>A sam_push_outcome row carrying a request id must never satisfy the inbound endpoint's idempotency check. If it does, a push refused once — e.g. before pull-verify was configured — can never afterwards create a RITM: the retry is short-circuited and the caller is told it already correlated.</description>
+  </sys_atf_test>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>100</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Assert test_mode is on before writing any fixture data.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var env = new x_fed_day2_ops.Day2Env();
+  if (!env.isTestMode()) {
+    stepResult.setFailed('x_fed_day2_ops.test_mode must be true on a declared non-prod instance');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>200</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>Simulate step 1 of the failure sequence: a REFUSED push. Calls recordPushOutcome exactly as deny() does, with no lineage row and no RITM anywhere for this request id.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var sam = new x_fed_day2_ops.SamCorrelationClient();
+  // Same call deny() makes: refused, HTTP 422, opaque reason code.
+  var wrote = sam.recordPushOutcome('ATF-SAM-0006', 'refused', 422, 'unverified');
+  if (!wrote.ok) { stepResult.setFailed('refusal telemetry write failed: ' + JSON.stringify(wrote)); return; }
+  outputs.telemetry_sys_id = wrote.sys_id;
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>300</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>GUARD 1 (structural): the telemetry row must carry the request id in sam_request_ref and leave sam_request_id EMPTY. If sam_request_id is populated here, the partition that makes the required unique index implementable is broken, and clause 5 has something to collide with.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  var gr = new GlideRecord(gs.getProperty('x_fed_day2_ops.tbl_integration', 'x_fed_day2_ops_integration'));
+  if (!gr.get(steps('200').telemetry_sys_id)) {
+    stepResult.setFailed('could not re-read the telemetry row written in step 200');
+    return;
+  }
+  if (gr.getValue('record_type') !== 'sam_push_outcome') {
+    stepResult.setFailed('expected record_type=sam_push_outcome, got ' + gr.getValue('record_type'));
+    return;
+  }
+  if (gr.getValue('sam_request_ref') !== 'ATF-SAM-0006') {
+    stepResult.setFailed('telemetry must carry the request id in sam_request_ref; got ' +
+                         gr.getValue('sam_request_ref'));
+    return;
+  }
+  var leaked = gr.getValue('sam_request_id');
+  if (leaked) {
+    stepResult.setFailed('REGRESSION: telemetry wrote sam_request_id=' + leaked +
+                         ' — this is the field clause 5 keys on, and it must be reserved ' +
+                         'for sam_lineage rows (KIT-BUILD-SPEC.md 2b)');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>400</order>
+    <step_config_title>Server - Run Server Side Script</step_config_title>
+    <description>GUARD 2 (defence in depth): run clause 5's lookup verbatim for the refused request id. It must find NOTHING, so the retry falls through to the lineage write instead of returning a bogus already-correlated 200.</description>
+    <inputs><![CDATA[
+(function(outputs, steps, stepResult) {
+  // Verbatim copy of clause 5 in scripted-rest/sam_inbound_ritm.js.
+  var existing = new GlideRecord(gs.getProperty('x_fed_day2_ops.tbl_integration', 'x_fed_day2_ops_integration'));
+  existing.addQuery('record_type', 'sam_lineage');
+  existing.addQuery('sam_request_id', 'ATF-SAM-0006');
+  existing.setLimit(1);
+  existing.query();
+
+  if (existing.next()) {
+    stepResult.setFailed('REGRESSION: clause 5 matched on a request that was only ever REFUSED. ' +
+                         'The retry would return 200 {correlated:true, ritm:"' +
+                         existing.getValue('ritm') + '"} and no RITM would ever be created.');
+    return;
+  }
+  stepResult.setSuccess();
+})(outputs, steps, stepResult);
+    ]]></inputs>
+  </sys_atf_step>
+
+  <sys_atf_step action="INSERT_OR_UPDATE">
+    <order>500</order>
+    <step_config_title>Server - Record Query</step_config_title>
+    <description>Assert no lineage row exists for the refused request id — the refusal must not have created correlation state of any kind.</description>
+    <inputs>
+      table = x_fed_day2_ops_integration
+      conditions = record_type=sam_lineage^sam_request_id=ATF-SAM-0006
+      assert = zero matching rows
+    </inputs>
+  </sys_atf_step>
+</record_update>

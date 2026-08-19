@@ -87,7 +87,8 @@ may repoint `tbl_integration` to it — the property exists for that.)
 | `ritm` | String | SAM client / REST | the request item number |
 | `ritm_sys_id` | String | SAM client (`attachRitmToLineage`) | the request item's `sys_id` — set once the RITM exists; was already written by the code but missing from this table's build doc, so a build that stopped at the columns above dropped it silently |
 | `sam_flavor` | String | SAM client | `identityiq` \| `isc` |
-| `sam_request_id` | String | SAM client / REST | the SAM-side request id |
+| `sam_request_id` | String | SAM client / REST | the SAM-side request id. **`sam_lineage` rows only** — telemetry uses `sam_request_ref`. Carries the UNIQUE INDEX below, which is only implementable because of that split |
+| `sam_request_ref` | String | SAM client (`recordPushOutcome`) | the SAM-side request id on `sam_push_outcome` telemetry rows. A **separate column from `sam_request_id` on purpose**: telemetry writes one row per push *attempt*, so many rows share a request id, and the inbound endpoint's idempotency lookup keys on `sam_request_id`. Writing telemetry into `sam_request_id` made that lookup match a prior refusal and silently drop the retried request |
 | `sam_source_id` | String | SAM client | IIQ Application / ISC source |
 | `entra_object_id` | String | SAM client | the subject in the directory |
 | `verified_by` | String | SAM client (`recordLineage`) | `pull-verify` \| `jws` — how the push was independently verified (P0-7) |
@@ -103,6 +104,32 @@ may repoint `tbl_integration` to it — the property exists for that.)
 | `attributes_shared` | String | native actuator | directory attributes leaving the boundary (AC-20) |
 | `state` | String | native actuator; SAM client (`sam_push_outcome` rows) | `requested` → … (native actuator), or `accepted` \| `refused` (push-outcome telemetry) |
 | `boundary` | String | all | `gcc-moderate` |
+
+### 2b-i. Required unique index
+
+`scripted-rest/sam_inbound_ritm.js` calls this out as a deployment requirement,
+not an option, and until now it was specified in that file's header comment and
+nowhere in this build spec — so a builder following §2 alone did not create it,
+leaving the endpoint's idempotency guarantee as a single racy check-then-insert
+with no database-level backstop.
+
+| Index | Table | Columns | Unique |
+|---|---|---|---|
+| `sam_request_id_unique` | `x_fed_day2_ops_integration` | `sam_request_id` | **yes** |
+
+Two things make this correct only in combination with the column split above:
+
+- **It must be on `sam_request_id` alone**, not `(record_type, sam_request_id)`.
+  A composite is no safer: `recordPushOutcome` writes a row per push *attempt*,
+  so `(sam_push_outcome, X)` legitimately repeats.
+- **It is only implementable because telemetry no longer writes
+  `sam_request_id`.** While it did, any unique index over that column would have
+  rejected every telemetry insert after the first — swallowed by
+  `recordPushOutcome`'s own `try/catch`, which returns `{ok:false}` that no
+  caller reads. The failure would have been invisible.
+
+`sam_lineage` is one row per correlated request, so uniqueness on that column is
+exactly the constraint the endpoint's check-then-insert needs.
 
 > `record_type = sam_push_outcome` rows are operational telemetry (one per
 > inbound push attempt, accepted or refused) written by

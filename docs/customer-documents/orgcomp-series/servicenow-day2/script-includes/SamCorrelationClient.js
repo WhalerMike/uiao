@@ -261,7 +261,14 @@ SamCorrelationClient.prototype = {
             var stamp = this.env.evidenceStamp();
             gr.initialize();
             gr.setValue('record_type', 'sam_push_outcome');
-            gr.setValue('sam_request_id', samRequestId || '');
+            // sam_request_REF, not sam_request_id. The integration table's
+            // sam_request_id is reserved for sam_lineage rows so that (a) the
+            // inbound endpoint's idempotency lookup cannot match telemetry and
+            // silently drop a retried request, and (b) the REQUIRED unique
+            // index on sam_request_id is implementable at all — this method
+            // writes a row per push ATTEMPT, so many telemetry rows share one
+            // request id. See KIT-BUILD-SPEC.md §2b.
+            gr.setValue('sam_request_ref', samRequestId || '');
             gr.setValue('sam_flavor', this.flavor);
             gr.setValue('sam_source_id', this.sourceId);
             gr.setValue('boundary', this.boundary);
