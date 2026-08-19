@@ -236,7 +236,8 @@ licensing, NOT the middleware. The middleware's role:
 1. Stamp the worker-type-derived **license-affinity attribute**
    (`employeeType` per D3.1 §5; or a tenant-specific
    `extensionAttribute2`).
-2. Stamp the OrgPath in `extensionAttribute1`.
+2. Stamp the OrgPath facets (`extensionAttribute1`–`10`, 6 projected per ADR-121)
+   and the derived canonical path (`extensionAttribute15`, ADR-127).
 3. Emit the SCIM event.
 
 Group-based licensing rules in Entra ID (defined out of band — they

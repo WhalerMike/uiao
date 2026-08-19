@@ -150,7 +150,7 @@ The full canonical SCIM payload from D3.1 §5.2:
 - `enterprise:User.employeeNumber`
 - `enterprise:User.department`
 - `enterprise:User.manager`
-- `extensionAttribute1` (OrgPath)
+- `extensionAttribute15` (derived OrgPath)
 - `usageLocation`
 - Worker-type-bound license-affinity attribute
 

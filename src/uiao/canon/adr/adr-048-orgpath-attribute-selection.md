@@ -12,6 +12,8 @@ publication_style: include
 published_at: docs/adr/adr-048-orgpath-attribute-selection.html
 ---
 
+<!-- orgpath-slot-allow-file: allocation table is historical per the Hybrid-C+Path banner (ADR-078/ADR-127) -->
+
 # ADR‑048: OrgPath Attribute Selection — extensionAttributes over Custom Security Attributes
 
 ## Status
@@ -105,7 +107,7 @@ Document the full allocation table in the canon to prevent drift.
 ### Positive
 1. **Zero infrastructure setup** — extensionAttributes exist on every Entra ID tenant with no provisioning required
 2. **Full consumer coverage** — the only attribute type usable in dynamic group rules (users + devices), CA device filters, AU membership, and Intune scope tags
-3. **AD coexistence** — extensionAttributes sync bidirectionally via Entra Connect, enabling OrgPath population during the hybrid period
+3. **AD coexistence** — extensionAttributes sync from on-prem AD to Entra ID via Entra Connect, enabling OrgPath population during the hybrid period. The reverse direction is not the same channel: cloud-to-AD writeback is a separate, opt-in configuration with its own attribute allow-list (Spec2-D3.6). For a directory-synced user, `onPremisesExtensionAttributes` is read-only in the cloud, so the facets must be written on-prem and carried up by sync
 4. **HR provisioning native** — API‑driven inbound provisioning and cloud HR connectors can write extensionAttributes directly
 5. **Proven at scale** — Microsoft’s own documentation uses extensionAttributes for organizational hierarchy examples
 

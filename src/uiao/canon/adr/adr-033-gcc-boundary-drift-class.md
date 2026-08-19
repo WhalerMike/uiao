@@ -21,6 +21,8 @@ publication_style: include
 published_at: docs/adr/adr-033-gcc-boundary-drift-class.html
 ---
 
+<!-- orgpath-slot-allow-file: pre-ADR-078 decision; describes the composite-path era it was written in -->
+
 # ADR-030: GCC Boundary Drift Class and Compensating Controls Architecture
 
 ## Status

@@ -91,7 +91,8 @@ Per D3.4 §4.4, the writeback set includes (full table in D1.4):
 - Identity: `userPrincipalName`, `mail`, `employeeId`,
   `displayName`, `givenName`, `sn`.
 - Organizational: `department`, `title`, `manager` (DN-resolved),
-  `extensionAttribute1` (OrgPath).
+  the OrgPath facets (`extensionAttribute1`–`10`) and the derived path
+  (`extensionAttribute15`).
 - Lifecycle: `accountEnabled` (mapped to `userAccountControl`
   bits).
 - Region: `c` (country, from `usageLocation`).

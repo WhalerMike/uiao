@@ -97,7 +97,7 @@ D3.1 §5.2):
 | `department` | `enterprise:User.department` | direct | |
 | `jobTitle` | `enterprise:User.title` | direct (when present) | Omit if absent |
 | `managerEmployeeId` | `enterprise:User.manager.value` | direct | Omit if null |
-| (computed) | `extensionAttribute1` | OrgPath calculator (ADR-035) | OrgPath via codebook lookup |
+| (computed) | `extensionAttribute1`–`10` (facets) + `extensionAttribute15` (derived path) | OrgPath calculator (ADR-035) | Facet values via codebook lookup; derived path per ADR-127 |
 | (computed) | `extensionAttribute2` | worker-type-derived license-affinity tag | Per D1.6 + tenant policy |
 | (default) | `preferredLanguage` | constant | Default `en-US`; tenant override |
 
@@ -194,14 +194,20 @@ D2.6 with `failure_reason: usage-location-missing`. There is no
 manager links asynchronously; dangling references resolve on later
 sync cycles (per D2.1 §6).
 
-### 3.8 OrgPath: `extensionAttribute1`
+### 3.8 OrgPath: facets + derived path
 
-`extensionAttribute1` is the load-bearing OrgPath attribute per
-ADR-048 (attribute selection) + ADR-035 (codebook binding).
+OrgPath is carried in two layers per ADR-078 (facets) and ADR-127
+(Hybrid-C+Path), against the ADR-035 codebook binding: named facets on
+`extensionAttribute1`–`10` (6 projected per ADR-121), and the derived
+canonical path on `extensionAttribute15`. Facet values below are
+illustrative and must come from `codebook.yaml`.
 
 ```yaml
 urn:scim:schemas:extension:Microsoft:2.0:User:
-  extensionAttribute1:    GOV/EXEC/OPM/HRIT
+  extensionAttribute1:    NCR          # region
+  extensionAttribute2:    Executive    # department
+  extensionAttribute3:    GRC          # division
+  extensionAttribute15:   "Region=NCR|Department=Executive|Division=GRC|"
 ```
 
 Computation path: HR record's `department` + `division` +
@@ -281,7 +287,7 @@ Path B (new): full POST per §2.
 ### 5.5 Conversion (D2.5)
 
 Atomic PATCH carrying `workerType` (→ `extensionAttribute2` re-stamp),
-OrgPath recompute (→ `extensionAttribute1` re-stamp), and any other
+OrgPath recompute (→ facet + `extensionAttribute15` re-stamp), and any other
 delta fields. UPN preserved by default (D2.5 §4.1).
 
 ## 6. Drift Detection Anchor
@@ -304,7 +310,9 @@ source of truth. Drift on any §2 field is a finding.
 
 - [ADR-003](../adr/adr-003-api-driven-inbound-provisioning.md)
 - [ADR-035](../adr/adr-035-orgpath-codebook-binding.md)
-- [ADR-048](../adr/adr-048-orgpath-attribute-selection.md) — extensionAttribute1 selection.
+- [ADR-048](../adr/adr-048-orgpath-attribute-selection.md) — `extensionAttribute*` family selection;
+  superseded in shape by [ADR-078](../adr/adr-078-orgpath-attribute-schema-15-facet.md) (facets)
+  and [ADR-127](../adr/adr-127-orgpath-hybrid-derived-path.md) (derived path on slot 15).
 
 ### 7.2 UIAO docs
 

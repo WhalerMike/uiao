@@ -21,6 +21,8 @@ publication_style: include
 published_at: docs/adr/adr-064-drift-schema-slot-occupied-subclass.html
 ---
 
+<!-- orgpath-slot-allow-file: drift examples quote Model A values from the era this ADR was written in -->
+
 # ADR-064: DRIFT-SCHEMA::slot-occupied — Sub-class for Pre-existing Non-OrgPath Values
 
 ## Status
