@@ -61,6 +61,11 @@ CURRENT_MD_DOCX = {
     "CURRENT-STATE-SCRIPTS": "OrgComp_Day2_Kit_Current_2_Scripts",
     "CURRENT-STATE-BUILD-DELTA": "OrgComp_Day2_Kit_Current_3_Build_Delta",
     "CURRENT-STATE-PILOT-ROLLOUT": "OrgComp_Day2_Kit_Current_4_Pilot_Rollout",
+    # The live-validation tracks. Until these were wired up they rendered to no
+    # .docx and appeared in no reading-order set, so a Word-only reader received
+    # neither -- and START-HERE pointed at "the tracks below" that were not there.
+    "CURRENT-STATE-PDI-VALIDATION": "OrgComp_Day2_Kit_Current_5_PDI_Validation",
+    "CURRENT-STATE-AD-LAB-VALIDATION": "OrgComp_Day2_Kit_Current_6_AD_Lab_Validation",
 }
 
 # --- Numbered docx/ reading-order sets, per edition. ----------------------------
@@ -86,6 +91,12 @@ CURRENT_DOCX_SET = {
     "OrgComp_Day2_Kit_6_Build_Specification": "7_Build_Specification.docx",
     "OrgComp_Operator_Runbook_Day2_Compliant": "8_Operator_Runbook.docx",
     "OrgComp_Day2_Kit_Current_4_Pilot_Rollout": "9_Pilot_Rollout.docx",
+    # Appended rather than slotted before the pilot: renumbering 0..9 would
+    # churn every existing filename for a reading-order nicety. Sequence is
+    # carried where it binds to a decision instead -- CURRENT-STATE-PILOT-ROLLOUT
+    # §0 now requires both tracks before the pilot may start.
+    "OrgComp_Day2_Kit_Current_5_PDI_Validation": "10_PDI_Validation.docx",
+    "OrgComp_Day2_Kit_Current_6_AD_Lab_Validation": "11_AD_Lab_Validation.docx",
 }
 
 
@@ -378,19 +389,28 @@ the AD leg retires. It is a configuration change, not a rebuild.
 CONTENTS
   servicenow-day2/   the deployable kit source (Script Includes incl. AdHybridClient,
                      scripted-rest, control maps, atf/, catalog/, flow/, update-set/,
-                     gates), with each *.md AND its rendered .docx sibling. The
+                     gates, plus RunBook/, lab/ and examples/ described below). The
                      CURRENT-STATE-*.md docs cover the hybrid delta; shared KIT-*
                      docs (variables, implementation, scripts, build spec, SAM) apply
-                     to both editions.
-  docx/              the Current State doc set as Word, in reading order (0..8),
+                     to both editions. Every doc in the docx/ set below ships here as
+                     its *.md source with a rendered .docx sibling; the RunBook/,
+                     lab/ and examples/ material is Markdown and scripts only.
+    RunBook/         the live-validation runbook and its cover sheet.
+    lab/             New-Day2AdLab.ps1 — stands up a throwaway AD lab for the AD
+                     leg validation track.
+    examples/        sample SAM push payloads for exercising the inbound endpoint.
+  docx/              the Current State doc set as Word, in reading order (0..11),
                      including a diagram for every catalog task's current-state
-                     write path (Operator Usage).
+                     write path (Operator Usage) and both live-validation tracks.
 
 START HERE
   1. docx/0_START_HERE       — what changes and the sandbox rule
   2. docx/2_Build_Delta      — the AD MID, AdHybridClient, the router, the properties
   3. docx/5_Operator_Usage   — each task's current-state write path
   Build the base platform first: docx/7_Build_Specification, then the delta.
+  Before the pilot: docx/10_PDI_Validation and docx/11_AD_Lab_Validation —
+  docx/9_Pilot_Rollout §0 requires both (the AD lab track may be waived by the
+  ISSO, with the waiver recorded).
 
 DOC NAMES. Documents cross-reference each other by their repo names (the names
 they carry under servicenow-day2/). The docx/ reading-order set renumbers them.

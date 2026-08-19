@@ -107,8 +107,10 @@ advice, no warranty) apply unchanged. Additionally:
    itself; every write returns only `{ ok, dispatched, ecc_sys_id }`, and closure
    depends on this read-back. **What is not yet proven:** the read-back has been
    exercised by a mock ServiceNow harness executing the real script against
-   fixture data (`0d452b75f`), not against a live domain controller — see the
-   ServiceNow PDI + AD lab validation tracks below.
+   fixture data (`0d452b75f`), not against a live domain controller — close that
+   gap with the two live-validation tracks in §6:
+   `CURRENT-STATE-PDI-VALIDATION.md` and `CURRENT-STATE-AD-LAB-VALIDATION.md`.
+   Both are entry criteria for the pilot (`CURRENT-STATE-PILOT-ROLLOUT.md` §0).
 3. **The routing predicate is authoritative, not cosmetic.** `hybrid_mode = true`
    plus `onPremisesSyncEnabled = true` sends a task to the AD leg. If you flip
    `hybrid_mode` to `false` while identities are still AD-mastered, cloud writes to
@@ -150,3 +152,14 @@ advice, no warranty) apply unchanged. Additionally:
 - The AD leg and router internals → `CURRENT-STATE-SCRIPTS.md`.
 - What the implementation team builds differently → `CURRENT-STATE-BUILD-DELTA.md`.
 - The 2027 goal and the doctrine behind it → the base kit + Vol I Book 04 (HRIT SSOT), Vol 0 Book 00 (MACD-R).
+
+**Before the pilot — the two live-validation tracks.** Everything above is
+proven by a mock harness against fixture data. These close the gap to real
+infrastructure, and `CURRENT-STATE-PILOT-ROLLOUT.md` §0 requires both:
+
+- Proving the scoped app, the Flow and the fail-closed contract on a real
+  ServiceNow instance → `CURRENT-STATE-PDI-VALIDATION.md`.
+- Exercising the AD leg against a real domain controller — delegated rights,
+  MID dispatch, and the VERIFY read-back →
+  `CURRENT-STATE-AD-LAB-VALIDATION.md`. Requires a throwaway lab; the ISSO may
+  waive it, with the waiver recorded.
