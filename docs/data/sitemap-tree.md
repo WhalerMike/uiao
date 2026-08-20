@@ -92,6 +92,7 @@
 - [UIAO Risk Assessment Methodology (NIST SP 800-30 Rev 1)](canon/UIAO_198_Risk_Assessment_Methodology.html)
 - [FedRAMP KSI Evidence Platform — Continuous Reporting Runbook](canon/UIAO_206_FedRAMP_KSI_Continuous_Reporting_Runbook.html)
 - [SailPoint IdentityIQ REST API — Vendor Contract Pin](canon/UIAO_210_identityiq-api-contract-pin.html)
+- [ServiceNow Deployment Contract — Schema Pin](canon/UIAO_211_servicenow-deployment-contract-pin.html)
 
 ## Architecture Decision Records
 
