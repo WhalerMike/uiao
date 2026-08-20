@@ -91,6 +91,7 @@
 - [Addressing-Plane Drift Taxonomy — DNS and Namespace Governance](canon/UIAO_195_Addressing_Plane_Drift_Taxonomy.html)
 - [UIAO Risk Assessment Methodology (NIST SP 800-30 Rev 1)](canon/UIAO_198_Risk_Assessment_Methodology.html)
 - [FedRAMP KSI Evidence Platform — Continuous Reporting Runbook](canon/UIAO_206_FedRAMP_KSI_Continuous_Reporting_Runbook.html)
+- [SailPoint IdentityIQ REST API — Vendor Contract Pin](canon/UIAO_210_identityiq-api-contract-pin.html)
 
 ## Architecture Decision Records
 
@@ -228,6 +229,7 @@
 - [GovRAMP Reciprocity Vertical Pack — State/Local Eligibility as a Crosswalk, and the state-local Boundary](adr/adr-133-govramp-reciprocity-vertical-pack.html)
 - [OrgLink Pillar Elevation — The Fourth Org-Family Pillar Goes Live](adr/adr-134-orglink-pillar-elevation.html)
 - [SailPoint ISC Governance — Option-B Ratification and Native Cloud IAM/RBAC Reconciliation Binding](adr/adr-135-sailpoint-isc-governance-option-b-ratification.html)
+- [SailPoint IdentityIQ — Option-C Slot Allocation and Vendor Contract Pin](adr/adr-136-sailpoint-identityiq-option-c-slot-allocation.html)
 
 ## Schema Reference
 
