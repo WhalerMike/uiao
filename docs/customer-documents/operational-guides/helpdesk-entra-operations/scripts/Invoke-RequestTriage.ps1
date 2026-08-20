@@ -56,7 +56,7 @@ Import-Module (Join-Path $PSScriptRoot '..\lib\HelpDeskEntra.psm1') -Force
 # Stored here as a single block so there is one place to wire up integrations.
 $Connectors = @{
     ServiceNow = @{
-        InstanceUrl = 'https://YOURINSTANCE.service-now.com'   # CONFIGURE
+        InstanceUrl = 'https://YOURINSTANCE.servicenowservices.com'   # CONFIGURE
         # Auth: prefer OAuth client credentials over basic. Supply a PSCredential
         # or token retrieval as your environment dictates.
         Credential  = $null   # CONFIGURE: Get-Credential or OAuth token

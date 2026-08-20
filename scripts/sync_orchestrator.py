@@ -15,7 +15,10 @@ warnings.warn(
 INFOBLOX_KEY = os.getenv("INFOBLOX_PORTAL_KEY")
 INFOBLOX_URL = "https://csp.infoblox.com/api/ddi/v1"
 SN_INSTANCE = os.getenv("SN_INSTANCE_NAME")
-SN_BASE_URL = f"https://{SN_INSTANCE}.servicenowservices.gov/api/now/table"
+# ServiceNow Government Community Cloud (FedRAMP High / DoD IL-4) is served from
+# servicenowservices.com — not .gov, and not the commercial service-now.com.
+SN_HOST = os.getenv("SERVICENOW_BASE_URL", f"https://{SN_INSTANCE}.servicenowservices.com")
+SN_BASE_URL = f"{SN_HOST.rstrip('/')}/api/now/table"
 SN_USER = os.getenv("SN_SVC_USER")
 SN_PASS = os.getenv("SN_SVC_PASS")
 TEAMS_WEBHOOK_URL = os.getenv("TEAMS_WEBHOOK_URL")

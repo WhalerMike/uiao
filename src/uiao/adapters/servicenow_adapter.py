@@ -52,6 +52,7 @@ class ServiceNowAdapter(DatabaseAdapterBase):
         self.collector = ServiceNowCollector(
             instance=self._config.get("instance", ""),
             token=self._config.get("token", ""),
+            base_url=self._config.get("base_url", ""),
         )
 
     # ------------------------------------------------------------------
@@ -65,7 +66,7 @@ class ServiceNowAdapter(DatabaseAdapterBase):
         return ConnectionProvenance(
             identity=f"servicenow:{self.collector.instance}",
             auth_method="oauth-bearer",
-            endpoint=f"https://{self.collector.instance}.service-now.com",
+            endpoint=self.collector.base_url,
             tls_version="TLSv1.3",
             mtls_enabled=False,  # Set True when mTLS certs are configured
             timestamp=self._now(),
@@ -148,7 +149,7 @@ class ServiceNowAdapter(DatabaseAdapterBase):
                 "implementation_statement": record.get("short_description", ""),
                 "vendor_overlay_ref": "servicenow.yaml",
                 "telemetry_enabled": True,
-                "raw_link": (f"https://{self.collector.instance}.service-now.com/incident.do?sys_id={sys_id}"),
+                "raw_link": (f"{self.collector.base_url}/incident.do?sys_id={sys_id}"),
             }
             claim = ClaimObject(
                 claim_id=f"servicenow:{sys_id}",
@@ -161,7 +162,7 @@ class ServiceNowAdapter(DatabaseAdapterBase):
 
         return ClaimSet(
             claims=claims,
-            source_reference=(f"https://{self.collector.instance}.service-now.com/api/now/table/incident"),
+            source_reference=(f"{self.collector.base_url}/api/now/table/incident"),
         )
 
     # ------------------------------------------------------------------
@@ -472,7 +473,7 @@ class ServiceNowAdapter(DatabaseAdapterBase):
             "table": table,
             "vendor_overlay_ref": "servicenow.yaml",
             "telemetry_enabled": True,
-            "raw_link": (f"https://{self.collector.instance}.service-now.com/{table}.do?sys_id={sys_id}"),
+            "raw_link": (f"{self.collector.base_url}/{table}.do?sys_id={sys_id}"),
         }
         return {
             "claim_id": f"servicenow:{operation}:{sys_id}",
