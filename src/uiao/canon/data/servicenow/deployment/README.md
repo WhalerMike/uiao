@@ -22,9 +22,28 @@ the artifacts require read access to the instance, and until they exist
 
 ## How to take the export
 
-Both are ordinary Table API reads against the GCC host recorded in
-`../expected-schema.yaml`. Run them with an account that can read the
-dictionary; no write access is needed.
+Use `scripts/export_servicenow_schema.py`. It reads the table list from
+`../expected-schema.yaml` (so the two cannot drift), resolves the host through
+`ServiceNowCollector` (so it cannot disagree with the adapters about which
+cloud it is talking to), writes both artifacts here, and fills in the export
+log below.
+
+```
+$env:SERVICENOW_INSTANCE = "<instance>"     # host is <instance>.servicenowservices.com
+$env:SERVICENOW_TOKEN    = "<bearer token>"
+
+python scripts/export_servicenow_schema.py --env prod --dry-run   # show the calls
+python scripts/export_servicenow_schema.py --env prod --operator "<name>"
+```
+
+Credentials come from the environment only — the script takes no credential
+arguments, so they cannot land in shell history. It fails closed rather than
+constructing a placeholder host, and refuses to write an export that came back
+empty, because an empty export would make the gate report every column missing.
+
+The underlying calls, if you would rather run them by hand: both are ordinary
+Table API reads against the GCC host recorded in `../expected-schema.yaml`. Run
+them with an account that can read the dictionary; no write access is needed.
 
 ```
 GET https://<instance>.servicenowservices.com/api/now/table/sys_dictionary
