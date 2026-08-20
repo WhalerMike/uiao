@@ -110,7 +110,7 @@ class TestConnectionBehavior:
 
     def test_endpoint_is_servicenow_url(self, adapter: ServiceNowAdapter) -> None:
         result = adapter.connect()
-        assert "contoso-gov.service-now.com" in result.endpoint
+        assert "contoso-gov.servicenowservices.com" in result.endpoint
 
     def test_schema_maps_key_fields(self, adapter: ServiceNowAdapter) -> None:
         schema = adapter.discover_schema()

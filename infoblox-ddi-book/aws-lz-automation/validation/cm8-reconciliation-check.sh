@@ -45,7 +45,7 @@
 #   WAPI_CA_BUNDLE      (optional) CA bundle path for the Grid Master's cert.
 #
 #   -- ServiceNow Table API (the reconciled CMDB) --
-#   SN_INSTANCE         (required) e.g. https://<instance>.service-now.com
+#   SN_INSTANCE         (required) e.g. https://<instance>.servicenowservices.com
 #   SN_USERNAME         (required) Read-only account scoped to the CMDB table.
 #   SN_PASSWORD         (required) From Secrets Manager / SSM.
 #   SN_TABLE            (optional) CMDB table holding reconciled addresses.

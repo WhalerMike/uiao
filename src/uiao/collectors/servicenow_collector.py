@@ -30,14 +30,40 @@ class ServiceNowCollector:
     DEFAULT_FIELDS = "sys_id,short_description,state,uiao_control_id,opened_at"
     TIMEOUT = 30  # seconds
 
+    # ServiceNow serves federal customers from the Government Community Cloud
+    # (FedRAMP High / DoD IL-4) at servicenowservices.com — a different
+    # environment from the commercial cloud at service-now.com, not an alias.
+    # UIAO targets GCC by default; override for a commercial instance.
+    GCC_DOMAIN = "servicenowservices.com"
+    COMMERCIAL_DOMAIN = "service-now.com"
+    DEFAULT_DOMAIN = GCC_DOMAIN
+
     def __init__(
         self,
         instance: str = "",
         token: str = "",
+        base_url: str = "",
     ) -> None:
         # Prefer explicit args; fall back to environment variables
         self.instance = instance or os.environ.get("SERVICENOW_INSTANCE", "your-instance")
         self._token = token or os.environ.get("SERVICENOW_TOKEN", "")
+        self.base_url = self._resolve_base_url(base_url)
+
+    def _resolve_base_url(self, base_url: str) -> str:
+        """
+        Resolve the instance base URL.
+
+        Precedence: explicit ``base_url`` arg, then ``SERVICENOW_BASE_URL``,
+        then ``https://{instance}.{SERVICENOW_DOMAIN or GCC_DOMAIN}``.  The
+        host is never compiled in — a federal GCC tenant and a commercial
+        tenant differ only by domain, and getting it wrong sends both live
+        requests and evidence provenance links to the wrong cloud.
+        """
+        explicit = base_url or os.environ.get("SERVICENOW_BASE_URL", "")
+        if explicit:
+            return explicit.rstrip("/")
+        domain = os.environ.get("SERVICENOW_DOMAIN", self.DEFAULT_DOMAIN)
+        return f"https://{self.instance}.{domain}"
 
     # ------------------------------------------------------------------
     # Primary collection method
@@ -70,7 +96,7 @@ class ServiceNowCollector:
             # without live credentials (useful for unit tests and CI)
             return {"result": [], "_meta": {"warning": "No token configured — returning empty scaffold."}}
 
-        url = f"https://{self.instance}.service-now.com/api/now/table/{table}"
+        url = f"{self.base_url}/api/now/table/{table}"
         params: Dict[str, Any] = {
             "sysparm_fields": sysparm_fields,
             "sysparm_limit": sysparm_limit,
@@ -111,7 +137,7 @@ class ServiceNowCollector:
                 "_meta": {"warning": "No token configured — returning empty scaffold."},
             }
 
-        url = f"https://{self.instance}.service-now.com/api/now/table/{table}"
+        url = f"{self.base_url}/api/now/table/{table}"
         response = requests.post(
             url,
             headers={
@@ -143,7 +169,7 @@ class ServiceNowCollector:
                 "_meta": {"warning": "No token configured — returning empty scaffold."},
             }
 
-        url = f"https://{self.instance}.service-now.com/api/now/table/{table}/{sys_id}"
+        url = f"{self.base_url}/api/now/table/{table}/{sys_id}"
         response = requests.patch(
             url,
             headers={

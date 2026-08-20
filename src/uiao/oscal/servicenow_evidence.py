@@ -262,7 +262,7 @@ def emit_servicenow_component_definition(
         control-implementations but is otherwise schema-correct.
     tenant_id:
         ServiceNow tenant / instance identifier
-        (e.g., "acme.service-now.com").
+        (e.g., "acme.servicenowservices.com").
     signer:
         Identity of the signing principal (e.g., ISSO or automated
         pipeline ID).
