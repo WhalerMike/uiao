@@ -2167,6 +2167,86 @@ adapters:
       Activation requires a per-adapter ADR modeled on ADR-035 plus the
       Option-B carve-out ADR.
 
+  # ──────────────────────────────────────────────────────────────────
+  # Reserved adapter slot allocated by ADR-136 (Option C)
+  # SailPoint IdentityIQ — customer-hosted, NO boundary expansion
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: sailpoint-iiq-governance
+    name: SailPoint IdentityIQ — Governance (Conformance, Reserved)
+    class: conformance
+    mission-class: identity
+    status: reserved
+    phase: phase-planning
+    vendor: SailPoint
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - scim-accounts-and-users
+      - scim-entitlements-and-applications
+      - certification-campaigns
+      - policy-violations
+      - launched-workflows
+      - access-request-state
+    outputs:
+      - iiq-governance-findings.json
+      - iiq-certification-audit.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 3
+    controls:
+      - AC-2
+      - AC-2(3)
+      - AC-5
+      - AC-6
+      - AC-6(2)
+      - AU-2
+      - IA-4
+      - CA-7
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - UIAO-CANON-003
+      - ADR-136
+      - ADR-059
+      - ADR-092
+      - UIAO_210
+      - UIAO_143
+      - https://developer.sailpoint.com/docs/api/iiq/identityiq-scim-rest-api/
+    notes: >-
+      Option-C slot allocated by ADR-136 (2026-08-20) — the IdentityIQ
+      on-prem path ADR-059 §Decision 1 recorded as a deliberate
+      alternative and never decided. Serves the deployment branded
+      locally as Systems Access Manager (SAM); SAM is an agency brand,
+      not a SailPoint SKU, and canon names the product so the pinned
+      contract is unambiguous. Read-only governance-plane observer bound
+      to the ADR-092 identity control-plane slot at rung L1 (Observe).
+      Unlike every other SailPoint slot, this one needs NO boundary
+      expansion: IdentityIQ is customer-hosted inside the agency
+      boundary, so `gcc-moderate` applies and the gcc-boundary enum is
+      unchanged. Distinct product from `sailpoint-isc-governance`
+      (SailPoint-hosted cloud) — not a naming variant; the API surfaces
+      do not interchange. Vendor contract pinned by UIAO_210 (IIQ 9.0
+      OpenAPI, hash-anchored); the SCIM surface layers on the UIAO_143
+      RFC 7643 substrate pin. Contract is two-part: activation also
+      requires the site-local object-model export per UIAO_210 §4, the
+      confirmed IIQ version, the authentication mechanism and
+      certificate anchor (the vendor spec declares only basicAuth, which
+      is NOT an authorization), and the ADR-059 §Decision 5 SSOT-conflict
+      declaration for the native AD/Entra connector overlap. The
+      `/identityiq/ui/rest/*` surface (304 of 504 pinned paths) is the
+      IIQ console backend and is explicitly out of contract per ADR-136
+      §Decision 4. Still `status: reserved`; activation requires a
+      per-adapter ADR modeled on ADR-035.
+
   - id: ai-inventory-governance
     name: Federal AI Use Case Inventory — Identity Governance Scanner
     class: conformance

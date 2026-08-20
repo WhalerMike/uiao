@@ -226,6 +226,7 @@ ADR-057 now belongs solely to `adr-057-thousandeyes-networks-pillar-scope.md`.
 | [ADR-070](adr-070-foundational-primacy-charter-tier.md) | Foundational Primacy — Charter Tier and Amendment Process | ACCEPTED | 2026-05-15 |
 | [ADR-074](adr-074-drift-ssot-contention.md) | DRIFT-SSOT-CONTENTION — New Drift Class for Data-Plane Stewardship Authority | ACCEPTED | 2026-05-18 |
 | [ADR-135](adr-135-sailpoint-isc-governance-option-b-ratification.md) | SailPoint ISC Governance — Option-B Ratification and Native Cloud IAM/RBAC Reconciliation Binding | ACCEPTED | 2026-07-28 |
+| [ADR-136](adr-136-sailpoint-identityiq-option-c-slot-allocation.md) | SailPoint IdentityIQ — Option-C Slot Allocation and Vendor Contract Pin | PROPOSED | — |
 
 ### Known frontmatter inconsistencies (deferred for separate cleanup)
 
