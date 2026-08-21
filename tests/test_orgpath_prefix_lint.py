@@ -139,7 +139,7 @@ def test_mid_path_prefix_is_flagged() -> None:
     # The exact defect this rule exists for: well-formed, delimiter-terminated,
     # invisible to the slot guard, and matches nobody because the derived path
     # is composed Region-first.
-    line = '\'(user.extensionAttribute15 -startsWith "Department=Finance|")\''
+    line = "'(user.extensionAttribute15 -startsWith \"Department=Finance|\")'"
     findings = lint.scan_text(line, "runbook.md", "Region")
     assert len(findings) == 1
     assert "does not start at 'Region='" in findings[0]
