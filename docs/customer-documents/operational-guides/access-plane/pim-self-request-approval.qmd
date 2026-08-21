@@ -105,7 +105,7 @@ can lock an agency out of its own tenant.
 | **Graph permissions (delegated)** | `RoleManagementPolicy.ReadWrite.Directory` to manage rules; `RoleManagement.ReadWrite.Directory` to create eligible assignments. |
 | **MFA** | Microsoft Entra multifactor authentication enabled for all users — MFA is a per-role activation requirement here, not a substitute for tenant-wide MFA. |
 | **Log destination** | An Azure Monitor / Log Analytics workspace (and, where required, an Azure storage account) inside the authorization boundary, for audit retention beyond 30 days. See [Step 8](#step-8-export-audit-records-for-retention). |
-| **Government cloud** | Microsoft Entra ID Governance — which carries PIM — is available in the US Government community cloud (**GCC**), **GCC High**, and **Department of Defense** cloud environments. Feature parity with commercial is a moving target, so confirm any specific capability against the [Microsoft Entra feature availability](https://learn.microsoft.com/entra/identity/authentication/feature-availability) page for the agency's cloud before designing against it. |
+| **Government cloud** | Microsoft Entra ID Governance — which carries PIM — is available in the US Government community cloud (**GCC**), **GCC High**, and **Department of Defense** cloud environments. Feature parity with commercial is a moving target, so confirm any specific capability against the [Microsoft Entra feature availability](https://learn.microsoft.com/en-us/entra/identity/authentication/feature-availability) page for the agency's cloud before designing against it. |
 
 ::: {.callout-important title="Licence dependency is a control dependency"}
 Because PIM configuration settings are *removed* when the licence lapses, the
@@ -732,11 +732,17 @@ eligible, and are worth adding where the agency's policy set depends on them.
 
 1. Confirm you hold **Conditional Access Administrator** or **Security
    Administrator**.
-2. Create the authentication context and its Conditional Access policy —
-   a sensible starting bar is passwordless or phishing-resistant MFA, **with
-   an emergency access account excluded**.
-3. Assign that authentication context to the selected permissions.
-4. Test by performing the action as a normal user and confirming the step-up
+2. Create the authentication context — with **Publish to apps** checked, or
+   it will not be selectable later — and its Conditional Access policy. A
+   sensible starting bar is passwordless or phishing-resistant MFA, **with an
+   emergency access account excluded**.
+3. Confirm the policy state is **On**. A policy left **Off** or in
+   **Report-only** does not satisfy a protected action, which is the same
+   trap as the authentication-context fallback in Step 5 and produces the
+   same symptom from the other direction.
+4. Assign that authentication context to the selected permissions
+   (**Entra ID** > **Roles & admins** > **Protected actions**).
+5. Test by performing the action as a normal user and confirming the step-up
    prompt appears.
 
 Out-of-order configuration produces confusing symptoms, most commonly
@@ -754,6 +760,20 @@ Inventory any automation that touches these permissions *before* enabling
 protected actions, or a scheduled job will start failing with an error that
 looks nothing like a policy problem. Protected actions require Microsoft
 Entra ID **P1**.
+:::
+
+::: {.callout-important title="You can lock yourself out of Conditional Access with this"}
+The failure mode is circular and worth rehearsing before you enable it:
+protect CA-policy editing with a policy that is Off or Report-only, and
+editing that policy now requires a step-up that can never be satisfied —
+including the editing needed to fix it.
+
+Microsoft publishes a recovery entry point for exactly this:
+**<https://aka.ms/MSALProtectedActions>** opens the Conditional Access page
+when the protected action would otherwise block you from reaching it. Record
+it in the agency's break-glass runbook alongside the Step 0 emergency access
+accounts, because the moment you need it is the moment you cannot look it up
+through the portal.
 :::
 
 One design rule from Microsoft worth repeating, because it is easy to get
@@ -1029,6 +1049,8 @@ Stating the gaps is part of the mapping.
 | PIM audit history and Entra audit logs retain **30 days** | Export is mandatory for federal retention |
 | **1000 notification recipients per event** | Keep approver and notification groups small |
 | Licence lapse **removes PIM configuration settings** | Subscription continuity is a control dependency |
+| **Azure PowerShell cannot perform protected actions** | Use Microsoft Graph PowerShell; audit existing automation before enabling protected actions ([Step 5a](#step-5a-close-the-loop-with-protected-actions)) |
+| **A protected action whose CA policy is Off or Report-only can never be satisfied** | Recover via <https://aka.ms/MSALProtectedActions>; keep it in the break-glass runbook |
 
 ## Sources
 
