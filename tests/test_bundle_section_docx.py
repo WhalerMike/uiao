@@ -66,10 +66,35 @@ def test_orgcomp_series_registered_for_volume_bundles() -> None:
 
 def test_volume_bundle_filename_carries_theme() -> None:
     """Per-volume bundles are named ``Vol_<N>-<Theme>-Bundle.docx`` so a
-    downloaded file identifies its subject without opening it."""
-    assert bsd._volume_bundle_filename("I") == "Vol_I-Foundation & Transport-Bundle.docx"
-    assert bsd._volume_bundle_filename("IX") == "Vol_IX-Day-2 Operations-Bundle.docx"
-    assert bsd._volume_bundle_filename("0") == "Vol_0-Executive Summary, Questionnaire & Control Crosswalk-Bundle.docx"
+    downloaded file identifies its subject without opening it.
+
+    The theme is URL-safed: these filenames become GitHub Release asset names,
+    and GitHub rewrites spaces/commas/ampersands to '.' on upload — which is
+    how 11 doc links came to 404 while pointing at the percent-encoded
+    original.
+    """
+    assert bsd._volume_bundle_filename("I") == "Vol_I-Foundation-Transport-Bundle.docx"
+    assert bsd._volume_bundle_filename("IX") == "Vol_IX-Day-2-Operations-Bundle.docx"
+    assert bsd._volume_bundle_filename("0") == "Vol_0-Executive-Summary-Questionnaire-Control-Crosswalk-Bundle.docx"
+    # Already-safe themes are untouched — no gratuitous renaming.
+    assert bsd._volume_bundle_filename("VI") == "Vol_VI-Implementation-Bundle.docx"
+
+
+def test_every_volume_bundle_filename_survives_being_a_url() -> None:
+    """The property, not just the three strings above.
+
+    A name that needs percent-encoding cannot round-trip through a release
+    asset name, so assert it for EVERY registered volume rather than the
+    handful someone thought to enumerate.
+    """
+    from urllib.parse import quote
+
+    for vol_id in bsd.VOLUME_THEMES:
+        name = bsd._volume_bundle_filename(vol_id)
+        assert quote(name) == name, f"{name} would be percent-encoded in a URL"
+        assert name.lower().endswith("-bundle.docx"), (
+            f"{name} must keep the -Bundle.docx suffix the skip filter matches"
+        )
 
 
 def test_volume_bundle_filename_falls_back_without_theme() -> None:

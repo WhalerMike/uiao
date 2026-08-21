@@ -24,7 +24,7 @@
 # Conditional Access policies compose facet values via boolean
 # operators rather than text-parsing a composite string.
 
-schema_version: "2.1.0"
+schema_version: "2.2.0"
 document_id: UIAO_151
 parent_canon: UIAO_007
 model: "C"
@@ -57,8 +57,9 @@ hybrid:
     attributes: "extensionAttribute1-14"
     description: >-
       Model C facet decomposition (ADR-078): one semantic facet per
-      slot, validated per-facet against this codebook. Slots 11-14
-      remain reserved for tenant-specific extension.
+      slot, validated per-facet against this codebook. Slots 11-13 were
+      promoted to declared tenant-extension facets by ADR-137; slot 14
+      remains reserved.
   inheritance_layer:
     facet: org_path
     attribute: extensionAttribute15
@@ -79,8 +80,9 @@ hybrid:
 # Each facet is a semantic field bound to exactly one
 # onPremisesExtensionAttribute slot. The 10 named facets below are
 # canonical and MUST NOT have their slot assignments changed without a
-# superseding ADR. Slots 11-14 are reserved for tenant-specific
-# extensions; tenants declare facet semantics for those via a governed
+# superseding ADR. Slots 11-13 carry the tenant-extension facets
+# declared by ADR-137 (admin_tier, device_type, environment); slot 14
+# remains reserved, and a tenant declares its semantics via a governed
 # PR before populating values. Slot 15 carries the derived canonical
 # OrgPath (inheritance layer, ADR-127) and is not tenant-claimable.
 #
@@ -89,8 +91,9 @@ hybrid:
 # a scarce directory slot. Only projected facets are written per object,
 # so "attributes written per object" = the projected count, not the
 # defined count. Default is `projected: true` (omitted on projected
-# facets). Currently projected (7): region, department, division,
-# classification, clearance_level, account_type, plus the ADR-127
+# facets). Currently projected (10): region, department, division,
+# classification, clearance_level, account_type, the ADR-137 extension
+# facets admin_tier, device_type and environment, plus the ADR-127
 # derived org_path on slot 15. Not projected (4): role,
 # cost_center, hire_date, term_date. The 15 extensionAttribute slots are a
 # shared, tenant-wide resource; projecting fewer leaves slots free for
@@ -162,6 +165,7 @@ facets:
       - { value: Data,      description: Data / Analytics }
       - { value: Cloud,     description: Cloud Engineering }
       - { value: Identity,  description: Identity and Access }
+      - { value: Governance, description: "Governance, policy and canon stewardship" }
 
   role:
     attribute: extensionAttribute4
@@ -207,6 +211,7 @@ facets:
       - { value: CC-8100, description: Operations — Facilities }
       - { value: CC-8300, description: Operations — Logistics }
       - { value: CC-9100, description: Executive }
+      - { value: CC-BAL,  description: Baltimore site cost center }
 
   classification:
     attribute: extensionAttribute6
@@ -281,25 +286,64 @@ facets:
       - { value: Guest,          description: External guest (B2B) }
       - { value: Vendor,         description: Vendor / external party }
 
-  reserved_11:
+  # Slots 11-13 were promoted from `reserved` to declared tenant-extension
+  # facets by ADR-137. Each carries a concept the shipped Conditional Access,
+  # Intune and PKI rule libraries were previously encoding through a facet
+  # that means something else (admin tier via `role`, device type via
+  # `classification`, environment via `cost_center`) — two of which are not
+  # projected, so those rules could never match. All three are projected
+  # because policy engines read directory attributes. None is a hierarchy
+  # level, so none joins `derived_from`: they are targeted by facet
+  # composition, never by a subtree prefix.
+
+  admin_tier:
     attribute: extensionAttribute11
     description: >-
-      Reserved for tenant-specific extension. Declare facet semantics
-      (rename this entry, set kind + enumeration / typed) via a
-      governed PR before populating values in the tenant.
-    kind: reserved
+      Administrative tiering of the principal — the blast radius its
+      credentials command. Orthogonal to Role, which is seniority: a
+      Director and an Engineer can both be Tier0. Drives privileged-access
+      Conditional Access and PIM eligibility.
+    kind: enumerated
+    enumeration:
+      - { value: Tier0, description: "Identity and control plane (domain, tenant, PKI, directory)" }
+      - { value: Tier1, description: "Server and application administration" }
+      - { value: Tier2, description: "Workstation, helpdesk and end-user support" }
+    # Optional: adopt per tenant. An unpopulated slot is not drift; a
+    # populated one must be in the enumeration above (ADR-137).
+    allow_empty: true
 
-  reserved_12:
+  device_type:
     attribute: extensionAttribute12
     description: >-
-      Reserved for tenant-specific extension. See reserved_11.
-    kind: reserved
+      Form factor and purpose of a device principal. Distinct from
+      Classification, which is a property of people (Employee, Contractor,
+      ...) and is meaningless on a device. Drives Intune compliance and
+      configuration scoping.
+    kind: enumerated
+    enumeration:
+      - { value: Workstation, description: "Standard user endpoint" }
+      - { value: Kiosk,       description: "Shared, single-purpose, typically unattended endpoint" }
+      - { value: Server,      description: "Server operating system, Arc-projected or on-premises" }
+      - { value: GitServer,   description: "Source-control and pipeline host (UIAO platform server)" }
+    # Optional: adopt per tenant. An unpopulated slot is not drift; a
+    # populated one must be in the enumeration above (ADR-137).
+    allow_empty: true
 
-  reserved_13:
+  environment:
     attribute: extensionAttribute13
     description: >-
-      Reserved for tenant-specific extension. See reserved_11.
-    kind: reserved
+      Deployment environment of the principal or resource. Distinct from
+      CostCenter, which is an accounting code: cost center answers who pays,
+      environment answers what breaks when this is misconfigured. Drives
+      environment-scoped policy and change-control gates.
+    kind: enumerated
+    enumeration:
+      - { value: Production, description: "Live, user-facing or authorization-boundary systems" }
+      - { value: Staging,    description: "Pre-production validation" }
+      - { value: Dev,        description: "Development and experimentation" }
+    # Optional: adopt per tenant. An unpopulated slot is not drift; a
+    # populated one must be in the enumeration above (ADR-137).
+    allow_empty: true
 
   reserved_14:
     attribute: extensionAttribute14

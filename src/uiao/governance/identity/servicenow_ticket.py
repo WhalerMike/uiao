@@ -223,7 +223,7 @@ def create_ticket(
     event:
         The JML event to raise a ticket for.
     instance_url:
-        Base URL of the ServiceNow instance, e.g. ``https://agency.service-now.com``.
+        Base URL of the ServiceNow instance, e.g. ``https://agency.servicenowservices.com``.
         Required when ``dry_run=False``.
     username / password:
         Credentials for the UIAO service account in ServiceNow.

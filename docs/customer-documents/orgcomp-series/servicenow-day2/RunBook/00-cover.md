@@ -1,7 +1,7 @@
 ---
 title: "Day-2 Kit — Live Validation Program RunBook"
 subtitle: "ServiceNow PDI · Active Directory Lab · Microsoft 365 Tenant"
-date: "2026-07-30 · Repo commit 84bdb28ca"
+date: "Authored 2026-07-30 · repo commit 84bdb28ca · shipped in later kit builds unchanged"
 ---
 
 # Executive summary
@@ -33,14 +33,19 @@ order they should be run.
   directory yet" for three defects that commit `7d2423c74` had already fixed —
   the warning was one commit stale. The ATF `README.md` documented 12 of the
   17 specs that exist on disk; now documents all 17.
-- Implemented the SER-4 Graph scope read in `ComplianceGate._checkWriteScope`
-  (`x_fed_compliance`), which was previously a bare `TODO` unconditionally
-  returning `'unverified'` — now reads `appRoleAssignments` /
-  `oauth2PermissionGrants`, fails closed throughout, and ships with two new
-  ATF specs proving the read-only/write-shaped verdicts against fixture data.
-- Authored `lab/New-Day2AdLab.ps1` (shipped as a separate attachment alongside
-  this RunBook, since it's an executable script, not prose) — a local
-  Hyper-V lab-domain provisioner with no cloud-account dependency.
+- Implemented the SER-4 Graph scope read in `ComplianceGate._checkWriteScope`,
+  which was previously a bare `TODO` unconditionally returning `'unverified'` —
+  now reads `appRoleAssignments` / `oauth2PermissionGrants`, fails closed
+  throughout, and ships with two new ATF specs proving the read-only/
+  write-shaped verdicts against fixture data. **In the sibling `x_fed_compliance`
+  scoped app, which this kit does not ship** — the change is real but is not
+  verifiable from anything in this archive. It is listed because Track 3 (M365
+  tenant) exercises it; if you are running only Tracks 1 and 2, it does not
+  apply to you.
+- Authored `lab/New-Day2AdLab.ps1` — a local Hyper-V lab-domain provisioner
+  with no cloud-account dependency. It ships in this archive at
+  `servicenow-day2/lab/`, one canonical copy; earlier builds also carried a
+  byte-identical duplicate under `RunBook/`, which has been removed.
 
 Each track below states, up front, what it proves and — just as
 importantly — what it still does not prove. None of this is a substitute for

@@ -754,6 +754,7 @@ jobs:
             scripts/build_day2_kit_download.py
             tools/scubadrift
             .github/maintenance
+            docs/_quarto.yml
             docs/customer-documents/orgcomp-series
             infoblox-ddi-book
             index.html
@@ -893,6 +894,44 @@ jobs:
               --date-code "$(date -u +%Y-%m-%d)" \
             || echo "::warning::OrgComp markdown kit build failed (non-fatal)"
 
+      - name: Stage per-book and per-section .docx bundles for GitHub Release
+        # Every *-bundle.docx built above (the "Build per-section .docx
+        # bundles" step's --all sweep, plus canon/adr/schemas/academy/
+        # findings) is a concatenation of .docx pages that already ship
+        # individually -- pure duplication, and the single largest
+        # contributor to the Pages artifact (~421 MB across 83 files,
+        # measured on run 31640209577 / issue #1420). Stage them into a
+        # release-asset-only directory instead of shipping in _site.
+        # Release assets are a flat namespace, so `Book_NN-bundle.docx`
+        # names -- which repeat across orgpath-narrative, sql-server-
+        # narrative, and sql-server-narrative-standalone -- get their
+        # parent section name prefixed to stay unique; every other bundle
+        # name is already unique sitewide and passes through unchanged.
+        # -iname (not -name) so this also picks up the OrgComp Vol_<N>-
+        # <Theme>-Bundle.docx files (capital B, built earlier by
+        # build_orgcomp_download.py) -- those names are already unique
+        # too, just spelled with a capital letter. Runs even in
+        # maintenance mode / on PR previews (cheap local copy, publishes
+        # nothing by itself); the actual publish and Pages-strip steps
+        # below stay gated as before.
+        run: |
+          set -euo pipefail
+          mkdir -p _release_bundles
+          while IFS= read -r -d '' f; do
+            base="$(basename "$f")"
+            case "$base" in
+              Book_*-bundle.docx)
+                parent="$(basename "$(dirname "$f")")"
+                cp "$f" "_release_bundles/${parent}-${base}"
+                ;;
+              *)
+                cp "$f" "_release_bundles/${base}"
+                ;;
+            esac
+          done < <(find _site -iname '*-bundle.docx' -print0)
+          count=$(find _release_bundles -type f | wc -l)
+          echo "Staged ${count} bundle file(s) for GitHub Release."
+
       - name: Publish download kits to GitHub Releases (not the Pages artifact)
         # The kit zips/docx just built into _site/download/ are the single
         # largest contributor to the Pages artifact (~1.1 GB of the ~2.8 GB
@@ -929,25 +968,28 @@ jobs:
           files: |
             _site/download/*.zip
             _site/download/ScubaDrift-Documentation.docx
+            _release_bundles/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Remove published download kits from the Pages artifact
+      - name: Remove published download kits and .docx bundles from the Pages artifact
         # Now that the same files are on the downloads-latest release,
-        # strip them from _site/download/ before the Pages upload so they
-        # are not shipped twice. Deliberately scoped to *.zip and the one
-        # standalone .docx -- the same set the release-publish step above
-        # uploads, NOT the whole _site/download/ directory. That directory
-        # is also where Quarto renders docs/download/index.qmd to
-        # index.html; an earlier `rm -rf _site/download` deleted the
-        # Downloads page itself along with the kits, 404-ing
-        # /download/ on the live site until this fix. find with -delete on
-        # a pattern that matches nothing is a no-op, so this stays safe if
-        # a kit-build step above failed non-fatally.
+        # strip them from _site before the Pages upload so they are not
+        # shipped twice. Deliberately scoped to *.zip, the one standalone
+        # .docx, and *-bundle.docx / *-Bundle.docx -- the same sets the
+        # release-publish step above uploads, NOT the whole _site/download/
+        # directory. That directory is also where Quarto renders
+        # docs/download/index.qmd to index.html; an earlier
+        # `rm -rf _site/download` deleted the Downloads page itself along
+        # with the kits, 404-ing /download/ on the live site until that
+        # fix. find with -delete on a pattern that matches nothing is a
+        # no-op, so this stays safe if a kit-build or staging step above
+        # failed non-fatally.
         if: env.MAINTENANCE_MODE != 'true'
         run: |
           find _site/download -maxdepth 1 -name '*.zip' -delete
           rm -f _site/download/ScubaDrift-Documentation.docx
+          find _site -iname '*-bundle.docx' -delete
 
       - name: Publish the marketing landing page
         # The repo-root index.html (a hand-styled marketing/overview page,

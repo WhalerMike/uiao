@@ -129,7 +129,7 @@ All policies in this document are targeted via dynamic Azure AD (Entra ID) group
   ------------------------- ----------------------- ------------------------------------
   extensionAttribute1       Region                  East, West, Central, EMEA
 
-  extensionAttribute2       Site / Location         HeraldHarbor, Annapolis, Baltimore
+  (not a facet)             Site / Location         LocPath axis - see ADR-102 D5      
 
   extensionAttribute3       Department / Function   Governance, Engineering, Finance
 
@@ -166,7 +166,7 @@ All policies are assigned to dynamic Entra ID groups based on OrgPath extension 
 
 - **Exclude groups:** Break-glass exclusion groups for emergency override; staging groups during phased rollout.
 
-- **Filters:** Intune assignment filters provide an additional layer of targeting (e.g., *device.extensionAttribute4 -eq \"Tier0\"*) applied at the assignment level, not the group level.
+- **Filters:** Intune assignment filters provide an additional layer of targeting (e.g., *device.extensionAttribute11 -eq \"Tier0\"*) applied at the assignment level, not the group level.
 
 +--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | **Assignment Precedence**                                                                                                                                                                                          |
@@ -197,7 +197,7 @@ Scope tags partition the Intune console for multi-region or multi-tenant delegat
 Intune filters allow granular targeting at the assignment level. Filters are evaluated after group membership and can include or exclude devices from a policy assignment:
 
   -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  // Example: Include only Tier 0 devices (device.extensionAttribute4 -eq \"Tier0\") // Example: Exclude Dev environment devices (device.extensionAttribute5 -ne \"Dev\") // Example: Target Kiosk devices in East region (device.extensionAttribute6 -eq \"Kiosk\") -and (device.extensionAttribute1 -eq \"East\")
+  // Example: Include only Tier 0 devices (device.extensionAttribute11 -eq \"Tier0\") // Example: Exclude Dev environment devices (device.extensionAttribute13 -ne \"Dev\") // Example: Target Kiosk devices in East region (device.extensionAttribute12 -eq \"Kiosk\") -and (device.extensionAttribute1 -eq \"EASTUS\")
 
   -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -291,7 +291,7 @@ Non-Compliance Actions
 
 **Policy ID: CP-002 \| Platform: Windows 10/11 \| Target: Privileged Access Workstations**
 
-**OrgPath Targeting:** Dynamic group --- device.extensionAttribute4 -eq \"Tier0\"
+**OrgPath Targeting:** Dynamic group --- device.extensionAttribute11 -eq \"Tier0\"
 
 **Description:** Enforces the strictest compliance posture for Tier 0 privileged workstations. All CP-001 requirements apply, plus additional hardening. Grace period is zero --- immediate non-compliance.
 
@@ -331,7 +331,7 @@ Non-Compliance Actions
 
 **Policy ID: CP-003 \| Platform: Windows 10/11 \| Target: Standard end-user workstations**
 
-**OrgPath Targeting:** Dynamic group --- device.extensionAttribute4 -eq \"Tier2\"
+**OrgPath Targeting:** Dynamic group --- device.extensionAttribute11 -eq \"Tier2\"
 
 Settings
 
@@ -369,7 +369,7 @@ Non-Compliance Actions
 
 **Policy ID: CP-004 \| Platform: Windows Server 2025 \| Target: Azure Arc-managed servers**
 
-**OrgPath Targeting:** Dynamic group --- device.extensionAttribute4 -eq \"Tier1\"
+**OrgPath Targeting:** Dynamic group --- device.extensionAttribute11 -eq \"Tier1\"
 
 **Prerequisite:** Servers must be enrolled in Intune via Azure Arc for server management.
 
@@ -403,7 +403,7 @@ Non-Compliance Actions
 
 **Policy ID: CP-005 \| Platform: Windows 10/11 \| Target: Kiosk and shared devices**
 
-**OrgPath Targeting:** Dynamic group --- device.extensionAttribute6 -eq \"Kiosk\"
+**OrgPath Targeting:** Dynamic group --- device.extensionAttribute12 -eq \"Kiosk\"
 
 Settings
 
@@ -940,7 +940,7 @@ Endpoint Security policies are managed from the dedicated Endpoint Security blad
   --------------------------------------------------------------------------------------------------------------------------------
   **Setting**                            **Value**                **Target**
   -------------------------------------- ------------------------ ----------------------------------------------------------------
-  Credential Guard                       Enabled with UEFI lock   Tier 0 devices only (device.extensionAttribute4 -eq \"Tier0\")
+  Credential Guard                       Enabled with UEFI lock   Tier 0 devices only (device.extensionAttribute11 -eq \"Tier0\")
 
   Credential Guard                       Enabled without lock     Tier 1 and Tier 2 devices
 
@@ -1148,49 +1148,49 @@ The following PowerShell and Microsoft Graph examples create the dynamic device 
 Tier 0 Devices --- Privileged Access Workstations
 
   ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  \# PowerShell (Microsoft Graph SDK) New-MgGroup -DisplayName \"UIAO-Devices-Tier0\" \` -Description \"Tier 0 Privileged Access Workstations\" \` -MailEnabled:\$false \` -MailNickname \"uiao-devices-tier0\" \` -SecurityEnabled:\$true \` -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute4 -eq \"Tier0\")\' \` -MembershipRuleProcessingState \"On\"
+  \# PowerShell (Microsoft Graph SDK) New-MgGroup -DisplayName \"UIAO-Devices-Tier0\" \` -Description \"Tier 0 Privileged Access Workstations\" \` -MailEnabled:\$false \` -MailNickname \"uiao-devices-tier0\" \` -SecurityEnabled:\$true \` -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute11 -eq \"Tier0\")\' \` -MembershipRuleProcessingState \"On\"
 
   ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Tier 1 Servers
 
   -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  New-MgGroup -DisplayName \"UIAO-Devices-Tier1\" \` -Description \"Tier 1 Servers (Azure Arc enrolled)\" \` -MailEnabled:\$false \` -MailNickname \"uiao-devices-tier1\" \` -SecurityEnabled:\$true \` -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute4 -eq \"Tier1\")\' \` -MembershipRuleProcessingState \"On\"
+  New-MgGroup -DisplayName \"UIAO-Devices-Tier1\" \` -Description \"Tier 1 Servers (Azure Arc enrolled)\" \` -MailEnabled:\$false \` -MailNickname \"uiao-devices-tier1\" \` -SecurityEnabled:\$true \` -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute11 -eq \"Tier1\")\' \` -MembershipRuleProcessingState \"On\"
 
   -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Tier 2 Standard Workstations
 
   ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  New-MgGroup -DisplayName \"UIAO-Devices-Tier2\" \` -Description \"Tier 2 Standard End-User Workstations\" \` -MailEnabled:\$false \` -MailNickname \"uiao-devices-tier2\" \` -SecurityEnabled:\$true \` -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute4 -eq \"Tier2\")\' \` -MembershipRuleProcessingState \"On\"
+  New-MgGroup -DisplayName \"UIAO-Devices-Tier2\" \` -Description \"Tier 2 Standard End-User Workstations\" \` -MailEnabled:\$false \` -MailNickname \"uiao-devices-tier2\" \` -SecurityEnabled:\$true \` -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute11 -eq \"Tier2\")\' \` -MembershipRuleProcessingState \"On\"
 
   ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 8.2 Environment Groups
 
   -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  \# Production Devices New-MgGroup -DisplayName \"UIAO-Devices-Production\" \` -Description \"Production environment devices\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-prod\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute5 -eq \"Production\")\' \` -MembershipRuleProcessingState \"On\" \# Staging Devices New-MgGroup -DisplayName \"UIAO-Devices-Staging\" \` -Description \"Staging environment devices\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-staging\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute5 -eq \"Staging\")\' \` -MembershipRuleProcessingState \"On\" \# Dev Devices New-MgGroup -DisplayName \"UIAO-Devices-Dev\" \` -Description \"Development environment devices\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-dev\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute5 -eq \"Dev\")\' \` -MembershipRuleProcessingState \"On\"
+  \# Production Devices New-MgGroup -DisplayName \"UIAO-Devices-Production\" \` -Description \"Production environment devices\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-prod\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute13 -eq \"Production\")\' \` -MembershipRuleProcessingState \"On\" \# Staging Devices New-MgGroup -DisplayName \"UIAO-Devices-Staging\" \` -Description \"Staging environment devices\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-staging\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute13 -eq \"Staging\")\' \` -MembershipRuleProcessingState \"On\" \# Dev Devices New-MgGroup -DisplayName \"UIAO-Devices-Dev\" \` -Description \"Development environment devices\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-dev\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute13 -eq \"Dev\")\' \` -MembershipRuleProcessingState \"On\"
 
   -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 8.3 Role-Based Groups
 
   -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  \# Kiosk Devices New-MgGroup -DisplayName \"UIAO-Devices-Kiosk\" \` -Description \"Kiosk and shared devices\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-kiosk\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute6 -eq \"Kiosk\")\' \` -MembershipRuleProcessingState \"On\"
+  \# Kiosk Devices New-MgGroup -DisplayName \"UIAO-Devices-Kiosk\" \` -Description \"Kiosk and shared devices\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-kiosk\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute12 -eq \"Kiosk\")\' \` -MembershipRuleProcessingState \"On\"
 
   -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 8.4 Region, Site, and Department Groups
 
   ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  \# Region --- East New-MgGroup -DisplayName \"UIAO-Devices-Region-East\" \` -Description \"Devices in East region\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-east\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute1 -eq \"East\")\' \` -MembershipRuleProcessingState \"On\" \# Site --- Herald Harbor New-MgGroup -DisplayName \"UIAO-Devices-Site-HeraldHarbor\" \` -Description \"Devices at Herald Harbor site\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-heraldharbor\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute2 -eq \"HeraldHarbor\")\' \` -MembershipRuleProcessingState \"On\" \# Department --- Governance New-MgGroup -DisplayName \"UIAO-Devices-Dept-Governance\" \` -Description \"Devices assigned to Governance department\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-governance\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute3 -eq \"Governance\")\' \` -MembershipRuleProcessingState \"On\"
+  \# Region --- East New-MgGroup -DisplayName \"UIAO-Devices-Region-East\" \` -Description \"Devices in East region\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-east\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute1 -eq \"EASTUS\")\' \` -MembershipRuleProcessingState \"On\" \# Site --- Annapolis HQ. Site is the LocPath axis, not an OrgPath facet: per ADR-102 D5, LocPath claims no extensionAttribute slot, so a site group has no membership rule to write. It is planned by the LocPath Entra exposure as an assigned-membership group, with members read from the governed Primary-LocPath assignments. New-MgGroup -DisplayName \"LocPath-Site-ANNAPOLIS-HQ-Users\" \` -Description \"Devices and users at the Annapolis HQ site (LocPath /USA/MD/ANNAPOLIS-HQ)\" \` -MailEnabled:\$false -MailNickname \"locpath-site-annapolis-hq\" \` -SecurityEnabled:\$true \` -MembershipRuleProcessingState \"On\" \# Department --- Governance New-MgGroup -DisplayName \"UIAO-Devices-Dept-Governance\" \` -Description \"Devices assigned to Governance department\" \` -MailEnabled:\$false -MailNickname \"uiao-devices-governance\" \` -SecurityEnabled:\$true -GroupTypes @(\"DynamicMembership\") \` -MembershipRule \'(device.extensionAttribute3 -eq \"Governance\")\' \` -MembershipRuleProcessingState \"On\"
 
   ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 8.5 Graph API --- REST Example
 
   -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  POST https://graph.microsoft.us/v1.0/groups Content-Type: application/json { \"displayName\": \"UIAO-Devices-Tier0\", \"description\": \"Tier 0 Privileged Access Workstations\", \"mailEnabled\": false, \"mailNickname\": \"uiao-devices-tier0\", \"securityEnabled\": true, \"groupTypes\": \[\"DynamicMembership\"\], \"membershipRule\": \"(device.extensionAttribute4 -eq \\\"Tier0\\\")\", \"membershipRuleProcessingState\": \"On\" }
+  POST https://graph.microsoft.us/v1.0/groups Content-Type: application/json { \"displayName\": \"UIAO-Devices-Tier0\", \"description\": \"Tier 0 Privileged Access Workstations\", \"mailEnabled\": false, \"mailNickname\": \"uiao-devices-tier0\", \"securityEnabled\": true, \"groupTypes\": \[\"DynamicMembership\"\], \"membershipRule\": \"(device.extensionAttribute11 -eq \\\"Tier0\\\")\", \"membershipRuleProcessingState\": \"On\" }
 
   -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

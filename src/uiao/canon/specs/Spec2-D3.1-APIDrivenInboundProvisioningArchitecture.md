@@ -519,7 +519,10 @@ A typical user payload element looks like:
     "manager": { "value": "EMP-00789" }
   },
   "urn:scim:schemas:extension:Microsoft:2.0:User": {
-    "extensionAttribute1": "GOV/EXEC/OPM/HRIT",
+    "extensionAttribute1": "NCR",
+    "extensionAttribute2": "Executive",
+    "extensionAttribute3": "GRC",
+    "extensionAttribute15": "Region=NCR|Department=Executive|Division=GRC|",
     "usageLocation": "US",
     "preferredLanguage": "en-US"
   }
@@ -600,7 +603,7 @@ populated on every record:
 | `name.familyName` | `lastName` | Same. |
 | `displayName` | `displayName` (HR) or `lastName, firstName` (computed) | Tenant policy decides format. |
 | `active` | derived from HR `employmentStatus` | True/false; pre-hire-not-yet-active is `false`. |
-| `extensionAttribute1` | OrgPath calculator output | Per ADR-035 codebook + ADR-048 attribute selection. |
+| `extensionAttribute1`–`10` / `extensionAttribute15` | OrgPath calculator output (facets + derived path) | Per ADR-035 codebook, ADR-078 facets, ADR-127 derived path. |
 | `usageLocation` | `country` (HR) | Required for M365 license assignment. |
 | `enterprise:User.employeeNumber` | `employeeId` | Same source as `externalId`. Both required by Microsoft. |
 
@@ -1155,7 +1158,7 @@ sequencing follow-on to D3.1's implementation.
 - [ADR-003 — API-Driven Inbound Provisioning as HR-Agnostic Canonical Path](../adr/adr-003-api-driven-inbound-provisioning.md) (status: ACCEPTED) — the architectural decision this document instantiates.
 - [ADR-004 — Workload Identity Federation as Default](../adr/adr-004-workload-identity-federation-default.md) — informs §4.1 service-principal posture.
 - [ADR-035 — OrgPath Codebook Binding](../adr/adr-035-orgpath-codebook-binding.md) — OrgPath calculation contract for §3.2.
-- [ADR-048 — OrgPath Attribute Selection](../adr/adr-048-orgpath-attribute-selection.md) — `extensionAttribute1` mapping for §5.2.
+- [ADR-048 — OrgPath Attribute Selection](../adr/adr-048-orgpath-attribute-selection.md) — `extensionAttribute*` family selection for §5.2; slot shape per ADR-078 + ADR-127.
 - [ADR-049 — Microsoft Modernization Adapter Coverage Expansion](../adr/adr-049-microsoft-adapter-coverage-expansion.md) (status: ACCEPTED) — names downstream consumers in §12.4.
 
 ### 13.2 UIAO docs

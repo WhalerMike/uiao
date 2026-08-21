@@ -1075,23 +1075,23 @@ The UIAO OrgPath model uses Entra ID extension attributes on user and device obj
 
 **Example 1 --- Wi-Fi SCEP for East Region Devices:**
 
-(device.extensionAttribute1 -eq \"East\") and (device.deviceManagementAppId -ne null)
+(device.extensionAttribute1 -eq \"EASTUS\") and (device.deviceManagementAppId -ne null)
 
 **Example 2 --- S/MIME for Finance Department Users:**
 
-(user.extensionAttribute3 -eq \"Finance\") and (user.accountEnabled -eq true)
+(user.extensionAttribute2 -eq \"Finance\") and (user.accountEnabled -eq true)
 
 **Example 3 --- Tier 0 High-Assurance Certificates (4096-bit RSA):**
 
-(device.extensionAttribute4 -eq \"Tier0\") and (device.deviceOSType -eq \"Windows\")
+(device.extensionAttribute11 -eq \"Tier0\") and (device.deviceOSType -eq \"Windows\")
 
 **Example 4 --- Production Environment Certificates Only:**
 
-(device.extensionAttribute5 -eq \"Production\") and (device.isCompliant -eq true)
+(device.extensionAttribute13 -eq \"Production\") and (device.isCompliant -eq true)
 
 **Example 5 --- Server Role Certificates (Server Authentication EKU):**
 
-(device.extensionAttribute6 -eq \"Server\") and (device.extensionAttribute5 -eq \"Production\")
+(device.extensionAttribute12 -eq \"Server\") and (device.extensionAttribute13 -eq \"Production\")
 
 **Example 6 --- All Managed Mobile Devices for MDM Bootstrap Cert:**
 
@@ -1099,7 +1099,26 @@ The UIAO OrgPath model uses Entra ID extension attributes on user and device obj
 
 **Example 7 --- Site-Specific Wired 802.1X (Headquarters):**
 
-(device.extensionAttribute2 -eq \"HQ\") and (device.extensionAttribute6 -eq \"Workstation\")
+Site is **not** an OrgPath facet. Physical place is LocPath's axis
+(`/Country/Region/Site/Building/Floor/Space`, with Site as the minimum
+governance unit), and per [ADR-102](../../adr/adr-102-locpath-location-addressing.qmd)
+§D5 LocPath claims no `extensionAttribute` slot at all — so there is no
+`device.extensionAttributeN -eq \"HQ\"` rule to write, and reaching for one
+puts a place name in a facet that means something else.
+
+Scope the assignment to the site group the LocPath exposure plans for that
+site, and use an OrgPath facet only for the device dimension:
+
+    Assignment target:  LocPath-Site-ANNAPOLIS-HQ-Users   (or AU-Site-ANNAPOLIS-HQ)
+    Device filter:      (device.extensionAttribute12 -eq \"Workstation\")
+
+Membership of `LocPath-Site-*` groups is **assigned** from the governed
+Primary-LocPath assignments, not derived from a stamped attribute. A
+deployment that later adopts a storage locator for LocPath can switch the
+group to a dynamic rule of the form `(<locator> -startsWith
+\"/USA/MD/ANNAPOLIS-HQ\")`, where the locator is a per-target binding-profile
+parameter rather than a claimed slot. This is the OrgPath x LocPath matrix
+ADR-102 describes: prefix-match on each axis, one axis per question.
 
 +----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | **Dynamic Group Processing**                                                                                                                                                                                                                             |

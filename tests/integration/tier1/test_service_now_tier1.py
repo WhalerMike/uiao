@@ -24,6 +24,8 @@ from __future__ import annotations
 import pytest
 
 REQUIRED_VARS = [
+    # PDIs are commercial-cloud only (service-now.com); production federal
+    # tenants live on GCC at servicenowservices.com.
     "SERVICENOW_PDI_INSTANCE",  # e.g. dev123456.service-now.com
     "SERVICENOW_PDI_USER",
     "SERVICENOW_PDI_PASSWORD",

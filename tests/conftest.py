@@ -4,9 +4,19 @@ from __future__ import annotations
 
 import contextlib
 import os
+import sys
 from pathlib import Path
 
 import pytest
+
+# Scripts under scripts/ import their siblings by bare name (`from _console
+# import ...`), which works when they run as `python scripts/foo.py` because
+# Python puts scripts/ on sys.path[0]. Tests load them via importlib instead,
+# where that does not happen — so put scripts/ on the path once, here, rather
+# than in every test that loads a script.
+_SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
 
 from canon_paths import CANON_ROOT, DATA_DIR, GENERATION_INPUTS_DIR
 

@@ -38,7 +38,7 @@ order they should be run.
   returning `'unverified'` — now reads `appRoleAssignments` /
   `oauth2PermissionGrants`, fails closed throughout, and ships with two new
   ATF specs proving the read-only/write-shaped verdicts against fixture data.
-- Authored `lab/New-Day2AdLab.ps1` (shipped as a separate attachment alongside
+- Authored `lab/New-Day2AdLab.ps1` (in this archive at `servicenow-day2/lab/`, alongside
   this RunBook, since it's an executable script, not prose) — a local
   Hyper-V lab-domain provisioner with no cloud-account dependency.
 
@@ -881,7 +881,7 @@ Nothing here is destructive outside the dev tenant itself.
 |---|---|
 | ServiceNow PDI runbook | `docs/customer-documents/orgcomp-series/servicenow-day2/CURRENT-STATE-PDI-VALIDATION.md` |
 | AD Lab runbook | `docs/customer-documents/orgcomp-series/servicenow-day2/CURRENT-STATE-AD-LAB-VALIDATION.md` |
-| AD Lab provisioning script | `docs/customer-documents/orgcomp-series/servicenow-day2/lab/New-Day2AdLab.ps1` (shipped alongside this RunBook as a separate file — it's executable PowerShell, not prose, and is meant to be read before it's run) |
+| AD Lab provisioning script | `docs/customer-documents/orgcomp-series/servicenow-day2/lab/New-Day2AdLab.ps1` (one canonical copy in this archive — it's executable PowerShell, not prose, and is meant to be read before it's run) |
 | M365 Tenant runbook | `docs/customer-documents/orgcomp-series/x_fed_compliance/LIVE-VALIDATION-M365-TENANT.md` |
 | SER-4 code fix | `docs/customer-documents/orgcomp-series/x_fed_compliance/script-includes/ComplianceGate.js` (`_checkWriteScope` and helpers) |
 | New ATF specs | `x_fed_compliance/atf/atf-scope-check-confirmed-readonly.xml`, `atf-scope-check-holds-write.xml` |

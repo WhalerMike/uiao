@@ -41,7 +41,7 @@ ADAPTERS = {
     "palo-alto": PaloAltoAdapter({"host": "panos.test", "username": "admin", "password": "pass"}),
     "patch-state": PatchStateAdapter({}),
     "scubagear": ScubaGearAdapter({}),
-    "servicenow": ServiceNowAdapter({"instance": "dev.service-now.com", "username": "admin", "password": "pass"}),
+    "servicenow": ServiceNowAdapter({"instance": "dev", "username": "admin", "password": "pass"}),
     "stig-compliance": StigComplianceAdapter({}),
     "terraform": TerraformAdapter({"state_source": "local://test.tfstate"}),
     "vuln-scan": VulnScanAdapter({}),

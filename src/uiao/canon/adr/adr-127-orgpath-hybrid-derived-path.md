@@ -9,6 +9,9 @@ next_review: 2027-01-07
 review_trigger: A tenant deployment validates the derived path against a real directory; the Azure Policy `like` literal-pipe footnote is confirmed (or refuted) in a live tenant; a fourth hierarchy facet is proposed for derived_from; directory schema extensions escape the 15-slot cap (would reopen the slot-15 binding)
 supersedes: null
 superseded_by: null
+amends:
+  - adr-063-orgpath-storage-slot-binding.md
+  - adr-078-orgpath-attribute-schema-15-facet.md
 publish_to_site: true
 publication_style: include
 published_at: docs/adr/adr-127-orgpath-hybrid-derived-path.html

@@ -594,8 +594,8 @@ the following operational properties:
 - **Provenance-bound** --- every config file change is a Git commit; no
   admin-portal clicks permitted; Intune baseline policy enforces this.
 - **OrgTree-governed** --- server carries its own OrgPath
-  (`ORG-IT-INF-PLATFORM`), lives in an Administrative Unit
-  (`AU-ORG-IT-INF-PLATFORM`), and is targeted by an OrgPath-scoped
+  (`Region=NCR|Department=IT|Division=InfraOps|`), lives in an Administrative Unit
+  (`AU-NCR-IT-InfraOps`), and is targeted by an OrgPath-scoped
   Intune compliance policy.
 - **Drift-monitored** --- UIAO_163 reports the server's state on a schedule
   (OrgPath, AU membership, Gitea team mapping, Arc heartbeat). Any drift
@@ -1102,8 +1102,8 @@ A plan is a YAML document that looks, in abbreviated form, like this:
       - id: A0001
         type: create-administrative-unit
         target:
-          display_name: AU-ORG-FIN
-          membership_rule: "(user.extensionAttribute1 -startsWith \"ORG-FIN\")"
+          display_name: AU-NCR-Finance
+          membership_rule: "(user.extensionAttribute15 -startsWith \"Region=NCR|Department=Finance|\")"
           restricted: true
         provenance:
           source: assessments/2026-04-24-1030/ou-hierarchy.json#ou/FIN
@@ -1377,11 +1377,11 @@ is capped at five segments. The regex that validates any OrgPath is:
 A single attribute drives five downstream outcomes:
 
 1.  **Dynamic group membership** --- every user with
-    `extensionAttribute1 -startsWith "ORG-FIN"` is in
-    `OrgTree-FIN-Users`.
-2.  **Administrative Unit scoping** --- the AU `AU-ORG-FIN` has the same
-    membership rule; delegated admins of that AU manage only those
-    users.
+    `extensionAttribute2 -eq "Finance"` is in `OrgTree-FIN-Users`.
+2.  **Administrative Unit scoping** --- the AU `AU-NCR-Finance` scopes on
+    the derived path (`extensionAttribute15 -startsWith
+    "Region=NCR|Department=Finance|"`); delegated admins of that AU manage
+    only those users.
 3.  **Conditional Access targeting** --- CA policies include or exclude
     groups keyed to OrgPath segments.
 4.  **License assignment** --- group-based licensing flows from
@@ -1414,29 +1414,38 @@ Entra ID computes it by evaluating a dynamic-group rule against
 
 Every OrgPath-governed dynamic group uses one of three patterns.
 
-**Pattern 1 --- Branch Query (subtree).** Captures all users at and
-below a hierarchy level. Use `-startsWith`.
+**Pattern 1 --- Branch Query (subtree).** Captures everyone at and below
+a point in the hierarchy, including levels that do not exist yet. Use
+`-startsWith` against the derived OrgPath on `extensionAttribute15`.
 
-    (user.extensionAttribute1 -startsWith "ORG-FIN")
+    (user.extensionAttribute15 -startsWith "Region=NCR|Department=Finance|")
 
-Produces: every Finance user, including AP, Budget, Tax, and every
-sub-subgroup.
+Produces: every Finance user in the NCR region, across every division
+under Finance and any division added later. The prefix must be anchored
+at `Region=` --- the derived path is composed region, department,
+division in that order, so a prefix starting at `Department=` matches
+nothing --- and must carry its trailing `|` (ADR-127).
 
-**Pattern 2 --- Node Query (exact).** Captures only users at a specific
-level. Use `-eq`.
+**Pattern 2 --- Node Query (exact).** Captures users at one specific
+place in the hierarchy and nowhere else. This is boolean facet
+composition, not a path match.
 
-    (user.extensionAttribute1 -eq "ORG-FIN-AP")
+    (user.extensionAttribute2 -eq "Finance") and (user.extensionAttribute3 -eq "GRC")
 
-Produces: users whose OrgPath is *exactly* `ORG-FIN-AP` --- not their
-children.
+Produces: users in Finance/GRC exactly. Each clause validates
+independently against its own facet enumeration.
 
-**Pattern 3 --- Functional Query (role or attribute).** Combines OrgPath
-with a role-bearing attribute (job title, cost center, department), for
-cross-cutting concerns.
+**Pattern 3 --- Functional Query (cross-cutting).** Combines a facet with
+another attribute for a question that is not about hierarchy position at
+all.
 
-    (user.extensionAttribute1 -startsWith "ORG-IT") and (user.jobTitle -contains "Security")
+    (user.extensionAttribute2 -eq "IT") and (user.jobTitle -contains "Security")
 
-Produces: every IT-organization user whose title includes "Security."
+Produces: every IT user whose title includes "Security," in every region.
+Note the shape: "all of Finance, everywhere" is cross-cutting, not a
+subtree --- a facet predicate, never a path prefix. Reaching for
+`-startsWith` to express it produces a rule that silently matches no
+one.
 
 ### Naming convention
 
@@ -1953,7 +1962,7 @@ Policies live in `policies/azure-arc/` and look like:
 ### Targeting via Azure tags
 
 Arc policy targeting uses Azure resource tags, which UIAO keeps in sync
-with OrgPath. A server tagged `OrgPath=ORG-IT-INF-PLATFORM` +
+with OrgPath. A server tagged `OrgPath=Region=NCR|Department=IT|Division=InfraOps|` +
 `DeviceRole=GitServer` picks up every policy whose `include_tags` match.
 The tag sync is a UIAO_163-monitored job; if an Arc-projected server's tag
 drifts from the Entra device's OrgPath, drift opens a ticket.
@@ -2187,7 +2196,7 @@ DM_015's interface contract:
 
 UIAO tags DNS records with the OrgPath of the owning object. A record
 for `git.iaio.internal` that points to the platform server carries an
-`OrgPath=ORG-IT-INF-PLATFORM` metadata tag in Private DNS. The drift
+`OrgPath=Region=NCR|Department=IT|Division=InfraOps|` metadata tag in Private DNS. The drift
 engine uses this to flag records whose owner has been decommissioned ---
 if the Entra device object for `UIAO-GIT01` is removed, but the DNS
 record still exists, that's **Orphan Drift**.
@@ -2253,10 +2262,11 @@ discovery points:
 Write methods: add / update / retire scopes + reservations, governed via
 the plan pipeline.
 
-### OrgPath-scoping of DHCP
+### LocPath-scoping of DHCP
 
-DHCP scopes are tagged with the OrgPath of the site they serve. A scope
-for the East Baltimore office carries `OrgPath=ORG-LOC-EAST-BALTIMORE`
+DHCP scopes are tagged with the **LocPath** of the site they serve — place is
+LocPath's axis, not an OrgPath facet (ADR-102 §D5). A scope for the
+Annapolis office carries `LocPath=/USA/MD/ANNAPOLIS-HQ`
 in its metadata (stored in the UIAO canon, mirrored to DHCP server
 extension data where supported). This enables drift detection on scope
 ownership and blast-radius analysis for address-pool changes.
@@ -2556,9 +2566,9 @@ projection; the physical host is unchanged.
 
 Every Arc-projected server gets tagged with its OrgPath:
 
-    OrgPath:         ORG-IT-INF-PLATFORM
-    OrgPathBranch:   ORG-IT-INF
-    OrgPathDivision: ORG-IT
+    OrgPath:         Region=NCR|Department=IT|Division=InfraOps|
+    OrgDepartment:   IT
+    OrgDivision:     InfraOps
     DeviceRole:      GitServer
     DeviceTier:      Tier0
     Environment:     Production
@@ -2609,12 +2619,13 @@ domain-unjoin until every SPN on that server has been resolved
 
 ## OrgPath on devices --- the AU scoping story
 
-User devices carry OrgPath in `extensionAttribute1` just like users.
-This drives:
+User devices carry the OrgPath facets and the derived path just like
+users. This drives:
 
-- **Device dynamic groups.**
-  `(device.extensionAttribute1 -startsWith "ORG-FIN")` captures all
-  Finance devices.
+- **Device dynamic groups.** `(device.extensionAttribute2 -eq "Finance")`
+  captures all Finance devices in every region; the branch form
+  `(device.extensionAttribute15 -startsWith "Region=NCR|Department=Finance|")`
+  captures the NCR Finance subtree.
 - **Intune compliance scoping.** `OrgTree-FIN-Devices` is the target
   group for Finance-specific compliance policies.
 - **CA device-state targeting.** CA policies that require "compliant
@@ -2664,7 +2675,7 @@ Compute migration passes when:
   Domain-Joined).
 - [ ] Every server is Arc-connected (or documented as exempt with
   retirement schedule).
-- [ ] Every device has a valid OrgPath in `extensionAttribute1`.
+- [ ] Every device carries its projected OrgPath facets and a derived path on `extensionAttribute15` that matches the recomputation.
 - [ ] Every Intune compliance policy targets OrgTree-scoped groups.
 - [ ] Every Azure Policy / Guest Configuration targets OrgPath tags.
 - [ ] Every SPN in the legacy AD SPN map has been resolved (migrated,

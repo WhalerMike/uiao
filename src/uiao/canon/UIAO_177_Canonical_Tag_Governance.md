@@ -27,7 +27,7 @@ All UIAO-owned tags use the `uiao.` prefix. The reserved keys are:
 
 | Key                       | Type   | Domain                                  | Source of truth                                                |
 |---------------------------|--------|-----------------------------------------|----------------------------------------------------------------|
-| `uiao.org.path`           | string | OrgPath lineage (`ORG-DIV-DEPT-...`)    | **Derived** from Entra `extensionAttribute1` (UIAO_151).       |
+| `uiao.org.path`           | string | OrgPath lineage (`ORG-DIV-DEPT-...`)    | **Derived** from Entra `extensionAttribute15` (UIAO_151).       |
 | `uiao.identity.lifecycle` | enum   | `active` \| `leave` \| `disabled`       | Computed from HRIT joiner-mover-leaver signal (UIAO_136).      |
 | `uiao.owner`              | string | Canonical identity ID of accountable    | Resolved through ownership service (`src/uiao/governance/ownership.py`). |
 | `uiao.boundary`           | enum   | `GCC-Moderate` plus authorized exceptions | UIAO substrate-manifest `gcc-boundary` enum (ADR-033, ADR-059).|

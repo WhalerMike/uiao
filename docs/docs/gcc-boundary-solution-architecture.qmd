@@ -211,17 +211,29 @@ unit the device *belongs to*, not where it *is*.
 
 **Implementation:**
 
-The AD survey adapter writes OrgPath to `extensionAttribute1` on computer
-objects. Entra Connect syncs this to Entra ID device objects. Dynamic device
-groups are created on the same OrgPath rules as user groups:
+The AD survey adapter writes the governance-layer facets to their codebook
+slots on computer objects, and the derived OrgPath to `extensionAttribute15`.
+Entra Connect syncs these to Entra ID device objects. Dynamic device groups
+are built from the same rules as user groups — and which rule shape you use
+depends on the question being asked:
 
 ```
-OrgTree-IT-SEC-SOC (devices)
-  Rule: device.extensionAttribute1 -eq "ORG-IT-SEC-SOC"
+OrgTree-IT-CyberOps (devices) — node-exact: boolean facet composition
+  Rule: (device.extensionAttribute2 -eq "IT") and
+        (device.extensionAttribute3 -eq "CyberOps")
 
-OrgTree-FIN-All (devices)
-  Rule: device.extensionAttribute1 -startsWith "ORG-FIN"
+OrgTree-FIN-All (devices) — cross-cutting: every Finance device, any region
+  Rule: (device.extensionAttribute2 -eq "Finance")
+
+OrgTree-NCR-IT-Branch (devices) — subtree: this node and every descendant
+  Rule: (device.extensionAttribute15 -startsWith "Region=NCR|Department=IT|")
 ```
+
+The third form is the only one that uses the derived path, and it must be
+anchored at `Region=` — the path is composed region-first, so a prefix
+starting at `Department=` matches nothing. "All of Finance, everywhere" is a
+cross-cutting question, not a subtree, so it is a facet predicate. The
+trailing `|` is mandatory in any prefix (ADR-127).
 
 Intune configuration profiles and compliance policies target these groups.
 The result is organizational policy targeting that accurately reflects the

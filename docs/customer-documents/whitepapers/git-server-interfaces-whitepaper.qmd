@@ -84,7 +84,7 @@ and observed by the conformance adapter
 [`uiao-git-server`](../adapter-specs/uiao-git-server/uiao-git-server.qmd).
 Anything not in this table is not authorized on the host.
 
-![Six interface families radiating from the UIAO-GIT01 host as a hub-and-spoke map](images/git-server-interfaces-whitepaper-image-01-six-interface-families-radiating.png){#fig-git-server-interfaces-whitepaper-image-01 fig-alt="Hub-and-spoke radial diagram. At the center, a labeled rectangular host card \"UIAO-GIT01 — Windows Server 2025 (Tier-0, GCC-Moderate, OrgPath: ORG-IT-INF-PLATFORM, AU: AU-ORG-IT-INF-PLATFORM)\" with a small Gitea-on-IIS stack icon underneath. Six labeled spoke clusters radiate outward at evenly-spaced angles; each cluster lists four to six plane names: Spoke A \"Client / operator transport\" — HTTPS Git Smart-HTTP, Gitea SSH :2222, Web UI, REST API v1, Git LFS, optional FastAPI; Spoke B \"Identity & authentication\" — AD LDAPS, Entra OIDC, Kerberos / NTLM, Hybrid Entra device join, GPG signed-commit verify; Spoke C \"Cloud management plane\" — Azure Arc, Azure Policy + Guest Config, Intune compliance, Azure Monitor Agent, Azure Blob backup; Spoke D \"Governance & telemetry\" — pre-receive / update / post-receive hooks, Gitea webhooks, UIAO_163 drift reporter, uiao-git-server conformance adapter, IIS W3C logs; Spoke E \"Local management\" — PowerShell 7.4 (signed-only), Gitea CLI, IIS Manager / appcmd, NTFS storage; Spoke F \"Outbound integrations\" — GitHub upstream pull-mirror, PostgreSQL backend, build-time supply chain (pinned SHAs). Around the outer edge of the diagram, a thin teal ring labeled \"Finite. Named. Observable. Anything outside this taxonomy is a finding.\" Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic." width="100%"}
+![Six interface families radiating from the UIAO-GIT01 host as a hub-and-spoke map](images/git-server-interfaces-whitepaper-image-01-six-interface-families-radiating.png){#fig-git-server-interfaces-whitepaper-image-01 fig-alt="Hub-and-spoke radial diagram. At the center, a labeled rectangular host card \"UIAO-GIT01 — Windows Server 2025 (Tier-0, GCC-Moderate, OrgPath: NCR / IT / InfraOps, AU: AU-NCR-IT-InfraOps)\" with a small Gitea-on-IIS stack icon underneath. Six labeled spoke clusters radiate outward at evenly-spaced angles; each cluster lists four to six plane names: Spoke A \"Client / operator transport\" — HTTPS Git Smart-HTTP, Gitea SSH :2222, Web UI, REST API v1, Git LFS, optional FastAPI; Spoke B \"Identity & authentication\" — AD LDAPS, Entra OIDC, Kerberos / NTLM, Hybrid Entra device join, GPG signed-commit verify; Spoke C \"Cloud management plane\" — Azure Arc, Azure Policy + Guest Config, Intune compliance, Azure Monitor Agent, Azure Blob backup; Spoke D \"Governance & telemetry\" — pre-receive / update / post-receive hooks, Gitea webhooks, UIAO_163 drift reporter, uiao-git-server conformance adapter, IIS W3C logs; Spoke E \"Local management\" — PowerShell 7.4 (signed-only), Gitea CLI, IIS Manager / appcmd, NTFS storage; Spoke F \"Outbound integrations\" — GitHub upstream pull-mirror, PostgreSQL backend, build-time supply chain (pinned SHAs). Around the outer edge of the diagram, a thin teal ring labeled \"Finite. Named. Observable. Anything outside this taxonomy is a finding.\" Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic." width="100%"}
 
 ## 1. Architectural context — what is being deployed
 
@@ -306,13 +306,18 @@ forwards the impersonated token into the Python process. This auth
 surface does **not** apply to the Gitea reverse proxy — Gitea handles
 its own auth via LDAPS or OIDC.
 
-### 3.4 Hybrid Entra device join — `extensionAttribute1` carries OrgPath
+### 3.4 Hybrid Entra device join — the OrgPath facets and derived path
 
 The host is registered as a device object in the customer's Entra
 tenant. Two attributes are critical to the governance plane:
 
-- `extensionAttribute1 = ORG-IT-INF-PLATFORM` — the OrgPath, validated
-  against UIAO_151 codebook and UIAO_158 schema
+- The governance-layer facets in their codebook slots — `extensionAttribute1
+  = NCR` (Region), `extensionAttribute2 = IT` (Department), `extensionAttribute3
+  = InfraOps` (Division) — each validated against its own enumeration in the
+  UIAO_151 codebook and the UIAO_158 schema
+- `extensionAttribute15` — the derived OrgPath
+  (`Region=NCR|Department=IT|Division=InfraOps|`), recomputed from those
+  facets on every stamp rather than hand-authored (ADR-127)
 - Azure Arc resource tags mirror the same OrgPath plus `DeviceRole` and
   `DeviceTier` (Phase 14.1)
 
@@ -688,9 +693,9 @@ under operational validation per the build guide's own status warning:
 
 | Gitea role | Dynamic group | Membership rule |
 |---|---|---|
-| Owner | `OrgTree-IT-INF-PLATFORM-CanonStewards` | `extensionAttribute1 -eq "ORG-IT-INF-PLATFORM-STW"` |
-| Write | `OrgTree-IT-INF-PLATFORM-Contributors` | `extensionAttribute1 -startsWith "ORG-IT-INF-PLATFORM"` |
-| Read | `OrgTree-IT-INF-Users` | `extensionAttribute1 -startsWith "ORG-IT-INF"` |
+| Owner | `OrgTree-NCR-IT-InfraOps-CanonStewards` | `(user.extensionAttribute2 -eq "IT") and (user.extensionAttribute3 -eq "InfraOps") and (user.extensionAttribute10 -eq "Privileged")` |
+| Write | `OrgTree-NCR-IT-InfraOps-Contributors` | `(user.extensionAttribute15 -startsWith "Region=NCR\|Department=IT\|Division=InfraOps\|")` |
+| Read | `OrgTree-NCR-IT-Users` | `(user.extensionAttribute15 -startsWith "Region=NCR\|Department=IT\|")` |
 
 A move in the HR feed propagates through dynamic-group recalculation
 into a Gitea permission change in roughly fifteen minutes; no

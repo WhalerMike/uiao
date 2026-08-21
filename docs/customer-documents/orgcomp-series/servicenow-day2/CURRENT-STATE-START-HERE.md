@@ -11,7 +11,7 @@
 > **The base kit is the [2027 Target State edition](#the-two-editions).** Keep it
 > as the goal; run *this* edition now.
 
-**Date Code:** 2026-07-23 06:46 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
+**Date Code:** 2026-08-19 10:22 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
 **Audience:** the implementer and operators running day-2 tasks on today's hybrid estate
 
 ## 0. What changed, in one paragraph
@@ -87,6 +87,14 @@ documents unchanged; the **Current-State docs** cover only the delta.
   Mover task from escaping the OUs your GPO/LAPS/delegation/audit scoping covers.
 - **Entra Connect** configured and healthy, with **password writeback** enabled if
   you intend to actuate password resets in Entra rather than AD.
+- **Three columns and one index on the integration table**
+  (`x_fed_day2_ops_integration`), specified in `KIT-BUILD-SPEC.md` §2b/§2b-i:
+  `sam_request_ref`, `reason_code`, `http_status`, and a **UNIQUE INDEX on
+  `sam_request_id`**. This is called out here as well as in the build spec
+  because **ServiceNow silently ignores a write to a column that does not
+  exist** — with these missing the SAM endpoint looks healthy while dropping
+  its telemetry, and the inbound idempotency check has no database-level
+  backstop. Nothing errors; the evidence simply is not there.
 
 ## 5. Disclaimers specific to this edition
 
@@ -107,8 +115,10 @@ advice, no warranty) apply unchanged. Additionally:
    itself; every write returns only `{ ok, dispatched, ecc_sys_id }`, and closure
    depends on this read-back. **What is not yet proven:** the read-back has been
    exercised by a mock ServiceNow harness executing the real script against
-   fixture data (`0d452b75f`), not against a live domain controller — see the
-   ServiceNow PDI + AD lab validation tracks below.
+   fixture data (`0d452b75f`), not against a live domain controller — close that
+   gap with the two live-validation tracks in §6:
+   `CURRENT-STATE-PDI-VALIDATION.md` and `CURRENT-STATE-AD-LAB-VALIDATION.md`.
+   Both are entry criteria for the pilot (`CURRENT-STATE-PILOT-ROLLOUT.md` §0).
 3. **The routing predicate is authoritative, not cosmetic.** `hybrid_mode = true`
    plus `onPremisesSyncEnabled = true` sends a task to the AD leg. If you flip
    `hybrid_mode` to `false` while identities are still AD-mastered, cloud writes to
@@ -128,10 +138,10 @@ advice, no warranty) apply unchanged. Additionally:
    loudly. **What remains genuinely open, and requires real infrastructure or a
    decision only the author can make — not more code review:**
    - The `ecc_queue` insert ACL on the target instance — anyone who can insert a
-     `topic = 'PowerShell'` / `agent = 'mid.server.<x>'` record can drive AD
-     writes directly, bypassing the Flow entirely. This is an instance
-     platform-configuration fact, not something the scoped app controls (see
-     `CURRENT-STATE-BUILD-DELTA.md` §5).
+     `topic = 'Command'` / `name = 'Invoke-Day2AdAction'` /
+     `agent = 'mid.server.<x>'` record can drive AD writes directly, bypassing
+     the Flow entirely. This is an instance platform-configuration fact, not
+     something the scoped app controls (see `CURRENT-STATE-BUILD-DELTA.md` §5).
    - The delegated AD rights themselves are asserted in code comments, never
      verified — an effective-permissions dump against a real domain is still
      outstanding.
@@ -150,3 +160,14 @@ advice, no warranty) apply unchanged. Additionally:
 - The AD leg and router internals → `CURRENT-STATE-SCRIPTS.md`.
 - What the implementation team builds differently → `CURRENT-STATE-BUILD-DELTA.md`.
 - The 2027 goal and the doctrine behind it → the base kit + Vol I Book 04 (HRIT SSOT), Vol 0 Book 00 (MACD-R).
+
+**Before the pilot — the two live-validation tracks.** Everything above is
+proven by a mock harness against fixture data. These close the gap to real
+infrastructure, and `CURRENT-STATE-PILOT-ROLLOUT.md` §0 requires both:
+
+- Proving the scoped app, the Flow and the fail-closed contract on a real
+  ServiceNow instance → `CURRENT-STATE-PDI-VALIDATION.md`.
+- Exercising the AD leg against a real domain controller — delegated rights,
+  MID dispatch, and the VERIFY read-back →
+  `CURRENT-STATE-AD-LAB-VALIDATION.md`. Requires a throwaway lab; the ISSO may
+  waive it, with the waiver recorded.

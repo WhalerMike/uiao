@@ -1,0 +1,252 @@
+# ServiceNow Deployment Contract — Expected Schema
+# ===============================================
+# The deployment half of the ServiceNow contract, per UIAO_211 and the
+# two-part pin doctrine in ADR-136 §Decision 5.
+#
+# This file is the ASSERTION SIDE: every table and column UIAO code depends
+# on, derived from the code itself, with the call site that proves the
+# dependency. It is NOT an export from an instance — the export is the
+# EVIDENCE SIDE and lands under `deployment/` (see UIAO_211 §4).
+#
+# `scripts/check_servicenow_schema_pin.py` compares the two. With no export
+# present it validates this file's internal coherence and reports what would
+# be checked; once an export lands it becomes a hard comparison.
+#
+# Maintenance: when adapter/collector code starts touching a new table or
+# column, add it here in the same commit. A dependency the code has and this
+# file does not is the exact defect class this pin exists to prevent.
+
+schema-version: "1.0.0"
+registry-class: servicenow-expected-schema
+updated: "2026-08-20"
+
+# Base instance surface. The host is resolved at runtime, never compiled in
+# (see PR #1436) — recorded here because the deployment export must come from
+# the same instance the adapters dial.
+instance:
+  cloud: gcc
+  domain: servicenowservices.com
+  domain-note: >-
+    ServiceNow Government Community Cloud (FedRAMP High / DoD IL-4).
+    The commercial cloud at service-now.com is a different environment,
+    not an alias. Personal Developer Instances are commercial-only.
+  api-base: /api/now/table
+
+tables:
+
+  - name: incident
+    kind: out-of-box
+    access: read-write
+    used-by:
+      - src/uiao/collectors/servicenow_collector.py  # DEFAULT_TABLE
+      - src/uiao/adapters/servicenow_adapter.py      # normalize / create_incident
+    stock-columns:
+      - sys_id
+      - short_description
+      - state
+      - opened_at
+      - work_notes
+    custom-columns:
+      - name: u_uiao_control_id
+        type: string
+        direction: write
+        purpose: UIAO canonical control id stamped on records UIAO creates.
+        code-ref: src/uiao/adapters/servicenow_adapter.py:293
+        conflict: control-id-prefix
+      - name: uiao_control_id
+        type: string
+        direction: read
+        purpose: >-
+          The field the read path requests and normalizes from. Same logical
+          value as u_uiao_control_id, different spelling.
+        code-ref: src/uiao/collectors/servicenow_collector.py:30
+        conflict: control-id-prefix
+
+  - name: change_request
+    kind: out-of-box
+    access: write
+    used-by:
+      - src/uiao/adapters/servicenow_adapter.py  # create_change_request
+    stock-columns:
+      - sys_id
+      - short_description
+      - description
+    custom-columns:
+      - name: u_uiao_control_id
+        type: string
+        direction: write
+        purpose: UIAO canonical control id on change records.
+        code-ref: src/uiao/adapters/servicenow_adapter.py:362
+        conflict: control-id-prefix
+
+  - name: problem
+    kind: out-of-box
+    access: write
+    used-by:
+      - src/uiao/adapters/servicenow_adapter.py  # create_problem
+    stock-columns:
+      - sys_id
+      - short_description
+    custom-columns:
+      - name: u_uiao_control_id
+        type: string
+        direction: write
+        purpose: UIAO canonical control id on problem records.
+        code-ref: src/uiao/adapters/servicenow_adapter.py:400
+        conflict: control-id-prefix
+
+  - name: sc_request
+    kind: out-of-box
+    access: write
+    registry-gap: true
+    registry-note: >-
+      The `service-now` entry in modernization-registry.yaml declares
+      scope: incident-tickets, change-requests, problem-records. It does not
+      declare Service Catalog requests, but the identity JML write path posts
+      here. Either the scope or the code is wrong; resolving that is a
+      registry decision, not a schema one.
+    used-by:
+      - src/uiao/governance/identity/servicenow_ticket.py  # create_ticket
+    stock-columns:
+      - sys_id
+      - short_description
+      - description
+    custom-columns:
+      - name: u_uiao_employee_id
+        type: string
+        direction: write
+        purpose: HR employee identifier for the subject of the JML event.
+        code-ref: src/uiao/governance/identity/servicenow_ticket.py:90
+      - name: u_uiao_identity
+        type: string
+        direction: write
+        purpose: Human-readable identity label for the subject.
+        code-ref: src/uiao/governance/identity/servicenow_ticket.py:91
+      - name: u_uiao_event_type
+        type: string
+        direction: write
+        purpose: JOINER / MOVER / LEAVER / PENDING_LEAVER.
+        code-ref: src/uiao/governance/identity/servicenow_ticket.py:92
+      - name: u_uiao_orgpath
+        type: string
+        direction: write
+        purpose: Resolved OrgPath for the subject at event time.
+        code-ref: src/uiao/governance/identity/servicenow_ticket.py:93
+      - name: u_uiao_routing_key
+        type: string
+        direction: write
+        purpose: Routing authority computed by governance/identity/routing.py.
+        code-ref: src/uiao/governance/identity/servicenow_ticket.py:94
+      - name: u_uiao_changed_fields
+        type: string
+        direction: write
+        purpose: Comma-joined list of changed attributes on a MOVER event.
+        code-ref: src/uiao/governance/identity/servicenow_ticket.py:95
+      - name: u_uiao_action_count
+        type: string
+        direction: write
+        purpose: Count of planned actions carried on the request.
+        code-ref: src/uiao/governance/identity/servicenow_ticket.py:96
+      - name: u_uiao_finding_count
+        type: string
+        direction: write
+        purpose: Count of governance findings carried on the request.
+        code-ref: src/uiao/governance/identity/servicenow_ticket.py:97
+
+  - name: cmdb_ci_ip_network
+    kind: out-of-box
+    access: read-write
+    used-by:
+      - scripts/sync_orchestrator.py  # deprecated; IPAM reconciliation
+    stock-columns:
+      - sys_id
+    custom-columns: []
+
+  - name: cmdb_ci_privileged_id
+    kind: custom
+    access: read-write
+    used-by:
+      - scripts/cyberark_sync_orchestrator.py  # deprecated; CyberArk sync
+    stock-columns:
+      - sys_id
+    custom-columns: []
+    note: >-
+      Not a stock ServiceNow table. Its existence and column set are entirely
+      deployment-defined and must come from the export.
+
+# ---------------------------------------------------------------------------
+# Unresolved discrepancies — each blocks the gate from going blocking
+# ---------------------------------------------------------------------------
+# These cannot be settled from the repo. They need the deployment export, or
+# an operator who can read sys_dictionary. Recording them is the point: an
+# unresolved contract question written down is a finding; the same question
+# unwritten is a latent bug.
+
+unresolved:
+
+  - id: control-id-prefix
+    severity: high
+    summary: >-
+      The control-id column is spelled two ways. The write path stamps
+      `u_uiao_control_id`; the read path requests and normalizes
+      `uiao_control_id`.
+    consequence: >-
+      Whichever spelling is real, the read path cannot see what the write path
+      writes. Every normalized claim falls back to the hard-coded default
+      control id (`AC-2` in the adapter, `IR-4` in the OSCAL emitter), so
+      control attribution on collected evidence is silently wrong rather than
+      absent.
+    why-unresolvable-here: >-
+      On a stock instance a custom column on an out-of-box table takes a `u_`
+      prefix, and a scoped application takes `x_<scope>_`. A bare
+      `uiao_control_id` should therefore not exist — but it can, if the column
+      arrived by import or by a scoped app that owns the table. Only
+      sys_dictionary settles it. Picking a side from here would be a guess
+      dressed as a decision.
+    resolution-requires:
+      - Deployment export listing sys_dictionary entries for `incident`
+      - A decision recorded in the activation ADR on the canonical spelling
+      - A single sweep aligning code, fixtures, and conformance tests
+    affected:
+      - src/uiao/collectors/servicenow_collector.py:30
+      - src/uiao/adapters/servicenow_adapter.py:89
+      - src/uiao/adapters/servicenow_adapter.py:122
+      - src/uiao/adapters/servicenow_adapter.py:148
+      - src/uiao/adapters/servicenow_adapter.py:293
+      - src/uiao/adapters/servicenow_adapter.py:362
+      - src/uiao/adapters/servicenow_adapter.py:400
+      - src/uiao/oscal/servicenow_evidence.py:175
+      - tests/conformance/test_servicenow_conformance.py:108
+      - tests/fixtures/servicenow-incidents.json
+      - tests/fixtures/tier-2/servicenow/
+
+  - id: fixtures-assert-unprefixed
+    severity: medium
+    summary: >-
+      Every recorded tier-2 fixture returns `uiao_control_id` unprefixed, and
+      the conformance test reads the same spelling out of the request body it
+      just built.
+    consequence: >-
+      The test suite agrees with itself and cannot detect `control-id-prefix`.
+      The fixtures are a recording of what the code does, not evidence of what
+      the instance returns.
+    why-unresolvable-here: >-
+      Tier-2 fixtures were sanitized captures; whether the original capture
+      came from an instance carrying a bare `uiao_control_id` column, or was
+      hand-authored to match the code, is not recoverable from the repo.
+    resolution-requires:
+      - A fresh capture from the target instance after control-id-prefix is settled
+
+  - id: scoped-app-unknown
+    severity: medium
+    summary: >-
+      Whether UIAO's columns live in the global scope or inside a scoped
+      application is unknown.
+    consequence: >-
+      Determines the mandatory column prefix (`u_` vs `x_<scope>_`), the
+      cross-scope access rules, and whether the columns are portable between
+      instances.
+    why-unresolvable-here: >-
+      No sys_scope reference exists anywhere in the repo.
+    resolution-requires:
+      - Deployment export listing sys_db_object.sys_scope for each table above

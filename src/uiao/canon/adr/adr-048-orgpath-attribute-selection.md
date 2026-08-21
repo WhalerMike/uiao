@@ -2,7 +2,9 @@
 adr_id: adr-048
 title: "ADR‑048: OrgPath Attribute Selection — extensionAttributes over Custom Security Attributes"
 adr: "ADR‑048"
-status: Accepted
+status: ACCEPTED
+supersedes: null
+superseded_by: null
 date: "2026-04-28"
 deciders: Michael Stratton
 publish_to_site: true
@@ -10,21 +12,40 @@ publication_style: include
 published_at: docs/adr/adr-048-orgpath-attribute-selection.html
 ---
 
+<!-- orgpath-slot-allow-file: allocation table is historical per the Hybrid-C+Path banner (ADR-078/ADR-127) -->
+
 # ADR‑048: OrgPath Attribute Selection — extensionAttributes over Custom Security Attributes
 
 ## Status
-**Accepted — 2026‑04‑28**
+**ACCEPTED — 2026‑04‑28**
 
-> **Model-C note (2026-06-03).** This ADR's *decision* —
-> `extensionAttribute*` over Custom Security Attributes / Directory
-> Extensions — still holds under Model C. What has changed is the
-> **shape**: [ADR-078](adr-078-orgpath-attribute-schema-15-facet.md)
-> superseded the single composite-path string
-> (`CORP/US/EAST/BALTIMORE/IT`) described below with **10 named facets
-> spread across `extensionAttribute1`–`10`** (5 reserved). Read the
-> "single attribute" framing in this Context as "the
-> `extensionAttribute` family"; the per-facet decomposition lives in
-> ADR-078 and the [OrgPath Codebook (UIAO_151)](../UIAO_151_OrgPath_Codebook.md).
+> **Hybrid-C+Path note (2026-08-19; supersedes the 2026-06-03 Model-C
+> note).** This ADR's *decision* — the `extensionAttribute*` family over
+> Custom Security Attributes / Directory Extensions — **still holds**, and
+> the Evaluation Matrix and Scoring Summary below remain the canonical
+> rationale for it. What has changed, twice, is the **shape**:
+>
+> 1. [ADR-078](adr-078-orgpath-attribute-schema-15-facet.md) replaced the
+>    single composite-path string (`CORP/US/EAST/BALTIMORE/IT`) with **10
+>    named facets** on `extensionAttribute1`–`10` (5 reserved).
+> 2. [ADR-127](adr-127-orgpath-hybrid-derived-path.md) completed that as
+>    **Hybrid-C+Path**: facets stay the governance layer on
+>    `extensionAttribute1`–`14`, and the **derived canonical OrgPath moves
+>    to `extensionAttribute15`** (every segment terminated by `|`).
+>
+> **Everything below that names a slot is therefore superseded.** Concretely,
+> under the current codebook `extensionAttribute1` is the **Region facet**,
+> not the OrgPath — so the Decision line "Use `extensionAttribute1` for
+> OrgPath", the `extensionAttribute2` depth reservation (retired by
+> ADR-078), and the whole **Attribute Allocation Table** are historical.
+> Read "single attribute" throughout as "the `extensionAttribute` family."
+>
+> The authoritative slot map is
+> [`codebook.yaml`](../data/orgpath/codebook.yaml) with
+> [UIAO_151](../UIAO_151_OrgPath_Codebook.md); projection scope (6 of 10
+> facets stamped) is [ADR-121](adr-121-orgpath-projection-subset.md).
+> Model A/B tenants are grandfathered per the ADR-076 strict-subset rule,
+> which is why this ADR is amended rather than retired.
 
 ## Context
 UIAO’s organizational addressing model (OrgPath) requires a canonical attribute stamped on every user and device object in Entra ID. This attribute encodes the deterministic organizational path (e.g., `CORP/US/EAST/BALTIMORE/IT`) that replaces the legacy AD X.500 OU tree. OrgPath is the single most cross‑cutting decision in the identity transformation — it drives dynamic group membership, Administrative Unit scoping, Conditional Access targeting, Intune Scope Tags, and HR provisioning attribute mapping.
@@ -86,7 +107,7 @@ Document the full allocation table in the canon to prevent drift.
 ### Positive
 1. **Zero infrastructure setup** — extensionAttributes exist on every Entra ID tenant with no provisioning required
 2. **Full consumer coverage** — the only attribute type usable in dynamic group rules (users + devices), CA device filters, AU membership, and Intune scope tags
-3. **AD coexistence** — extensionAttributes sync bidirectionally via Entra Connect, enabling OrgPath population during the hybrid period
+3. **AD coexistence** — extensionAttributes sync from on-prem AD to Entra ID via Entra Connect, enabling OrgPath population during the hybrid period. The reverse direction is not the same channel: cloud-to-AD writeback is a separate, opt-in configuration with its own attribute allow-list (Spec2-D3.6). For a directory-synced user, `onPremisesExtensionAttributes` is read-only in the cloud, so the facets must be written on-prem and carried up by sync
 4. **HR provisioning native** — API‑driven inbound provisioning and cloud HR connectors can write extensionAttributes directly
 5. **Proven at scale** — Microsoft’s own documentation uses extensionAttributes for organizational hierarchy examples
 

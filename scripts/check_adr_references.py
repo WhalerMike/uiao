@@ -19,6 +19,26 @@ Scope notes:
   legitimately reference proposed-but-unallocated ADR numbers.
 - To exempt a single line, append the inline marker ``adr-ref-allow`` to it.
 
+The guard also validates the **ADR relationship graph** in frontmatter
+(``supersedes`` / ``superseded_by`` / ``amends``). Prose asserts these
+relationships freely — "this ADR supersedes ADR-048" — while the frontmatter
+that would make them machine-readable stays null, so nothing can answer "what
+supersedes this?" without reading bodies. Three rules:
+
+1. **Resolution** — every id named in a relationship field must resolve to a
+   real ``adr-NNN-*.md``, and no ADR may name itself.
+2. **Symmetry** — if A declares ``superseded_by: B`` then B must declare
+   ``supersedes: A``, and vice versa. A supersession recorded on one side only
+   is a half-edge the graph can't be walked from.
+3. **Presence** (advisory) — every ADR should carry both ``supersedes`` and
+   ``superseded_by``, even if null. Reported as a warning, not a failure, so the
+   63 files currently missing one or both (91 gaps) don't land this gate red;
+   promote to an error once backfilled.
+
+``amends`` is validated for resolution only. There is no ``amended_by``
+convention in the corpus, and inventing one is out of scope for a metadata
+guard — so amendment is a one-way edge here by design.
+
 Run locally:  python scripts/check_adr_references.py
 """
 
@@ -80,6 +100,113 @@ def scan_file(path: Path, root: Path, valid: set[str]) -> list[str]:
     return findings
 
 
+# ---------------------------------------------------------------------------
+# Relationship graph (supersedes / superseded_by / amends)
+# ---------------------------------------------------------------------------
+
+RELATION_FIELDS = ("supersedes", "superseded_by", "amends")
+# Fields carrying an inverse that must also be recorded. `amends` has no
+# `amended_by` counterpart in the corpus, so it is resolution-checked only.
+INVERSE = {"supersedes": "superseded_by", "superseded_by": "supersedes"}
+
+
+# Stdlib-only frontmatter reading, deliberately. This guard's workflow does a
+# bare setup-python with no dependency install, matching its sibling guards, so
+# importing PyYAML here would fail in CI while passing locally. Only three short
+# scalar/list fields are needed, and the id regex below does the real work — a
+# full YAML parse would buy nothing.
+FRONTMATTER_KEY_RE = re.compile(r"^(?P<key>[A-Za-z_][A-Za-z0-9_]*):(?P<rest>.*)$")
+ADR_ID_IN_VALUE_RE = re.compile(r"[Aa][Dd][Rr]-(\d{3})\b")
+
+
+def frontmatter_block(text: str) -> str | None:
+    """Return the raw frontmatter block, or None when the file has none."""
+    if not text.startswith("---"):
+        return None
+    parts = text.split("---", 2)
+    return parts[1] if len(parts) >= 3 else None
+
+
+def field_text(block: str, field: str) -> str | None:
+    """Return one top-level field's raw value text, or None when absent.
+
+    Captures the rest of the ``key:`` line plus any following indented list or
+    continuation lines, so both the scalar form (``amends: adr-066``) and the
+    block-list form (``amends:\\n  - adr-063-….md``) are covered. Absent is
+    distinct from present-but-null — the presence rule needs to tell them apart.
+    """
+    collected: list[str] | None = None
+    for line in block.splitlines():
+        match = FRONTMATTER_KEY_RE.match(line)
+        if match:
+            if collected is not None:
+                break  # next top-level key ends this value
+            if match.group("key") == field:
+                collected = [match.group("rest")]
+        elif collected is not None:
+            if line.strip() and not line[:1].isspace():
+                break
+            collected.append(line)
+    return "\n".join(collected) if collected is not None else None
+
+
+def adr_ids_in(value: str | None) -> set[str]:
+    """Extract 3-digit ADR ids from a relationship field's raw value text.
+
+    Tolerates every shape the corpus actually uses: ``null``, ``[]``, a bare id
+    (``adr-066``), a filename (``adr-092-active-governance.md``), a block list,
+    and prose entries like ``["ADR-025 §D7 (federal/commercial firewall)"]``.
+    """
+    if not value:
+        return set()
+    return {m.group(1) for m in ADR_ID_IN_VALUE_RE.finditer(value)}
+
+
+def scan_relationships(root: Path, valid: set[str]) -> tuple[list[str], list[str]]:
+    """Validate the relationship graph. Returns (errors, warnings)."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    graph: dict[str, dict[str, set[str]]] = {}
+
+    for path in sorted((root / ADR_DIR).glob("adr-*.md")):
+        match = ADR_FILE_RE.match(path.name)
+        if not match:
+            continue
+        self_id = match.group(1)
+        rel = path.relative_to(root).as_posix()
+        block = frontmatter_block(path.read_text(encoding="utf-8", errors="replace"))
+        if block is None:
+            warnings.append(f"{rel}: no frontmatter block — relationship fields not checked")
+            continue
+
+        raw = {field: field_text(block, field) for field in RELATION_FIELDS}
+        graph[self_id] = {field: adr_ids_in(raw[field]) for field in RELATION_FIELDS}
+
+        for field in ("supersedes", "superseded_by"):
+            if raw[field] is None:
+                warnings.append(f"{rel}: no '{field}:' field (backfill pending, issue #1427)")
+
+        for field in RELATION_FIELDS:
+            for target in sorted(graph[self_id][field]):
+                if target not in valid:
+                    errors.append(f"{rel}: {field} names ADR-{target}, which has no adr-{target}-*.md")
+                elif target == self_id:
+                    errors.append(f"{rel}: {field} names itself (ADR-{self_id})")
+
+    # Symmetry: every recorded edge must be recorded from the other end too.
+    for self_id, fields in graph.items():
+        for field, inverse in INVERSE.items():
+            for target in sorted(fields[field]):
+                if target not in graph or target == self_id:
+                    continue
+                if self_id not in graph[target][inverse]:
+                    errors.append(
+                        f"adr-{self_id}: declares {field}: ADR-{target}, but "
+                        f"adr-{target} does not declare {inverse}: ADR-{self_id}"
+                    )
+    return errors, warnings
+
+
 def main() -> int:
     root = repo_root()
     valid = valid_adr_ids(root)
@@ -92,6 +219,8 @@ def main() -> int:
     for path in files:
         findings.extend(scan_file(path, root, valid))
 
+    rel_errors, rel_warnings = scan_relationships(root, valid)
+
     if findings:
         print("Dangling ADR references — cited ADR-NNN has no adr-NNN-*.md file:\n")
         for finding in findings:
@@ -102,9 +231,27 @@ def main() -> int:
             "Fix the reference (typo / wrong number) or add the missing ADR. For a "
             f"genuinely-intended placeholder, append '{ALLOW_MARKER}' to the line."
         )
+
+    if rel_errors:
+        print("\nADR relationship-graph errors — frontmatter edges that don't resolve or don't pair:\n")
+        for finding in rel_errors:
+            print(f"  {finding}")
+        print(
+            "\nRecord the relationship from BOTH ends: if A is superseded by B, A carries\n"
+            "'superseded_by: adr-B-slug.md' and B carries 'supersedes: adr-A-slug.md'."
+        )
+
+    if findings or rel_errors:
         return 1
 
     print(f"ADR-reference guard OK — scanned {len(files)} files, all ADR-NNN references resolve.")
+    print(f"ADR relationship graph OK — {len(valid)} ADRs, all frontmatter edges resolve and pair.")
+    if rel_warnings:
+        print(f"\nAdvisory — {len(rel_warnings)} relationship-metadata gaps (non-blocking):")
+        for warning in rel_warnings[:10]:
+            print(f"  {warning}")
+        if len(rel_warnings) > 10:
+            print(f"  … and {len(rel_warnings) - 10} more")
     return 0
 
 

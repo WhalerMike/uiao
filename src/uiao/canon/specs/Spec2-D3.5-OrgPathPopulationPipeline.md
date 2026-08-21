@@ -96,15 +96,18 @@ Stage 1: Canonical D1.1 record at the middleware boundary
               │
               │  (D3.2 §3.2 OrgPath calculator + ADR-035 codebook)
               ▼
-Stage 2: OrgPath string computed (e.g., "GOV/EXEC/OPM/HRIT")
+Stage 2: OrgPath facets + derived path computed
+         (e.g., Department=Executive, Division=GRC ->
+          "Region=NCR|Department=Executive|Division=GRC|")
               │
               │  (D3.2 §3.5 SCIM payload builder)
               ▼
-Stage 3: SCIM payload with extensionAttribute1 = OrgPath
+Stage 3: SCIM payload with facet slots + extensionAttribute15
               │
               │  (D3.1 §5 bulkUpload)
               ▼
-Stage 4: Entra ID provisioning service writes user.extensionAttribute1
+Stage 4: Entra ID provisioning service writes the facet slots
+         and user.extensionAttribute15
               │
               │  (Entra dynamic-group engine; UIAO_152 / ADR-036)
               ▼
@@ -270,7 +273,9 @@ count, and the time the cascade has been pending.
 - [ADR-038](../adr/adr-038-device-plane-orgpath.md) — UIAO_153; consumes Stage 4 / 8.
 - [ADR-039](../adr/adr-039-policy-targeting.md) — UIAO_164; consumes Stage 6.
 - [ADR-040](../adr/) — drift engine.
-- [ADR-048](../adr/adr-048-orgpath-attribute-selection.md) — extensionAttribute1 selection.
+- [ADR-048](../adr/adr-048-orgpath-attribute-selection.md) — `extensionAttribute*` family selection;
+  shape superseded by [ADR-078](../adr/adr-078-orgpath-attribute-schema-15-facet.md) +
+  [ADR-127](../adr/adr-127-orgpath-hybrid-derived-path.md).
 
 ### 10.2 UIAO docs
 

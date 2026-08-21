@@ -1,0 +1,208 @@
+---
+title: "OrgPath, Reduced"
+subtitle: "The minimal implementation — five parts, one derived string"
+date: 2026-08-21
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: aspirational
+lifecycle_review: 2027-02-21
+---
+
+{{< lifecycle-banner >}}
+
+> **Scope.** This page is the *mechanism*, stripped of narrative: what an
+> implementer actually has to build, in the order they have to build it.
+> The binding decisions are [ADR-078](../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd)
+> (facet decomposition), [ADR-121](../../adr/adr-121-orgpath-projection-subset.qmd)
+> (projection subset), and [ADR-127](../../adr/adr-127-orgpath-hybrid-derived-path.qmd)
+> (the derived path). The executable canon is
+> [`codebook.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/codebook.yaml)
+> (`schema_version: 2.2.0`).
+
+## Why This Page Exists
+
+The OrgPath corpus is large — a twenty-nine-book narrative, a seven-step
+operational guide, a dozen binding ADRs. That volume exists because
+OrgPath has to be *justified* to architects, auditors, and program
+sponsors before anyone will let it near a directory.
+
+None of that is what you build. What you build is five things, and the
+whole of it is a couple hundred lines of code plus one YAML file. This
+page is those five things.
+
+## Part 1 — A Codebook: Facet → Slot → Allowed Values
+
+One YAML file is the source of truth. It binds each semantic facet to
+exactly one `extensionAttribute` slot and, for enumerated facets, to a
+closed list of legal values.
+
+| Slot | Facet | Written to the directory? |
+| :--- | :--- | :--- |
+| `extensionAttribute1` | `region` | ✅ — hierarchy |
+| `extensionAttribute2` | `department` | ✅ — hierarchy |
+| `extensionAttribute3` | `division` | ✅ — hierarchy |
+| `extensionAttribute4` | `role` | ❌ defined, not projected |
+| `extensionAttribute5` | `cost_center` | ❌ defined, not projected |
+| `extensionAttribute6` | `classification` | ✅ |
+| `extensionAttribute7` | `hire_date` | ❌ defined, not projected |
+| `extensionAttribute8` | `term_date` | ❌ defined, not projected |
+| `extensionAttribute9` | `clearance_level` | ✅ |
+| `extensionAttribute10` | `account_type` | ✅ |
+| `extensionAttribute11` | `admin_tier` | ✅ — tenant extension (ADR-137) |
+| `extensionAttribute12` | `device_type` | ✅ — tenant extension (ADR-137) |
+| `extensionAttribute13` | `environment` | ✅ — tenant extension (ADR-137) |
+| `extensionAttribute14` | reserved for tenant extension | ❌ |
+| `extensionAttribute15` | `org_path` | ✅ — **derived**, never authored |
+
+Ten attributes written per object, out of fifteen slots. The
+"defined but not projected" distinction is [ADR-121](../../adr/adr-121-orgpath-projection-subset.qmd):
+a facet keeps its HR-source-of-truth semantics without consuming a
+scarce, tenant-wide directory slot. Only rules that actually target a
+facet justify projecting it.
+
+The facet-by-facet detail — enumerations, descriptions, deprecation
+handling — is the [OrgPath Codebook](codebook.qmd) page.
+
+## Part 2 — One Pure Function: Derive the Path
+
+Slots 1, 2, and 3 are the hierarchy, in that order. The derived path is
+a pure function of them:
+
+```
+path = ""
+for facet in [region, department, division]:      # fixed order
+    v = values.get(facet)
+    if not v or v not in codebook[facet]:         # truncate at the first gap
+        break
+    path += f"{Label}={v}|"                       # trailing "|" ALWAYS
+```
+
+```
+{region: NCR, department: IT, division: CyberOps}
+    → "Region=NCR|Department=IT|Division=CyberOps|"
+
+{region: NCR, division: CyberOps}     # department missing
+    → "Region=NCR|"
+```
+
+Two invariants carry all the weight, and both are easy to get wrong:
+
+**The trailing delimiter is on every segment, including the last.** That
+is what makes a subtree prefix collision-free — without the terminator, a
+prefix targeting the `East` division also captures `Eastern` and
+`Easton`, and the rule looks correct in review. The collision table is
+worked through on the [Hybrid OrgPath Model](hybrid-orgpath-model.qmd)
+page; CI enforces the rule repo-wide
+([`check_orgpath_prefix_delimiter.py`](https://github.com/WhalerMike/uiao/blob/main/scripts/check_orgpath_prefix_delimiter.py)).
+
+**Composition truncates at the first unpopulated or invalid facet**, so
+the value is always a contiguous hierarchy prefix — never a path with a
+hole punched in the middle of it. An out-of-enumeration value is the
+*facet's* drift finding; the path simply stops short of it.
+
+The two shipped implementations of this function must agree:
+
+| Surface | Implementation |
+| :--- | :--- |
+| Python | `Codebook.derive_org_path` in [`src/uiao/modernization/orgtree/codebook.py`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/modernization/orgtree/codebook.py) |
+| PowerShell | `New-OrgPath` in [`tools/powershell/UIAO.OrgPath/UIAO.OrgPath.psm1`](https://github.com/WhalerMike/uiao/blob/main/tools/powershell/UIAO.OrgPath/UIAO.OrgPath.psm1) |
+
+## Part 3 — Write All Seven in One Call
+
+The property name differs by object type. This is the single most common
+implementation mistake, because the wrong one fails quietly rather than
+loudly:
+
+| Plane | Where the values live |
+| :--- | :--- |
+| Entra user | `Update-MgUser` → `onPremisesExtensionAttributes` |
+| Entra device | `Update-MgDevice` → `extensionAttributes` |
+| Azure resource | ARM tag named `OrgPath`, carrying the derived string |
+
+Slot 15 is recomputed on every stamp. It is never read back, edited, and
+written — that is the dual-authoring failure mode the derivation exists
+to foreclose. `Update-OrgAttributes` in the `UIAO.OrgPath` module writes
+the governance facets and the derived path together.
+
+::: {.callout-warning}
+## The hybrid-sync trap
+For users synced from on-premises Active Directory,
+`onPremisesExtensionAttributes` is **read-only in the cloud**. The stamp
+has to happen on-prem and sync down, or wait until the object is
+cloud-only. Discovering this after building a cloud-side writer is a
+rewrite, not a patch.
+:::
+
+## Part 4 — Query It Two Ways
+
+This is the payoff, and the reason both layers exist. Neither mechanism
+can express the other's questions.
+
+*"Privileged, cleared, NCR-based"* is boolean facet composition over the
+governance layer:
+
+```
+(user.extensionAttribute9 -eq "TopSecret") and (user.extensionAttribute1 -eq "NCR")
+```
+
+*"IT/CyberOps and everything beneath it, at any future depth"* is a single
+prefix predicate against the inheritance layer:
+
+```
+(device.extensionAttribute15 -startsWith "Region=NCR|Department=IT|")
+```
+
+The prefix form is what survives a reorganization: a branch rule written
+once keeps covering descendants that do not exist yet. The facet form is
+what survives a *question* that has nothing to do with hierarchy.
+
+Never build a prefix by string concatenation — `Get-OrgPathPrefix`
+normalizes one idempotently, appending the terminator when it is missing.
+
+## Part 5 — Drift Is Recompute-and-Compare
+
+Because the path is a pure function of slots 1–3, divergence is
+mechanically detectable rather than a matter of judgment:
+
+- **Derived-path drift** — recompute from the governance facets, compare
+  to the stored slot-15 value, flag any mismatch
+  (`Test-OrgPathDrift`, and the Python drift engine's derived-path check
+  in [`src/uiao/governance/drift_engine.py`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/governance/drift_engine.py)).
+- **Value drift** — any facet value absent from its codebook enumeration
+  is `DRIFT-SEMANTIC`, independently of the path.
+
+These are separate findings on purpose. A bad `division` value produces
+one finding about the facet, not a cascade of confusing findings about
+every rule that reads the path.
+
+## The Whole Thing in One Sentence
+
+> Stamp seven validated facet values into fixed `extensionAttribute`
+> slots on every directory object, derive slot 15 as
+> `Region=…|Department=…|Division=…|` with a mandatory trailing pipe,
+> then target policy either by boolean facet predicates or by path
+> prefix — and treat any stored path that does not equal the recomputed
+> one as drift.
+
+## What This Page Leaves Out
+
+Everything else in the corpus is either a *consumer* of the contract
+above or a *transport* for it, and none of it changes the five parts:
+
+| Concern | Where it lives |
+| :--- | :--- |
+| Facet enumerations and deprecation | [OrgPath Codebook](codebook.qmd) |
+| Why two layers, and the collision proof | [Hybrid OrgPath Model](hybrid-orgpath-model.qmd) |
+| Running it end-to-end on sample data | [Governance golden path](../../docs/orgpath-golden-path.qmd) |
+| Rolling it onto a real tenant | [OrgPath implementation guides](../operational-guides/orgpath-implementation/index.qmd) |
+| Non-Microsoft directories and clouds | [Portability model](orgpath-portability.qmd) |
+| Dynamic groups, AUs, policy targeting | [Dynamic groups](dynamic-groups.qmd), [delegation](delegation.qmd) |
+
+If you were rebuilding OrgPath from scratch, the codebook YAML plus the
+derivation function plus a directory writer is a working implementation.
+Everything above that line is governance; everything below it is
+plumbing.

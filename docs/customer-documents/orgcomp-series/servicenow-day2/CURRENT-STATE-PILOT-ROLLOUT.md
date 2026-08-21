@@ -5,7 +5,7 @@
 > promotion. Deploy small, prove it on real people, expand on evidence — never a
 > big-bang enablement.
 
-**Date Code:** 2026-07-22 12:00 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
+**Date Code:** 2026-08-19 10:22 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
 **Audience:** the implementation lead + the ISSO/approver for the pilot
 
 ## 0. Entry criteria (do not start the pilot until all are true)
@@ -21,11 +21,32 @@
   service account holds only the **delegated, least-privilege rights** on the
   pilot OUs (never Domain Admin).
 - The instance's **`ecc_queue` insert ACL has been reviewed and restricted** —
-  who can write `topic = 'PowerShell'` / `agent = 'mid.server.' + ad_mid_server`
-  records, ideally scoped to this kit's own MID/agent identifiers. This queue
-  insert is the AD leg's actual write channel (`AdHybridClient._ps`,
+  who can write `topic = 'Command'` / `name = 'Invoke-Day2AdAction'` /
+  `agent = 'mid.server.' + ad_mid_server` records, scoped to this kit's own
+  `name`/`agent` identifiers (`topic = 'Command'` alone is the platform's
+  generic MID command topic and does not identify this channel). This queue
+  insert is the AD leg's actual write channel (`AdHybridClient._dispatch`,
   `CURRENT-STATE-BUILD-DELTA` §5); an unreviewed ACL is a way to drive AD writes
   that bypasses the Flow, PIM, and the evidence record.
+- The **ServiceNow PDI validation track is complete**
+  (`CURRENT-STATE-PDI-VALIDATION.md`). The ATF suite proves the kit against a
+  mock harness executing the real scripts over fixture data — a different thing
+  from a real instance. Do not treat green ATF as a substitute for this track.
+- The **AD lab validation track is complete**
+  (`CURRENT-STATE-AD-LAB-VALIDATION.md`), **or explicitly waived by the ISSO
+  with the waiver recorded** alongside the go/no-go decision. This is the only
+  step that exercises the AD leg against a real domain controller: the
+  delegated rights are otherwise asserted in code comments and never verified,
+  and the VERIFY read-back has never run against a live DC. Waiving it is a
+  legitimate risk decision; leaving it undone silently is not.
+- The integration table carries the **`sam_request_ref`, `reason_code` and
+  `http_status` columns and the UNIQUE INDEX on `sam_request_id`**
+  (`KIT-BUILD-SPEC.md` §2b/§2b-i) — **verified by inspecting the table, not by
+  a green ATF run**. ServiceNow ignores writes to columns that do not exist
+  without raising anything, so every SAM suite can pass while push telemetry is
+  silently discarded and the inbound idempotency check runs with no
+  database-level backstop. This is the one entry criterion a passing test suite
+  cannot demonstrate.
 - A **rollback owner** and a **go/no-go approver** (ISSO) are named.
 
 ## 1. Choose the pilot cohort

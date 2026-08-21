@@ -15,7 +15,7 @@
 > hand-authored one would look importable and then fail or drift — worse than a
 > spec. So you build them from this spec and export the real thing.
 
-**Date Code:** 2026-07-22 11:00 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
+**Date Code:** 2026-08-19 10:22 ET · **Scope:** FedRAMP Moderate / GCC Moderate ·
 **Audience:** the implementation team (ServiceNow + Entra/Azure + SAM)
 
 ## 0. Build order (summary)
@@ -87,7 +87,8 @@ may repoint `tbl_integration` to it — the property exists for that.)
 | `ritm` | String | SAM client / REST | the request item number |
 | `ritm_sys_id` | String | SAM client (`attachRitmToLineage`) | the request item's `sys_id` — set once the RITM exists; was already written by the code but missing from this table's build doc, so a build that stopped at the columns above dropped it silently |
 | `sam_flavor` | String | SAM client | `identityiq` \| `isc` |
-| `sam_request_id` | String | SAM client / REST | the SAM-side request id |
+| `sam_request_id` | String | SAM client / REST | the SAM-side request id. **`sam_lineage` rows only** — telemetry uses `sam_request_ref`. Carries the UNIQUE INDEX below, which is only implementable because of that split |
+| `sam_request_ref` | String | SAM client (`recordPushOutcome`) | the SAM-side request id on `sam_push_outcome` telemetry rows. A **separate column from `sam_request_id` on purpose**: telemetry writes one row per push *attempt*, so many rows share a request id, and the inbound endpoint's idempotency lookup keys on `sam_request_id`. Writing telemetry into `sam_request_id` made that lookup match a prior refusal and silently drop the retried request |
 | `sam_source_id` | String | SAM client | IIQ Application / ISC source |
 | `entra_object_id` | String | SAM client | the subject in the directory |
 | `verified_by` | String | SAM client (`recordLineage`) | `pull-verify` \| `jws` — how the push was independently verified (P0-7) |
@@ -96,13 +97,41 @@ may repoint `tbl_integration` to it — the property exists for that.)
 | `verified_status` | String | SAM client | the VERIFIED SAM-side status at push time |
 | `verified_item` | String | SAM client | the VERIFIED access item |
 | `test_mode` | True/False (String) | SAM client | was this row written while `test_mode` was honoured — machine-filterable, same purpose as the evidence table's stamp |
-| `synthetic` | True/False (String) | SAM client | mirrors `test_mode`; a monitoring query MUST exclude `synthetic=true` rows (see `KIT-USAGE-SAM-INTEGRATION.md` "Monitoring the inbound endpoint") |
+| `synthetic` | True/False (String) | SAM client | mirrors `test_mode`; a monitoring query MUST **exclude `synthetic=true`** rows — i.e. `synthetic != 'true'`, never `synthetic == 'false'`. The latter requires proof of non-syntheticness and silently drops any row where the field is unpopulated (rows predating the column, rows from another writer, rows a future refactor forgets to stamp), under-reporting an outage as a green board (see `KIT-USAGE-SAM-INTEGRATION.md` "Monitoring the inbound endpoint") |
 | `vendor` | String | native actuator | SaaS vendor (Lane F) |
 | `business_owner` | Reference (`sys_user`) | native actuator | integration owner |
-| `business_need` | String | native actuator; SAM client (`sam_push_outcome` rows) | justification (native actuator) or `http_status=<n> reason=<code>` (push-outcome telemetry) |
+| `reason_code` | String | SAM client (`recordPushOutcome`) | the opaque reason code for this attempt (`unverified`, `unresolved_subject`, `created`, `idempotent`, …). **Its own column on purpose.** It was previously packed into `business_need` and recovered with `/reason=(\S+)/`, which truncates at the first space — and `Day2Env.scrub` replaces `[\r\n\t]` *with a space*, so scrubbing could itself create the separator that broke the parse, bucketing a real code as a wrong one or as `unknown`. `dailyOutcomeCounts` groups on this column |
+| `http_status` | Integer | SAM client (`recordPushOutcome`) | the HTTP status returned to the caller for this attempt |
+| `business_need` | String | native actuator; SAM client (`sam_push_outcome` rows) | justification (native actuator) or `http_status=<n> reason=<code>` (push-outcome telemetry). **Prose only** — nothing parses it any more; read `reason_code` / `http_status` instead |
 | `attributes_shared` | String | native actuator | directory attributes leaving the boundary (AC-20) |
 | `state` | String | native actuator; SAM client (`sam_push_outcome` rows) | `requested` → … (native actuator), or `accepted` \| `refused` (push-outcome telemetry) |
 | `boundary` | String | all | `gcc-moderate` |
+
+### 2b-i. Required unique index
+
+`scripted-rest/sam_inbound_ritm.js` calls this out as a deployment requirement,
+not an option, and until now it was specified in that file's header comment and
+nowhere in this build spec — so a builder following §2 alone did not create it,
+leaving the endpoint's idempotency guarantee as a single racy check-then-insert
+with no database-level backstop.
+
+| Index | Table | Columns | Unique |
+|---|---|---|---|
+| `sam_request_id_unique` | `x_fed_day2_ops_integration` | `sam_request_id` | **yes** |
+
+Two things make this correct only in combination with the column split above:
+
+- **It must be on `sam_request_id` alone**, not `(record_type, sam_request_id)`.
+  A composite is no safer: `recordPushOutcome` writes a row per push *attempt*,
+  so `(sam_push_outcome, X)` legitimately repeats.
+- **It is only implementable because telemetry no longer writes
+  `sam_request_id`.** While it did, any unique index over that column would have
+  rejected every telemetry insert after the first — swallowed by
+  `recordPushOutcome`'s own `try/catch`, which returns `{ok:false}` that no
+  caller reads. The failure would have been invisible.
+
+`sam_lineage` is one row per correlated request, so uniqueness on that column is
+exactly the constraint the endpoint's check-then-insert needs.
 
 > `record_type = sam_push_outcome` rows are operational telemetry (one per
 > inbound push attempt, accepted or refused) written by

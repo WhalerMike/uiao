@@ -100,13 +100,13 @@ One correction worth stating plainly, because older material still circulates: O
 
 ```text
 # Plain sync, free-form — fragile, unvalidated, text-parsed:
-extensionAttribute1 = "ORG-FIN-AP-EAST"
-rule:  (user.extensionAttribute1 -startsWith "ORG-FIN")
+extensionAttribute1 = "ORG-FIN-AP-EAST"   # orgpath-slot-allow: retired Model A, shown as the anti-pattern
+rule:  (user.extensionAttribute1 -startsWith "ORG-FIN")   # orgpath-slot-allow: retired Model A, shown as the anti-pattern
 
 # Active OrgPath, Model C — each facet in its canonical slot, enum-validated:
 extensionAttribute2 = "Finance"     # Department
-extensionAttribute3 = "AP"          # Division
-rule:  (user.extensionAttribute2 -eq "Finance") and (user.extensionAttribute3 -eq "AP")
+extensionAttribute3 = "GRC"         # Division
+rule:  (user.extensionAttribute2 -eq "Finance") and (user.extensionAttribute3 -eq "GRC")
 ```
 
 The same facets drive Conditional Access — "privileged Finance users get phishing-resistant MFA" becomes `(user.extensionAttribute2 -eq "Finance") and (user.extensionAttribute10 -eq "Privileged")` — so one validated coordinate system targets dynamic groups, Administrative Units, CA, Intune, and lifecycle workflows alike. The one governed exception to "never a string": per [ADR-127](../../../src/uiao/canon/adr/adr-127-orgpath-hybrid-derived-path.md), `extensionAttribute15` carries a **derived** canonical OrgPath (`Region=NCR|Department=IT|Division=CyberOps|`) — recomputed from the facets, never hand-authored, every segment delimiter-terminated — so *branch* rules can prefix-match a whole subtree (`extensionAttribute15 -startsWith "Region=NCR|Department=IT|"`) without the Model A fragility: the value is machine-derived, drift-reconciled, and the trailing `|` makes the prefix collision-free. See the [OrgPath Codebook](../../../src/uiao/canon/UIAO_151_OrgPath_Codebook.md) for the slot-to-facet map, the [Dynamic Group Library](../reference-architecture/dynamic-groups.qmd) for the composition pattern, and the [OrgPath FAQ](../reference-architecture/orgpath-faq.qmd) for the operator-level "how is this different from syncing an attribute?" answer.
