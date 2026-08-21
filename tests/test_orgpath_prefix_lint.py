@@ -1,7 +1,8 @@
-"""Tests for the OrgPath prefix-delimiter guard (ADR-127).
+"""Tests for the OrgPath prefix guard (ADR-127).
 
 The guard fails CI when a ``-startsWith`` / ``like`` expression carries a
-hybrid OrgPath prefix (``Facet=Value`` segments) missing its trailing ``|``.
+hybrid OrgPath prefix (``Facet=Value`` segments) that is either missing its
+trailing ``|`` or not anchored at the first segment of the derived path.
 """
 
 from __future__ import annotations
@@ -113,10 +114,51 @@ def test_allow_marker_exempts_line() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_repo_has_no_unterminated_orgpath_prefixes() -> None:
+def test_repo_has_no_malformed_orgpath_prefixes() -> None:
     root = lint.repo_root()
+    anchor = lint.anchor_label(root)
     findings: list[str] = []
     for path in lint.iter_scan_files(root):
         text = path.read_text(encoding="utf-8", errors="replace")
-        findings.extend(lint.scan_text(text, str(path.relative_to(root))))
+        findings.extend(lint.scan_text(text, str(path.relative_to(root)), anchor))
     assert findings == [], "\n".join(findings)
+
+
+# ---------------------------------------------------------------------------
+# Anchoring — a mid-path prefix is well-formed and matches nothing
+# ---------------------------------------------------------------------------
+
+
+def test_anchor_label_comes_from_the_codebook() -> None:
+    # Read from the SSOT, not hard-coded, so extending derived_from cannot
+    # leave the guard checking a stale anchor.
+    assert lint.anchor_label(lint.repo_root()) == "Region"
+
+
+def test_mid_path_prefix_is_flagged() -> None:
+    # The exact defect this rule exists for: well-formed, delimiter-terminated,
+    # invisible to the slot guard, and matches nobody because the derived path
+    # is composed Region-first.
+    line = '\'(user.extensionAttribute15 -startsWith "Department=Finance|")\''
+    findings = lint.scan_text(line, "runbook.md", "Region")
+    assert len(findings) == 1
+    assert "does not start at 'Region='" in findings[0]
+
+
+def test_anchored_prefixes_pass() -> None:
+    for value in (
+        '(user.extensionAttribute15 -startsWith "Region=NCR|")',
+        '(user.extensionAttribute15 -startsWith "Region=NCR|Department=IT|")',
+        '(d.extensionAttribute15 -startsWith "Region=NCR|Department=IT|Division=CyberOps|")',
+        '"like": "Region=NCR|Department=IT|*"',
+    ):
+        assert lint.scan_text(value, "doc.qmd", "Region") == [], value
+
+
+def test_anchor_rule_is_inert_when_the_codebook_declares_no_anchor() -> None:
+    assert lint.scan_text('-startsWith "Department=Finance|"', "doc.qmd", "") == []
+
+
+def test_allow_marker_exempts_an_unanchored_line() -> None:
+    line = '-startsWith "Department=Finance|"  # broken on purpose, orgpath-prefix-allow'
+    assert lint.scan_text(line, "doc.qmd", "Region") == []
