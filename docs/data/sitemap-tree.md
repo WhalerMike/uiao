@@ -232,6 +232,7 @@
 - [OrgLink Pillar Elevation — The Fourth Org-Family Pillar Goes Live](adr/adr-134-orglink-pillar-elevation.html)
 - [SailPoint ISC Governance — Option-B Ratification and Native Cloud IAM/RBAC Reconciliation Binding](adr/adr-135-sailpoint-isc-governance-option-b-ratification.html)
 - [SailPoint IdentityIQ — Option-C Slot Allocation and Vendor Contract Pin](adr/adr-136-sailpoint-identityiq-option-c-slot-allocation.html)
+- [Tenant-extension facets — admin tier, device type, and environment on slots 11-13](adr/adr-137-tenant-extension-facets.html)
 
 ## Schema Reference
 

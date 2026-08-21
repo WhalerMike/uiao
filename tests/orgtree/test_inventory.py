@@ -74,7 +74,12 @@ def test_absent_when_no_orgpath() -> None:
     rec = device_from_entra({"id": "d", "displayName": "n", "onPremisesExtensionAttributes": {}}, CB)
     res = classify_device(rec, CB)
     assert res.status == CAPTURE_ABSENT
-    assert len(res.missing_facets) == 10
+    # Nine required facets. Optional (allow_empty) facets never count as
+    # missing: the ADR-137 extension facets, and term_date, which is empty by
+    # design for anyone still employed — the survey used to demand one.
+    assert len(res.missing_facets) == 9
+    assert "term_date" not in res.missing_facets
+    assert "admin_tier" not in res.missing_facets
     assert res.needs_backfill is True
 
 

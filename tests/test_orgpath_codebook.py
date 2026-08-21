@@ -28,14 +28,15 @@ def test_default_codebook_loads_and_validates() -> None:
     assert codebook.adoption_tier_min == 3
 
 
-def test_default_codebook_has_eleven_named_facets_plus_four_reserved() -> None:
-    # 10 governance facets + the ADR-127 derived org_path on slot 15;
-    # slots 11-14 stay reserved for tenant extension.
+def test_default_codebook_has_fourteen_named_facets_plus_one_reserved() -> None:
+    # 10 governance facets (ADR-078) + the three tenant-extension facets on
+    # slots 11-13 (ADR-137) + the ADR-127 derived org_path on slot 15; only
+    # slot 14 stays reserved.
     codebook = load_codebook()
     named = [f for f in codebook.facets.values() if f.kind != "reserved"]
     reserved = [f for f in codebook.facets.values() if f.kind == "reserved"]
-    assert len(named) == 11
-    assert len(reserved) == 4
+    assert len(named) == 14
+    assert len(reserved) == 1
 
 
 def test_canonical_facet_slot_assignments() -> None:
@@ -107,8 +108,9 @@ def test_typed_facet_allow_empty_for_term_date() -> None:
 
 
 def test_reserved_facet_rejects_all_values() -> None:
+    # Slot 14 is the last undeclared extension slot after ADR-137.
     codebook = load_codebook()
-    reserved = codebook.facet("reserved_11")
+    reserved = codebook.facet("reserved_14")
     assert reserved.kind == "reserved"
     assert not reserved.is_active("anything")
     assert not reserved.is_active("")
@@ -316,3 +318,71 @@ def test_facet_dataclass_is_frozen() -> None:
     assert isinstance(region, Facet)
     with pytest.raises((AttributeError, Exception)):
         region.name = "renamed"  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# Tenant-extension facets on slots 11-13 (ADR-137)
+# ---------------------------------------------------------------------------
+
+
+def test_extension_facets_are_declared_and_bound() -> None:
+    codebook = load_codebook()
+    for name, slot in (
+        ("admin_tier", "extensionAttribute11"),
+        ("device_type", "extensionAttribute12"),
+        ("environment", "extensionAttribute13"),
+    ):
+        facet = codebook.facet(name)
+        assert facet.attribute == slot
+        assert facet.kind == "enumerated"
+        # They exist to be read by policy engines, which read directory
+        # attributes — an unprojected facet is invisible to them.
+        assert facet.projected, f"{name} must be projected to be targetable"
+
+
+def test_extension_facets_reject_values_from_the_facet_they_replaced() -> None:
+    # The defect ADR-137 fixes: admin tier was carried in `role`, device type
+    # in `classification`, environment in `cost_center`. Each vocabulary must
+    # now be rejected by the facet it was wrongly stored in, and accepted only
+    # by its own.
+    codebook = load_codebook()
+    assert codebook.facet("admin_tier").is_active("Tier0")
+    assert not codebook.facet("role").is_active("Tier0")
+
+    assert codebook.facet("device_type").is_active("Kiosk")
+    assert not codebook.facet("classification").is_active("Kiosk")
+
+    assert codebook.facet("environment").is_active("Production")
+    assert not codebook.facet("cost_center").is_active("Production")
+
+
+def test_slot_fourteen_is_still_reserved() -> None:
+    codebook = load_codebook()
+    reserved = codebook.facet_by_attribute("extensionAttribute14")
+    assert reserved is not None and reserved.kind == "reserved"
+
+
+def test_extension_facets_do_not_join_the_derived_path() -> None:
+    # None of the three is a hierarchy level, so the derived path must be
+    # unchanged by their presence — otherwise every subtree prefix breaks.
+    codebook = load_codebook()
+    layer = (codebook.hybrid or {}).get("inheritance_layer") or {}
+    assert list(layer.get("derived_from", ())) == ["region", "department", "division"]
+    assert (
+        codebook.derive_org_path({"region": "NCR", "department": "IT", "division": "CyberOps"})
+        == "Region=NCR|Department=IT|Division=CyberOps|"
+    )
+
+
+def test_projection_count_matches_adr_137() -> None:
+    # ADR-121 set this at 6 facets + the derived path; ADR-137 raises it to 9
+    # + the derived path. The number is load-bearing for slot scarcity, so it
+    # is asserted rather than left implicit.
+    codebook = load_codebook()
+    assert len(codebook.projected_facets()) == 10
+
+
+def test_sweep_gap_values_were_added() -> None:
+    codebook = load_codebook()
+    assert codebook.facet("cost_center").is_active("CC-BAL")
+    assert codebook.facet("division").is_active("Governance")
