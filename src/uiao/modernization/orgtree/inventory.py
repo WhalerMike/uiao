@@ -251,7 +251,10 @@ def classify_device(
     current_facets = {
         name: record.current_slots[f.attribute] for name, f in named if f.attribute in record.current_slots
     }
-    missing = tuple(name for name, f in named if f.attribute not in record.current_slots)
+    # Optional facets (allow_empty) never count as missing: an unpopulated
+    # slot is a legitimate state for them, so a device lacking one is still
+    # "complete" for backfill purposes (ADR-137).
+    missing = tuple(name for name, f in named if f.attribute not in record.current_slots and not f.allow_empty)
 
     if not missing:
         status = CAPTURE_COMPLETE

@@ -300,6 +300,11 @@ class DriftEngine:
                 continue
 
             # Enumerated facet.
+            if value == "" and facet.allow_empty:
+                # Optional facet (ADR-137): an unpopulated slot is a
+                # legitimate state, not drift. Populated values are still
+                # validated against the enumeration below.
+                continue
             if facet.is_active(value):
                 continue
             if facet.is_deprecated(value):

@@ -42,13 +42,23 @@
       "type": "object",
       "description": "Hybrid-C+Path model declaration (ADR-127). Two layers over the 15 slots: the Model C facet decomposition on extensionAttribute1-14 (governance layer) and a derived canonical OrgPath string on extensionAttribute15 (inheritance layer). The derived path is composed from the governance-layer hierarchy facets with every segment — including the last — terminated by the delimiter, so -startsWith / like prefix matching is unambiguous.",
       "additionalProperties": false,
-      "required": ["name", "status", "version", "governance_layer", "inheritance_layer"],
+      "required": [
+        "name",
+        "status",
+        "version",
+        "governance_layer",
+        "inheritance_layer"
+      ],
       "properties": {
         "name": {
           "const": "Hybrid-C+Path"
         },
         "status": {
-          "enum": ["PROPOSED", "ACCEPTED", "SUPERSEDED"]
+          "enum": [
+            "PROPOSED",
+            "ACCEPTED",
+            "SUPERSEDED"
+          ]
         },
         "version": {
           "type": "string",
@@ -61,7 +71,10 @@
         "governance_layer": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["attributes", "description"],
+          "required": [
+            "attributes",
+            "description"
+          ],
           "properties": {
             "attributes": {
               "type": "string"
@@ -75,7 +88,13 @@
         "inheritance_layer": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["facet", "attribute", "derived_from", "delimiter", "trailing_delimiter"],
+          "required": [
+            "facet",
+            "attribute",
+            "derived_from",
+            "delimiter",
+            "trailing_delimiter"
+          ],
           "properties": {
             "facet": {
               "type": "string",
@@ -89,12 +108,16 @@
               "type": "array",
               "minItems": 1,
               "uniqueItems": true,
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "Ordered facet names composed into the derived path. Integrity (each names a declared, projected facet) is enforced by the loader."
             },
             "segment_labels": {
               "type": "object",
-              "additionalProperties": { "type": "string" },
+              "additionalProperties": {
+                "type": "string"
+              },
               "description": "Optional per-facet segment label overrides (facet name → path segment label)."
             },
             "delimiter": {
@@ -115,14 +138,18 @@
       "type": "object",
       "description": "Per-facet declarations keyed by facet name (snake_case). Each facet binds to exactly one onPremisesExtensionAttribute slot. The 10 canonical facets (region, department, division, role, cost_center, classification, hire_date, term_date, clearance_level, account_type) map to attributes 1-10 per ADR-078. Slots 11-15 are reserved and declared as kind: reserved unless a governed PR has promoted them to tenant-specific facets.",
       "minProperties": 1,
-      "additionalProperties": { "$ref": "#/$defs/facet" }
+      "additionalProperties": {
+        "$ref": "#/$defs/facet"
+      }
     },
     "deprecated": {
       "type": "object",
       "description": "Per-facet deprecated values. Keys are facet names; values are arrays of deprecated entries with replaced_by pointing at an active value in the same facet's enumeration.",
       "additionalProperties": {
         "type": "array",
-        "items": { "$ref": "#/$defs/deprecatedValue" }
+        "items": {
+          "$ref": "#/$defs/deprecatedValue"
+        }
       },
       "default": {}
     }
@@ -131,7 +158,11 @@
     "facet": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["attribute", "description", "kind"],
+      "required": [
+        "attribute",
+        "description",
+        "kind"
+      ],
       "properties": {
         "attribute": {
           "type": "string",
@@ -143,17 +174,26 @@
           "minLength": 1
         },
         "kind": {
-          "enum": ["enumerated", "typed", "reserved"],
+          "enum": [
+            "enumerated",
+            "typed",
+            "reserved"
+          ],
           "description": "enumerated = closed list of valid values; typed = open set constrained by value_type and optional value_pattern (e.g., ISO dates); reserved = no semantics declared (slots 11-15 by default)."
         },
         "enumeration": {
           "type": "array",
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/facetValue" },
+          "items": {
+            "$ref": "#/$defs/facetValue"
+          },
           "description": "Required when kind == enumerated. List of valid values."
         },
         "value_type": {
-          "enum": ["string", "date"],
+          "enum": [
+            "string",
+            "date"
+          ],
           "description": "Required when kind == typed. Coarse type hint for downstream consumers."
         },
         "value_pattern": {
@@ -163,7 +203,7 @@
         "allow_empty": {
           "type": "boolean",
           "default": false,
-          "description": "When kind == typed, whether an empty string is a valid value (e.g., TermDate for active employees)."
+          "description": "Whether an empty string is a valid value. On a typed facet this covers cases like TermDate for active employees. On an enumerated facet it marks the facet as optional (ADR-137): an unpopulated slot is a legitimate state rather than drift, while any non-empty value is still validated against the enumeration."
         },
         "projected": {
           "type": "boolean",
@@ -173,19 +213,48 @@
       },
       "allOf": [
         {
-          "if": { "properties": { "kind": { "const": "enumerated" } }, "required": ["kind"] },
-          "then": { "required": ["enumeration"] }
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "enumerated"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "enumeration"
+            ]
+          }
         },
         {
-          "if": { "properties": { "kind": { "const": "typed" } }, "required": ["kind"] },
-          "then": { "required": ["value_type"] }
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "typed"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "value_type"
+            ]
+          }
         }
       ]
     },
     "facetValue": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["value", "description"],
+      "required": [
+        "value",
+        "description"
+      ],
       "properties": {
         "value": {
           "type": "string",
@@ -200,7 +269,10 @@
     "deprecatedValue": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["value", "replaced_by"],
+      "required": [
+        "value",
+        "replaced_by"
+      ],
       "properties": {
         "value": {
           "type": "string",

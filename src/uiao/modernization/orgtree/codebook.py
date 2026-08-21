@@ -106,10 +106,18 @@ class Facet:
         """True when ``value`` is a current (non-deprecated) value of this facet.
 
         For enumerated facets, checks membership in ``enumeration``.
-        For typed facets, checks ``value_pattern`` (and ``allow_empty``).
+        For typed facets, checks ``value_pattern``.
         For reserved facets, always False (no value can be active yet).
+
+        ``allow_empty`` applies to both kinds: it marks a facet as *optional*,
+        so an unpopulated slot is a legitimate state rather than drift. A
+        non-empty value is still validated normally. This is what makes a
+        projected facet adoptable incrementally — see ADR-137, where
+        device_type is projected tenant-wide but cannot apply to a user.
         """
         if self.kind == "enumerated":
+            if value == "" and self.allow_empty:
+                return True
             return value in self.enumeration
         if self.kind == "typed":
             if value == "" and self.allow_empty:
