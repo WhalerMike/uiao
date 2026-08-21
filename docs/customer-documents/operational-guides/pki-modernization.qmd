@@ -1099,7 +1099,26 @@ The UIAO OrgPath model uses Entra ID extension attributes on user and device obj
 
 **Example 7 --- Site-Specific Wired 802.1X (Headquarters):**
 
-(device.extensionAttribute1 -eq \"NCR\") and (device.extensionAttribute12 -eq \"Workstation\")
+Site is **not** an OrgPath facet. Physical place is LocPath's axis
+(`/Country/Region/Site/Building/Floor/Space`, with Site as the minimum
+governance unit), and per [ADR-102](../../adr/adr-102-locpath-location-addressing.qmd)
+§D5 LocPath claims no `extensionAttribute` slot at all — so there is no
+`device.extensionAttributeN -eq \"HQ\"` rule to write, and reaching for one
+puts a place name in a facet that means something else.
+
+Scope the assignment to the site group the LocPath exposure plans for that
+site, and use an OrgPath facet only for the device dimension:
+
+    Assignment target:  LocPath-Site-ANNAPOLIS-HQ-Users   (or AU-Site-ANNAPOLIS-HQ)
+    Device filter:      (device.extensionAttribute12 -eq \"Workstation\")
+
+Membership of `LocPath-Site-*` groups is **assigned** from the governed
+Primary-LocPath assignments, not derived from a stamped attribute. A
+deployment that later adopts a storage locator for LocPath can switch the
+group to a dynamic rule of the form `(<locator> -startsWith
+\"/USA/MD/ANNAPOLIS-HQ\")`, where the locator is a per-target binding-profile
+parameter rather than a claimed slot. This is the OrgPath x LocPath matrix
+ADR-102 describes: prefix-match on each axis, one axis per question.
 
 +----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | **Dynamic Group Processing**                                                                                                                                                                                                                             |
