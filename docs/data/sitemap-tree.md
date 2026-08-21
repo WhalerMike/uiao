@@ -55,6 +55,7 @@
   - [Drift Detection — A Walk-through](customer-documents/reference-architecture/drift-walkthrough.html)
   - [OrgPath Codebook](customer-documents/reference-architecture/codebook.html)
   - [Hybrid OrgPath Model](customer-documents/reference-architecture/hybrid-orgpath-model.html)
+  - [OrgPath, Reduced](customer-documents/reference-architecture/orgpath-minimal-implementation.html)
   - [Dynamic Group Library](customer-documents/reference-architecture/dynamic-groups.html)
   - [Delegation Matrix](customer-documents/reference-architecture/delegation.html)
 - **Directory Migration**
