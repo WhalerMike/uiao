@@ -1,0 +1,985 @@
+---
+title: "PIM Self-Request with Approval — Entra Administrative Roles"
+subtitle: "Build guide and FedRAMP Moderate control mapping for approval-gated, just-in-time directory role activation"
+doc-type: operational-guide
+audience: [Customer, Operator, Technical]
+author: Michael Stratton
+date: "August 2026"
+status: Active
+repo-path: docs/customer-documents/operational-guides/access-plane/pim-self-request-approval.qmd
+created-at: 2026-08-21
+updated-at: 2026-08-21
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-02-21
+---
+
+# PIM Self-Request with Approval {.unnumbered}
+
+**Series:** UIAO Access Plane — F.5 Privileged Access Management ·
+**Boundary:** GCC-Moderate · **Classification:** Controlled
+
+::: {.callout-note title="What this guide is"}
+A build guide for one specific Microsoft Entra Privileged Identity Management
+(PIM) configuration: **administrative roles held as *eligible* only, activated
+by the holder's own request, and released only after a named approver
+approves.** It gives the portal path, the Microsoft Graph equivalent, the
+approver and break-glass design, the evidence pipeline, and the mapping from
+each build step to the NIST SP 800-53 Rev 5 controls that FedRAMP Moderate
+inherits.
+
+It is deliberately narrower than the
+[Privileged Access Management book](../../orgcomp-series/Vol_III_Book_01_OrgComp_Privileged_Access_Management.qmd),
+which covers the whole PAM estate — PIM, Arc JIT server access, and Privileged
+Access Workstations. Read that for the programme; read this to build and
+evidence the approval gate.
+:::
+
+## Purpose and scope
+
+### In scope
+
+- Microsoft Entra **directory roles** (built-in and custom) managed by PIM.
+- **Self-activation** of an eligible assignment by the assignment holder —
+  the Graph `selfActivate` action — gated by **approval**, MFA, and
+  justification.
+- The role settings (PIM policies) that make the gate real, in both the
+  Microsoft Entra admin center and Microsoft Graph.
+- The audit, alerting, access-review, and log-retention plumbing an assessor
+  will ask for.
+- A control mapping suitable for drafting SSP implementation statements.
+
+### Out of scope
+
+- **Azure resource roles** and **PIM for Groups**. Both support the same
+  approval concept through parallel policy objects; the rule IDs and portal
+  blades differ. Where a resource-role equivalent exists it is noted, but the
+  build steps here target directory roles only.
+- Arc-based just-in-time **server** access and PAW baselines — see the
+  [PAM book](../../orgcomp-series/Vol_III_Book_01_OrgComp_Privileged_Access_Management.qmd).
+- Entitlement management access packages, which solve a different problem
+  (granting eligibility) from the one solved here (gating activation).
+
+### Reading order
+
+If you are standing this up from nothing, work the build steps in order.
+Step 0 is not optional and not reorderable: configuring an approval
+requirement before emergency access accounts exist is the one sequence that
+can lock an agency out of its own tenant.
+
+## Prerequisites
+
+| Requirement | Detail |
+|---|---|
+| **Licence** | Microsoft Entra ID **P2** or **Microsoft Entra ID Governance**. PIM is unavailable without one; if the licence lapses, PIM blades, APIs, and PowerShell interfaces stop serving activation and assignment management, in-flight access reviews end, and PIM configuration settings are removed. |
+| **Role to configure PIM** | **Privileged Role Administrator** is the least-privileged role sufficient to manage PIM role settings and assignments for a Microsoft Entra role. |
+| **Role to read PIM alerts** | Global Administrator, Privileged Role Administrator, Global Reader, Security Administrator, or Security Reader. |
+| **Graph permissions (delegated)** | `RoleManagementPolicy.ReadWrite.Directory` to manage rules; `RoleManagement.ReadWrite.Directory` to create eligible assignments. |
+| **MFA** | Microsoft Entra multifactor authentication enabled for all users — MFA is a per-role activation requirement here, not a substitute for tenant-wide MFA. |
+| **Log destination** | An Azure Monitor / Log Analytics workspace (and, where required, an Azure storage account) inside the authorization boundary, for audit retention beyond 30 days. See [Step 8](#step-8-export-audit-records-for-retention). |
+
+::: {.callout-important title="Licence dependency is a control dependency"}
+Because PIM configuration settings are *removed* when the licence lapses, the
+approval gate documented here is only as durable as the subscription behind
+it. Treat licence expiry as a configuration-management event with a
+control impact, not a procurement footnote.
+:::
+
+## The target design
+
+### Eligible, not active
+
+PIM gives every role assignment one of two states:
+
+- **Active** — the role is effective now. The holder exercises it with no
+  further step. Anyone who captures the session captures the privilege.
+- **Eligible** — the role is assigned but *not* effective. The holder must
+  explicitly activate it, satisfying whatever the role's policy requires, to
+  receive a time-limited active session. At expiry the assignment reverts to
+  eligible-only.
+
+The design in this guide holds **every human administrative assignment as
+eligible**, and reserves active assignments for the emergency access accounts
+of Step 0 and for service principals that cannot perform an activation
+ceremony.
+
+### The six activation controls
+
+A role's PIM settings — Microsoft calls them *role settings*, the Graph API
+calls them *rules*, and both are sometimes called *PIM policies* — expose six
+controls on the activation path. Settings are **per role**: each role's
+settings are independent, and every assignment of the same role follows the
+same settings.
+
+| Control | What it does | Notes that matter for a federal build |
+|---|---|---|
+| **Activation maximum duration** | Caps how long an activation stays active before it expires. | Range is **1 to 24 hours**. This is the exposure window; set it to the shortest window the work actually needs. |
+| **On activation, require multifactor authentication** | Requires MFA before activation. | Users **might not be prompted** if they authenticated with strong credentials or already satisfied MFA earlier in the session. If the requirement is *proof at activation time*, this setting alone does not deliver it — use authentication context instead. |
+| **On activation, require Microsoft Entra Conditional Access authentication context** | Points activation at a Conditional Access authentication context, so CA policy defines the bar. | The way to force a fresh, method-specific, device-conditioned proof. See [Step 5](#step-5-force-fresh-proof-with-conditional-access-authentication-context). |
+| **Require justification on activation** | Requires free-text business justification. | Captured in the request record and the audit log — this is the artifact that makes activation reviewable. |
+| **Require ticket information on activation** | Requires a support ticket number. | **Information-only.** Correlation against any ticketing system is *not* enforced by Entra. Useful for traceability, worthless as a control on its own; if the agency needs enforced ticket correlation, that check lives downstream in the SIEM or ITSM. |
+| **Require approval to activate** | Holds the activation until a named approver approves. | The subject of this guide. See [approver design](#approver-design-and-separation-of-duties). |
+
+### The assignment-side controls
+
+Three further settings govern how assignments are *made*, not how they are
+activated. They are what stops a well-built activation gate from being
+bypassed by simply granting someone a permanent active assignment.
+
+| Setting | Recommended posture |
+|---|---|
+| **Allow permanent eligible assignment** / **Expire eligible assignment after** | Require expiry. A bounded eligibility window forces periodic re-authorization instead of relying solely on access reviews to catch drift. |
+| **Allow permanent active assignment** / **Expire active assignment after** | Require expiry, and keep active assignments to emergency access accounts and service principals. |
+| **Require MFA / justification on active assignment** | Require both. PIM cannot enforce MFA when the holder *uses* an active role — they are already active from the moment of assignment — so the enforcement point is the moment of assignment. |
+
+### Role tiering
+
+Not every administrative role warrants the same gate. A single policy applied
+uniformly either throttles routine work or under-protects the tenant-wide
+roles. The tiering below is a starting posture to adapt to the agency's own
+role inventory — the tier boundaries, not the exact hour counts, are the part
+that transfers.
+
+| Tier | Example roles | Max duration | MFA | Justification | Ticket | Approval | Eligibility expiry |
+|---|---|---|---|---|---|---|---|
+| **Tier 0 — tenant-wide** | Global Administrator, Privileged Role Administrator, Privileged Authentication Administrator, Security Administrator, Conditional Access Administrator | 2–4 h | Auth context (phishing-resistant, sign-in frequency *Every time*) | Required | Required | **Required**, ≥ 2 approvers | 90 days |
+| **Tier 1 — service-wide** | Exchange, SharePoint, Intune, Teams, Application, Cloud Application, Hybrid Identity Administrator | 4–8 h | Auth context or MFA | Required | Required | **Required**, ≥ 2 approvers | 180 days |
+| **Tier 2 — scoped operational** | User Administrator, Groups Administrator, Helpdesk Administrator, Authentication Administrator (scoped to an administrative unit) | 8 h | MFA | Required | Required | Required or risk-accepted with documented rationale | 180 days |
+| **Read-only** | Global Reader, Security Reader, Reports Reader | 8 h | MFA | Required | Optional | Not required | 365 days |
+
+::: {.callout-tip title="Scope before you gate"}
+Several Tier 2 roles support **administrative unit** scoping. A User
+Administrator scoped to one AU is a materially smaller grant than a
+tenant-wide one, and scoping is the cheaper control — apply it first, then
+gate what remains.
+:::
+
+## Build
+
+### Step 0 — Establish emergency access accounts first {#step-0-establish-emergency-access-accounts-first}
+
+::: {.callout-warning title="The documented lockout condition"}
+Microsoft documents an explicit tenant lockout that this build can cause. You
+are locked out if **all** of the following are true:
+
+- All Privileged Role Administrators / Global Administrators hold **eligible**
+  assignments, none active; **and**
+- Approval is required for activation; **and**
+- **No approvers are configured.**
+
+Avoid it by configuring emergency access accounts **and** naming specific
+approvers. Both halves are required — neither alone closes the hole.
+:::
+
+Create **two or more** emergency access ("break-glass") accounts before
+touching any role setting:
+
+- **Cloud-only**, on the `*.onmicrosoft.com` domain, neither federated nor
+  synchronized from on-premises.
+- Assigned the **Global Administrator** role as a **permanent active**
+  assignment — these accounts must never depend on an activation ceremony.
+- Registered with a **phishing-resistant** authentication method.
+- **Excluded from any Conditional Access policy that blocks or restricts
+  sign-in.** The phishing-resistant method is what protects the account; an
+  enforced CA policy could block sign-in during the exact emergency the
+  account exists for. Report-only policies do not block and need no exclusion.
+- Credentials split and stored under dual control, with use alerting to a
+  named post-mortem team.
+
+Validate the accounts on a schedule and after any change to Conditional
+Access, MFA policy, or the PIM settings built below.
+
+### Step 1 — Build the approver groups {#step-1-build-the-approver-groups}
+
+Approvers can be users or groups, and groups of all types are supported. Use
+**groups**, not named individuals: individuals leave, and a policy that names
+a departed employee is a policy whose approval path is broken.
+
+Create one approver group per tier — for example `PIM-Approvers-Tier0`,
+`PIM-Approvers-Tier1`, `PIM-Approvers-Tier2` — and populate them per the
+separation-of-duties rules in the [next section](#approver-design-and-separation-of-duties).
+
+Two properties of the approval engine shape this design:
+
+- **Approvers do not need to hold any role.** An approver's authority to
+  approve is independent of their own privilege. This is what makes a
+  non-privileged oversight function possible.
+- **Approvers cannot approve their own activation requests**, and **service
+  principals cannot approve** at all. Self-approval is blocked by the
+  platform, not by policy — which is worth stating in the SSP, because it is
+  an enforced separation rather than a procedural one.
+
+### Step 2 — Configure role settings in the portal {#step-2-configure-role-settings-in-the-portal}
+
+For each role in the tiering table:
+
+1. Sign in to the [Microsoft Entra admin center](https://entra.microsoft.com)
+   as at least a **Privileged Role Administrator**.
+2. Browse to **ID Governance** > **Privileged Identity Management** >
+   **Microsoft Entra roles** > **Roles**.
+3. Select the role, then **Role settings**, then **Edit**.
+4. On the **Activation** tab, set:
+   - **Activation maximum duration** to the tier's value.
+   - **On activation, require** — multifactor authentication, or
+     Microsoft Entra Conditional Access authentication context (Step 5).
+   - **Require justification on activation** — on.
+   - **Require ticket information on activation** — on, where the agency runs
+     a ticketing discipline worth correlating.
+   - **Require approval to activate** — on, and **select the approver group**
+     from Step 1. Select at least one; Microsoft recommends at least two.
+5. On the **Assignment** tab, set the eligibility and active-assignment expiry
+   posture from [the assignment-side controls](#the-assignment-side-controls).
+6. On the **Notifications** tab, configure recipients (Step 6).
+7. Select **Update**.
+
+::: {.callout-caution title="Never leave the approver list empty"}
+If no specific approvers are selected, active **Privileged Role
+Administrators / Global Administrators become the default approvers**. That
+default is exactly the population this design is trying to keep
+eligible-not-active — which is how the lockout in Step 0 arises. Always name
+the approver group explicitly.
+:::
+
+### Step 3 — Configure role settings with Microsoft Graph {#step-3-configure-role-settings-with-microsoft-graph}
+
+The portal is fine for one role and unworkable for thirty. In Graph, role
+settings are **rules** attached to a **role management policy**, and each
+directory role is assigned one policy object.
+
+#### Find the policy for a role
+
+Every rule update needs the `policyId` for the target role. Resolve it from
+the role's immutable template ID:
+
+```http
+GET https://graph.microsoft.com/v1.0/policies/roleManagementPolicyAssignments
+    ?$filter=scopeId eq '/' and scopeType eq 'DirectoryRole'
+      and roleDefinitionId eq '9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3'
+```
+
+The response carries both the assignment `id` and the `policyId` — use the
+`policyId` for everything that follows.
+
+Template IDs for the roles named in the tiering table:
+
+| Role | Template ID |
+|---|---|
+| Global Administrator | `62e90394-69f5-4237-9190-012177145e10` |
+| Privileged Role Administrator | `e8611ab8-c189-46e8-94e1-60213ab1f814` |
+| Privileged Authentication Administrator | `7be44c8a-adaf-4e2a-84d6-ab2649e08a13` |
+| Security Administrator | `194ae4cb-b126-40b2-bd5b-6091b380977d` |
+| Conditional Access Administrator | `b1be1c3e-b65d-4f19-8427-f6fa0d97feb9` |
+| Exchange Administrator | `29232cdf-9323-42fd-ade2-1d097af3e4de` |
+| SharePoint Administrator | `f28a1f50-f6e7-4571-818b-6a12f2af6b6c` |
+| Intune Administrator | `3a2c62db-5318-420d-8d74-23affee5d9d5` |
+| Teams Administrator | `69091246-20e8-4a56-aa4d-066075b2a7a8` |
+| Application Administrator | `9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3` |
+| Cloud Application Administrator | `158c047a-c907-4556-b7ef-446551a6b5f7` |
+| Hybrid Identity Administrator | `8ac3fc64-6eca-42ea-9e69-59f4c7b60eb2` |
+| User Administrator | `fe930be7-5e62-47db-91af-98c3a49a38b1` |
+| Groups Administrator | `fdd7a751-b60b-444a-984c-02652fe8fa1c` |
+| Helpdesk Administrator | `729827e3-9c14-49f7-bb1b-9608f156bbb8` |
+| Authentication Administrator | `c4e39bd9-1100-46d3-8c65-fb160da0071f` |
+| Global Reader | `f2ef992c-3afb-46b9-b7cf-a126ee74c451` |
+| Security Reader | `5d6b6bb7-de71-4623-b4af-96380a352509` |
+
+#### The rules this build touches
+
+| Rule ID | Category | What it sets |
+|---|---|---|
+| `Expiration_EndUser_Assignment` | Activation | Activation maximum duration |
+| `Enablement_EndUser_Assignment` | Activation | Justification / MFA / ticketing on activation |
+| `Approval_EndUser_Assignment` | Activation | The approval requirement and the approver list |
+| `Expiration_Admin_Eligibility` | Assignment | Expiry of eligible assignments |
+| `Expiration_Admin_Assignment` | Assignment | Expiry of active assignments |
+| `Enablement_Admin_Assignment` | Assignment | Justification / MFA when an admin creates an active assignment |
+
+Each `PATCH` must include the `@odata.type` of the derived rule type. A
+successful update returns `204 No Content`.
+
+#### Require approval, with a named approver group
+
+```http
+PATCH https://graph.microsoft.com/v1.0/policies/roleManagementPolicies/{policyId}/rules/Approval_EndUser_Assignment
+Content-Type: application/json
+
+{
+    "@odata.type": "#microsoft.graph.unifiedRoleManagementPolicyApprovalRule",
+    "id": "Approval_EndUser_Assignment",
+    "target": {
+        "@odata.type": "microsoft.graph.unifiedRoleManagementPolicyRuleTarget",
+        "caller": "EndUser",
+        "operations": [ "All" ],
+        "level": "Assignment",
+        "inheritableSettings": [],
+        "enforcedSettings": []
+    },
+    "setting": {
+        "@odata.type": "microsoft.graph.approvalSettings",
+        "isApprovalRequired": true,
+        "isApprovalRequiredForExtension": false,
+        "isRequestorJustificationRequired": true,
+        "approvalMode": "SingleStage",
+        "approvalStages": [
+            {
+                "approvalStageTimeOutInDays": 1,
+                "isApproverJustificationRequired": true,
+                "escalationTimeInMinutes": 0,
+                "primaryApprovers": [
+                    {
+                        "@odata.type": "#microsoft.graph.groupMembers",
+                        "groupId": "<PIM-Approvers-Tier0 object ID>"
+                    }
+                ],
+                "isEscalationEnabled": false,
+                "escalationApprovers": []
+            }
+        ]
+    }
+}
+```
+
+`isApproverJustificationRequired: true` is the setting that makes the
+*approver's* reasoning part of the record, not just the requester's. For an
+approval gate to be evidence of a decision rather than evidence of a
+click, keep it on.
+
+#### Require MFA, justification, and ticket on activation
+
+```http
+PATCH https://graph.microsoft.com/v1.0/policies/roleManagementPolicies/{policyId}/rules/Enablement_EndUser_Assignment
+Content-Type: application/json
+
+{
+    "@odata.type": "#microsoft.graph.unifiedRoleManagementPolicyEnablementRule",
+    "id": "Enablement_EndUser_Assignment",
+    "enabledRules": [ "Justification", "MultiFactorAuthentication", "Ticketing" ],
+    "target": {
+        "@odata.type": "microsoft.graph.unifiedRoleManagementPolicyRuleTarget",
+        "caller": "EndUser",
+        "operations": [ "All" ],
+        "level": "Assignment",
+        "inheritableSettings": [],
+        "enforcedSettings": []
+    }
+}
+```
+
+#### Cap the activation window
+
+```http
+PATCH https://graph.microsoft.com/v1.0/policies/roleManagementPolicies/{policyId}/rules/Expiration_EndUser_Assignment
+Content-Type: application/json
+
+{
+    "@odata.type": "#microsoft.graph.unifiedRoleManagementPolicyExpirationRule",
+    "id": "Expiration_EndUser_Assignment",
+    "isExpirationRequired": true,
+    "maximumDuration": "PT4H",
+    "target": {
+        "@odata.type": "microsoft.graph.unifiedRoleManagementPolicyRuleTarget",
+        "caller": "EndUser",
+        "operations": [ "All" ],
+        "level": "Assignment",
+        "inheritableSettings": [],
+        "enforcedSettings": []
+    }
+}
+```
+
+#### Bound eligibility
+
+```http
+PATCH https://graph.microsoft.com/v1.0/policies/roleManagementPolicies/{policyId}/rules/Expiration_Admin_Eligibility
+Content-Type: application/json
+
+{
+    "@odata.type": "#microsoft.graph.unifiedRoleManagementPolicyExpirationRule",
+    "id": "Expiration_Admin_Eligibility",
+    "isExpirationRequired": true,
+    "maximumDuration": "P90D",
+    "target": {
+        "@odata.type": "microsoft.graph.unifiedRoleManagementPolicyRuleTarget",
+        "caller": "Admin",
+        "operations": [ "All" ],
+        "level": "Eligibility",
+        "inheritableSettings": [],
+        "enforcedSettings": []
+    }
+}
+```
+
+#### Applying the tier policy across roles
+
+The script below applies one tier's settings to a list of roles. It is a
+**reference implementation for review and adaptation** — written against
+current Microsoft Graph PowerShell, not run against a live tenant. Anything
+environment-specific is marked `# CONFIGURE:`. It honours `-WhatIf`; dry-run
+before touching a live tenant.
+
+::: {.appendix-script}
+```powershell
+#Requires -Modules Microsoft.Graph.Identity.Governance
+
+<#
+.SYNOPSIS
+    Apply a PIM tier policy (approval, MFA, justification, duration, eligibility
+    expiry) to a set of Microsoft Entra directory roles.
+
+.DESCRIPTION
+    Resolves each role's role-management policy from its immutable template ID,
+    then PATCHes the four activation/assignment rules that constitute the
+    approval gate. Idempotent: re-running with the same inputs is a no-op in
+    effect, though each run issues the PATCH.
+
+.NOTES
+    Least-privileged role: Privileged Role Administrator.
+    Delegated scopes: RoleManagementPolicy.ReadWrite.Directory
+#>
+[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+param(
+    # Role template IDs to configure. CONFIGURE: replace with your tier's roles.
+    [Parameter(Mandatory)]
+    [string[]] $RoleTemplateId,
+
+    # Object ID of the approver group created in Step 1.
+    [Parameter(Mandatory)]
+    [string] $ApproverGroupId,
+
+    # ISO 8601 duration for the maximum activation window (1h-24h).
+    [ValidatePattern('^PT([1-9]|1[0-9]|2[0-4])H$')]
+    [string] $MaxActivationDuration = 'PT4H',
+
+    # ISO 8601 duration for maximum eligible-assignment lifetime.
+    [string] $MaxEligibilityDuration = 'P90D',
+
+    # Activation requirements. Ticketing is information-only in Entra.
+    [ValidateSet('Justification', 'MultiFactorAuthentication', 'Ticketing')]
+    [string[]] $EnabledRules = @('Justification', 'MultiFactorAuthentication', 'Ticketing')
+)
+
+begin {
+    function New-PimRuleTarget {
+        param(
+            [ValidateSet('EndUser', 'Admin')][string] $Caller = 'EndUser',
+            [ValidateSet('Assignment', 'Eligibility')][string] $Level = 'Assignment'
+        )
+        @{
+            '@odata.type'        = 'microsoft.graph.unifiedRoleManagementPolicyRuleTarget'
+            caller               = $Caller
+            operations           = @('All')
+            level                = $Level
+            inheritableSettings  = @()
+            enforcedSettings     = @()
+        }
+    }
+
+    # Activation rules are scoped to the end user activating their own
+    # eligible assignment; the eligibility-expiry rule is scoped to the
+    # admin who creates the assignment.
+    $activationTarget  = New-PimRuleTarget -Caller 'EndUser' -Level 'Assignment'
+    $eligibilityTarget = New-PimRuleTarget -Caller 'Admin'   -Level 'Eligibility'
+
+    function Resolve-PimPolicyId {
+        param([Parameter(Mandatory)][string] $TemplateId)
+
+        $filter = "scopeId eq '/' and scopeType eq 'DirectoryRole' and " +
+                  "roleDefinitionId eq '$TemplateId'"
+        $assignment = Get-MgPolicyRoleManagementPolicyAssignment -Filter $filter -ErrorAction Stop
+
+        if (-not $assignment) {
+            throw "No role management policy assignment found for template ID $TemplateId."
+        }
+        # A directory role at tenant scope resolves to exactly one policy.
+        return $assignment[0].PolicyId
+    }
+
+    function Set-PimRule {
+        param(
+            [Parameter(Mandatory)][string] $PolicyId,
+            [Parameter(Mandatory)][string] $RuleId,
+            [Parameter(Mandatory)][hashtable] $Body
+        )
+
+        Update-MgPolicyRoleManagementPolicyRule `
+            -UnifiedRoleManagementPolicyId     $PolicyId `
+            -UnifiedRoleManagementPolicyRuleId $RuleId `
+            -BodyParameter                     $Body `
+            -ErrorAction                       Stop
+    }
+}
+
+process {
+    foreach ($templateId in $RoleTemplateId) {
+
+        $policyId = Resolve-PimPolicyId -TemplateId $templateId
+
+        if (-not $PSCmdlet.ShouldProcess(
+                "role $templateId (policy $policyId)",
+                "Apply PIM tier policy: approval via $ApproverGroupId, max $MaxActivationDuration")) {
+            continue
+        }
+
+        # 1. Require approval, routed to the approver group.
+        Set-PimRule -PolicyId $policyId -RuleId 'Approval_EndUser_Assignment' -Body @{
+            '@odata.type' = '#microsoft.graph.unifiedRoleManagementPolicyApprovalRule'
+            id            = 'Approval_EndUser_Assignment'
+            target        = $activationTarget
+            setting       = @{
+                '@odata.type'                     = 'microsoft.graph.approvalSettings'
+                isApprovalRequired                = $true
+                isApprovalRequiredForExtension    = $false
+                isRequestorJustificationRequired  = $true
+                approvalMode                      = 'SingleStage'
+                approvalStages                    = @(
+                    @{
+                        approvalStageTimeOutInDays      = 1
+                        isApproverJustificationRequired = $true
+                        escalationTimeInMinutes         = 0
+                        isEscalationEnabled             = $false
+                        escalationApprovers             = @()
+                        primaryApprovers                = @(
+                            @{
+                                '@odata.type' = '#microsoft.graph.groupMembers'
+                                groupId       = $ApproverGroupId
+                            }
+                        )
+                    }
+                )
+            }
+        }
+
+        # 2. Require MFA, justification, and ticket at activation.
+        Set-PimRule -PolicyId $policyId -RuleId 'Enablement_EndUser_Assignment' -Body @{
+            '@odata.type' = '#microsoft.graph.unifiedRoleManagementPolicyEnablementRule'
+            id            = 'Enablement_EndUser_Assignment'
+            enabledRules  = $EnabledRules
+            target        = $activationTarget
+        }
+
+        # 3. Cap the activation window.
+        Set-PimRule -PolicyId $policyId -RuleId 'Expiration_EndUser_Assignment' -Body @{
+            '@odata.type'        = '#microsoft.graph.unifiedRoleManagementPolicyExpirationRule'
+            id                   = 'Expiration_EndUser_Assignment'
+            isExpirationRequired = $true
+            maximumDuration      = $MaxActivationDuration
+            target               = $activationTarget
+        }
+
+        # 4. Bound how long an eligible assignment may live.
+        Set-PimRule -PolicyId $policyId -RuleId 'Expiration_Admin_Eligibility' -Body @{
+            '@odata.type'        = '#microsoft.graph.unifiedRoleManagementPolicyExpirationRule'
+            id                   = 'Expiration_Admin_Eligibility'
+            isExpirationRequired = $true
+            maximumDuration      = $MaxEligibilityDuration
+            target               = $eligibilityTarget
+        }
+
+        Write-Verbose "Applied tier policy to role $templateId (policy $policyId)."
+    }
+}
+```
+:::
+
+### Step 4 — Convert standing assignments to eligible {#step-4-convert-standing-assignments-to-eligible}
+
+An approval gate on activation does nothing for an administrator who never
+has to activate. Inventory the tenant's active directory role assignments and
+convert every human one to eligible.
+
+Create the eligible assignment first, confirm it, then remove the active one —
+in that order, so no administrator is stranded mid-conversion:
+
+```http
+POST https://graph.microsoft.com/v1.0/roleManagement/directory/roleEligibilityScheduleRequests
+Content-Type: application/json
+
+{
+    "action": "adminAssign",
+    "justification": "Convert standing assignment to PIM eligible per PAM policy",
+    "roleDefinitionId": "9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3",
+    "directoryScopeId": "/",
+    "principalId": "<user object ID>",
+    "scheduleInfo": {
+        "startDateTime": "2026-09-01T00:00:00Z",
+        "expiration": { "type": "afterDuration", "duration": "P90D" }
+    }
+}
+```
+
+Two platform behaviours to plan around:
+
+- An assignment **cannot be created for less than five minutes**, and
+  **cannot be removed within five minutes** of being created. Batch
+  conversions accordingly.
+- A **time-bound Global Administrator assignment is not removed at expiry if
+  it is the last one** — active or eligible. Entra deliberately declines to
+  strand a tenant. Do not read the surviving assignment as a failed
+  conversion, and do not rely on expiry to remove the final GA assignment.
+
+The exclusions from this conversion are exactly two, and both belong in the
+SSP with rationale: the **emergency access accounts** from Step 0, and
+**service principals**, which cannot perform an activation ceremony.
+
+### Step 5 — Force fresh proof with Conditional Access authentication context {#step-5-force-fresh-proof-with-conditional-access-authentication-context}
+
+For Tier 0, "require MFA on activation" is not enough. Microsoft is explicit
+that a user **might not be prompted** for MFA at activation if they
+authenticated with strong credentials or already satisfied MFA earlier in the
+session. If the control objective is *a fresh authentication proof at the
+moment of elevation*, use authentication context.
+
+Build it in this order — the order matters:
+
+1. **Create the Conditional Access policy first**, targeting the
+   authentication context, scoped to all users or to the eligible population.
+   Set the authentication strength (for example, phishing-resistant MFA), any
+   device-compliance requirement, and — to force reauthentication on every
+   activation — **sign-in frequency: Every time** under **Session** controls.
+2. **Then** select that authentication context in the role's PIM settings.
+
+Constraints worth knowing before you design against it:
+
+- **Do not scope the CA policy to both the authentication context and a
+  directory role.** At activation time the user does not hold the role yet, so
+  a role-scoped policy will not apply.
+- There is a **backup mechanism**: if no CA policy in the tenant targets the
+  authentication context configured in PIM, activation falls back to requiring
+  MFA. It exists to catch a build-order mistake, and it does **not** trigger
+  when the policy is turned off, in report-only mode, or has the eligible user
+  excluded. Do not treat it as a safety net.
+- After a reauthentication, a **10-minute window** applies: another eligible
+  role activated inside that window does not reprompt. The window spans
+  Microsoft Entra roles, Azure resource roles, and PIM for Groups.
+- Authentication context governs the **activation**, not what happens after.
+  A user can activate from a compliant device and then use the activated role
+  from a non-compliant one. To close that, add a **second** CA policy targeting
+  **directory roles**, which applies once the role is active. Both policies can
+  enforce the same or different requirements.
+
+::: {.callout-warning title="Authentication context creates a privilege dependency"}
+Once PIM points at an authentication context, whoever can edit Conditional
+Access policies — Conditional Access Administrator, Security Administrator —
+can weaken the requirement, remove it, or block eligible users from
+activating at all. Those roles become part of the privileged surface
+protecting elevation. Put them in **Tier 0**, and gate them with this same
+build.
+:::
+
+The agency's CA policy set for this pattern belongs in the
+[Conditional Access library](conditional-access-library.qmd).
+
+### Step 6 — Notifications and PIM alerts {#step-6-notifications-and-pim-alerts}
+
+**Per-role notifications** are configured on the **Notifications** tab of each
+role's settings. PIM allows per-recipient, per-event-type control: turn an
+email off, redirect it to a named distribution list, send to both defaults and
+additions, or restrict to **critical emails only** — which suppresses
+informational mail (such as "extend your assignment") while preserving mail
+that requires action (such as an approval request).
+
+Route approval-request and activation notifications to the approver group and
+to the security operations mailbox. One PIM event can notify assignees,
+approvers, and administrators; the **maximum is 1000 notifications per
+event**, after which further recipients are not mailed — which is only a
+constraint if approver groups are allowed to grow large. Keep them small,
+which the separation-of-duties design wants anyway.
+
+**PIM security alerts** are the second signal. Readable by Global
+Administrator, Privileged Role Administrator, Global Reader, Security
+Administrator, and Security Reader, and configurable under
+**Microsoft Entra roles** > **Alerts**:
+
+| Alert | Why it matters to this build |
+|---|---|
+| **Roles are being assigned outside of Privileged Identity Management** | The direct bypass signal. An assignment made outside PIM is an assignment that never met the approval gate. Treat every occurrence as an incident until proven otherwise. |
+| **Roles don't require multifactor authentication for activation** | Detects a role whose policy drifted off the baseline. |
+| **There are too many Global Administrators** | Tune the two thresholds — minimum count and percentage of total assignments — to the agency's own posture. |
+| **Roles are being activated too frequently** | Distinguishes a role that is genuinely just-in-time from one that is standing privilege wearing a JIT costume. |
+| **Administrators aren't using their privileged roles** | Feeds access-review scoping: eligibility that is never activated is eligibility to remove. Configurable 0–100 days. |
+| **Potential stale accounts in a privileged role** | Accounts in a privileged role with no sign-in in *n* days (1–365) — typically shared or service accounts that need review and credential rotation. |
+
+### Step 7 — Access reviews on eligibility {#step-7-access-reviews-on-eligibility}
+
+The approval gate controls *use* of privilege. Access reviews control
+*possession* of eligibility. Both are needed: without reviews, the eligible
+population only grows.
+
+Configure recurring PIM access reviews over Microsoft Entra roles — scoped to
+the eligible assignments for each tier, on a cadence at least as frequent as
+the tier's eligibility-expiry window, with reviewers who are the role owners
+or the approver group rather than the assignees themselves. Set the
+**upon-completion** action to remove access automatically on denial, so a
+review that finds unneeded eligibility actually removes it.
+
+::: {.callout-note title="Groups assigned to roles"}
+Where a **group** is assigned to a directory role, the review acts on the
+group's assignment, not on individual membership. If the agency uses
+role-assignable groups (the PAG pattern described in the
+[Help Desk Administrative Responsibilities Guide](../helpdesk-entra-operations/help-desk-administrative-responsibilities.qmd)),
+pair the role review with a membership review of the group itself — otherwise
+membership drift is invisible to the role review.
+:::
+
+### Step 8 — Export audit records for retention {#step-8-export-audit-records-for-retention}
+
+This is the step most often missed, and it is a control failure when it is.
+
+| Surface | Native retention |
+|---|---|
+| PIM audit history (**Resource audit**, **My audit**) | **30 days** |
+| Microsoft Entra audit logs (P1 / P2) | **30 days** |
+| Microsoft Entra sign-in logs (P1 / P2) | **30 days** |
+
+Thirty days does not satisfy an AU-11 retention parameter under any federal
+baseline the authors are aware of. Route Microsoft Entra audit and sign-in
+logs to an **Azure storage account** and/or a **Log Analytics workspace** via
+Azure Monitor diagnostic settings, inside the authorization boundary, with
+retention configured to the agency's authorized AU-11 value.
+
+Two notes:
+
+- **Retention changes are not retroactive.** Data that has already aged out
+  cannot be recovered unless it was previously archived. Configure the export
+  *before* go-live, not after the first assessment finding.
+- Microsoft Entra audit logs are **separate** from the Microsoft 365 Unified
+  Audit Log; UAL retention is managed through Microsoft Purview Audit and is
+  not affected by Entra licensing. If the SSP claims UAL as the audit record
+  store, that is a different pipeline with a different retention setting.
+
+## Operating the workflow
+
+### The requester's path
+
+1. Browse to **ID Governance** > **Privileged Identity Management** >
+   **My roles**, and select the eligible role.
+2. Submit an activation request with the required **justification**, the
+   **ticket number** if required, and a requested duration bounded by the
+   role's maximum.
+3. Satisfy **MFA** or the **authentication context** challenge. Where
+   authentication context applies, the request page shows a banner —
+   *"A Conditional Access policy is enabled and may require additional
+   verification"* — and redirects to complete reauthentication.
+4. Wait for approval. Track it under **My requests**.
+5. On approval, the role becomes active for the requested window and
+   deactivates automatically at expiry. No action is needed to release it.
+
+### The approver's path
+
+1. An email notification arrives; pending requests are listed under
+   **ID Governance** > **Privileged Identity Management** >
+   **Approve requests**, in **Requests for role activations**.
+2. Select the request, enter the **justification** for the decision, and
+   **Submit**.
+
+Programmatically:
+
+```http
+GET https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignmentScheduleRequests
+    /filterByCurrentUser(on='approver')?$filter=status eq 'PendingApproval'
+```
+
+then approve or deny the step:
+
+```http
+PATCH https://graph.microsoft.com/beta/roleManagement/directory/roleAssignmentApprovals/{requestId}/steps/{stepId}
+Content-Type: application/json
+
+{ "reviewResult": "Approve" }
+```
+
+### The 24-hour window
+
+Delegated approvers have **24 hours** to act. A request not approved within
+24 hours expires, and the eligible user must submit a new one. **The 24-hour
+window is not configurable.**
+
+This is a real operational constraint, not a footnote: a Tier 0 approval path
+staffed by two people in one time zone will strand out-of-hours requests. Size
+the approver group for the agency's actual operating hours, and make the
+emergency access procedure from Step 0 — not an unapproved request — the
+documented answer to "the approvers are asleep and production is down."
+
+### Approver design and separation of duties {#approver-design-and-separation-of-duties}
+
+| Rule | Why |
+|---|---|
+| Approvers for a tier are **not** members of that tier's eligible population | Otherwise the approval group and the requester population are the same set, and approval degrades to mutual back-scratching. Platform-blocked self-approval prevents the degenerate case; group design prevents the collusive one. |
+| Minimum **two** approvers per tier | Microsoft's recommendation, and the minimum that survives one person being unavailable. |
+| Approvers are **groups**, membership managed as a governed object | Named individuals break when people leave. |
+| Approver **justification required** | The decision, not just the outcome, must be in the record. |
+| Approver group membership is itself reviewed | The approver group is a privileged object even though it holds no role. |
+| Tier 0 approvers sit **outside** the Tier 0 role population — for example, the security or governance function | Separation of duties, at the point where it matters most. |
+
+## Assessment evidence
+
+What a 3PAO will ask for, and where it comes from:
+
+| Evidence | Source | Cadence |
+|---|---|---|
+| PIM role settings per role (approval on, approvers named, MFA/justification, max duration) | `GET /policies/roleManagementPolicies/{id}?$expand=rules`, or the **Role settings** page | On change; snapshot at assessment |
+| Eligible vs active assignment inventory | `GET /roleManagement/directory/roleEligibilitySchedules` and `roleAssignmentSchedules` | Monthly |
+| Activation requests with justification, approver, decision, and timestamps | PIM **Resource audit**; Microsoft Entra audit logs | Continuous, exported |
+| Approver group membership and its review history | Group object; access review results | Per review cycle |
+| Access review campaigns, outcomes, and removals | PIM access review results | Per review cycle |
+| PIM alert state, especially "assigned outside PIM" | **Microsoft Entra roles** > **Alerts** | Continuous |
+| Emergency access account inventory, exclusions, credential custody, and use log | Tenant configuration; alert rule; post-mortem records | Quarterly validation |
+| Audit log export configuration and retention setting | Azure Monitor diagnostic settings | On change |
+
+::: {.callout-note title="Keep tenant artifacts out of this repository"}
+The rows above describe *where evidence comes from*, not content to commit
+here. Real tenant exports, request records, and review results belong in the
+agency's evidence store under its own handling rules — the `evidence/` tree
+convention, not the published documentation surface.
+:::
+
+## Validation test plan
+
+Run these after the build and after any change to PIM settings, Conditional
+Access, or approver group membership.
+
+| # | Test | Expected result |
+|---|---|---|
+| 1 | Eligible user activates a Tier 0 role | Prompted for justification and ticket; challenged per authentication context; request enters **PendingApproval** — role does **not** become active |
+| 2 | Approver approves | Role becomes active for the requested duration; both justifications recorded in the audit log |
+| 3 | Approver denies | Role remains eligible-only; denial and approver justification recorded |
+| 4 | Requester attempts to approve their own request | Blocked by the platform |
+| 5 | Request left unactioned for 24 hours | Request expires; user must resubmit |
+| 6 | Activation window elapses | Role deactivates automatically with no user action; deactivation appears in the audit log |
+| 7 | A user not in the eligible population attempts activation | No eligible assignment presented |
+| 8 | Tier 0 role assigned directly, outside PIM | **"Roles are being assigned outside of Privileged Identity Management"** alert fires |
+| 9 | Emergency access account signs in and uses Global Administrator | Sign-in succeeds with no activation ceremony; alert fires to the post-mortem team |
+| 10 | Activation event queried in the log destination | Event present in Log Analytics / storage, not only in the 30-day PIM view |
+| 11 | Conditional Access policy for the authentication context disabled | Activation still requires authentication context — confirm the fallback is **not** silently relaxing the requirement (it does not trigger for disabled or report-only policies) |
+| 12 | Eligible assignment reaches its expiry | Assignment removed, except a last-remaining Global Administrator assignment, which Entra retains by design |
+
+## Control mapping — FedRAMP Moderate
+
+::: {.callout-important title="How to read this mapping"}
+FedRAMP Rev 5 baselines are derived from **NIST SP 800-53 Rev 5**, with
+FedRAMP-specific control additions and organization-defined parameter values
+on top. Every control below was verified as present in the **NIST SP 800-53
+Rev 5 Moderate baseline** (`usnistgov/oscal-content`, resolved-profile
+catalog), which FedRAMP Moderate inherits. Before using this table in an SSP,
+confirm control selection and parameter values against **the agency's current
+authorized FedRAMP Moderate baseline** — in particular the AU-11 retention
+period and the AC-6(7) review frequency, which are parameters, not constants.
+
+This is a **design-intent mapping**: it says which build steps bear on which
+controls. It is not an implementation statement and not an assessment result.
+The system owner authors the implementation statements; the 3PAO decides
+whether they hold.
+:::
+
+| Control | Title | How this build bears on it |
+|---|---|---|
+| **AC-2** | Account Management | (e) approval before privileged role activation is an enforced approval step; (g) PIM audit and alerts monitor privileged account use; (j) access reviews (Step 7) provide the periodic compliance review |
+| **AC-2(1)** | Automated System Account Management | PIM automates activation, expiry, and automatic deactivation of privileged role assignments — no manual deprovisioning step at the end of an elevation |
+| **AC-2(13)** | Disable Accounts for High-risk Individuals | Removing an eligible assignment removes the ability to elevate without touching the underlying account; PIM alerts surface stale privileged accounts as review candidates |
+| **AC-3** | Access Enforcement | Entra enforces the activation requirements — approval, MFA, justification — before issuing the active role; enforcement is platform-side, not procedural |
+| **AC-5** | Separation of Duties | Approvers are drawn from a population distinct from the requesting tier (Step 1); the platform blocks self-approval and prohibits service principals from approving |
+| **AC-6** | Least Privilege | Eligible-not-active is the least-privilege default: between activations the administrator holds no administrative scope |
+| **AC-6(1)** | Authorize Access to Security Functions | The eligible-assignment inventory is the explicit, enumerable authorization list for security-function access; tiering (Step 3) records which functions carry which gate |
+| **AC-6(2)** | Non-privileged Access for Nonsecurity Functions | Administrators operate under their standard account for nonsecurity work and elevate only for the task; no standing admin session |
+| **AC-6(5)** | Privileged Accounts | Privileged roles are restricted to the enumerated eligible population, with active assignments limited to emergency access accounts and service principals, each documented with rationale |
+| **AC-6(7)** | Review of User Privileges | Recurring PIM access reviews over eligible assignments (Step 7), with automatic removal on denial |
+| **AC-6(9)** | Log Use of Privileged Functions | PIM logs request, approval, activation, and deactivation; Entra audit logs carry the corresponding events (Step 8) |
+| **AC-6(10)** | Prohibit Non-privileged Users from Executing Privileged Functions | A user with no activated role is a non-privileged user; the privileged function is unreachable until the gate is passed |
+| **AC-17(4)** | Privileged Commands and Access | Elevation performed remotely produces assessable evidence — requester justification, approver identity, approver justification, timestamps, and duration |
+| **AU-2** | Event Logging | Request, approval, denial, activation, deactivation, and policy-change events are the PIM event types selected for logging |
+| **AU-6** | Audit Record Review, Analysis, and Reporting | Exported records are reviewed in the SIEM; PIM alerts (Step 6) provide the automated review triggers, notably assignment made outside PIM |
+| **AU-11** | Audit Record Retention | **Native 30-day retention is insufficient.** Satisfied only by the Step 8 export to storage / Log Analytics at the baseline's retention parameter |
+| **AU-12** | Audit Record Generation | Entra generates the audit records for every PIM event without additional instrumentation |
+| **IA-2(1)** | MFA to Privileged Accounts | MFA required at activation; for Tier 0, authentication context with phishing-resistant strength and sign-in frequency *Every time* forces a fresh proof rather than reusing a session claim |
+| **CM-5** | Access Restrictions for Change | Roles that can change the system are held eligible-only and released through the approval gate, making the approval the enforced logical access restriction on change |
+| **PS-4 / PS-5** | Personnel Termination / Transfer | Eligibility removal is a single revocation point covering every role the individual could elevate into; access reviews catch what offboarding misses |
+
+### Where this build alone is not sufficient
+
+Stating the gaps is part of the mapping.
+
+- **AU-11** is not met by the PIM configuration at all — only by the export in
+  Step 8. A build that skips Step 8 has a control failure, not a
+  documentation gap.
+- **Ticket information is not enforced.** If an implementation statement
+  claims ticket correlation, the enforcing control is in the ITSM or SIEM, not
+  in Entra.
+- **AC-5 depends on group design.** The platform blocks self-approval; it does
+  not stop an agency from making the approver group and the eligible
+  population identical. That separation is a design decision the SSP must
+  describe and the assessor will test.
+- **The approval gate protects activation, not assignment.** Direct role
+  assignment outside PIM bypasses it entirely. The compensating detection is
+  the "assigned outside PIM" alert, and it is a detection, not a prevention.
+- **Conditional Access administrators can weaken the gate** once
+  authentication context is in play (Step 5). Their inclusion in Tier 0 is
+  what keeps the dependency closed.
+
+## Known constraints
+
+| Constraint | Impact |
+|---|---|
+| Approval window is **24 hours, not configurable** | Out-of-hours requests expire; size approver groups for real operating hours |
+| **Multi-step approvals are not supported** | A two-level approval chain cannot be expressed in one policy |
+| **Extend / renew approval is not supported by the Graph API** | Automate initial approvals; extensions are portal-driven |
+| Activation maximum duration is bounded to **1–24 hours** | Longer windows require a documented risk acceptance and a different mechanism |
+| Assignments **cannot be shorter than five minutes**, nor removed within five minutes of creation | Affects bulk conversion tooling and rollback timing |
+| **Last-remaining Global Administrator assignment is not removed at expiry** | Expiry alone will not clear the final GA assignment; do not read this as failure |
+| MFA at activation **may not reprompt** within a session | Use authentication context where fresh proof is the control objective |
+| **10-minute reauthentication window** spans Entra roles, Azure resource roles, and PIM for Groups | A second activation inside the window inherits the first proof |
+| PIM audit history and Entra audit logs retain **30 days** | Export is mandatory for federal retention |
+| **1000 notification recipients per event** | Keep approver and notification groups small |
+| Licence lapse **removes PIM configuration settings** | Subscription continuity is a control dependency |
+
+## Sources
+
+All Microsoft product behaviour above is drawn from current Microsoft Learn
+documentation. Control text and Moderate-baseline membership are drawn from
+the NIST OSCAL publication of SP 800-53 Rev 5.
+
+**Microsoft Entra PIM**
+
+- [Configure Microsoft Entra role settings in Privileged Identity Management](https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-how-to-change-default-settings)
+- [Approve or deny requests for Microsoft Entra roles in Privileged Identity Management](https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-approval-workflow)
+- [Assign Microsoft Entra roles in Privileged Identity Management](https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-how-to-add-role-to-user)
+- [Start using Privileged Identity Management](https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-getting-started)
+- [Plan a Privileged Identity Management deployment](https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-deployment-plan)
+- [View audit history for Microsoft Entra roles in Privileged Identity Management](https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-how-to-use-audit-log)
+- [Configure security alerts for Microsoft Entra roles in Privileged Identity Management](https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-how-to-configure-security-alerts)
+- [Create an access review of Microsoft Entra roles in Privileged Identity Management](https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-create-roles-and-resource-roles-review)
+- [Email notifications in Privileged Identity Management](https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-email-notifications)
+- [Microsoft Entra ID Governance licensing fundamentals](https://learn.microsoft.com/en-us/entra/id-governance/licensing-fundamentals)
+
+**Microsoft Graph**
+
+- [Update rules in PIM by using Microsoft Graph](https://learn.microsoft.com/en-us/graph/how-to-pim-update-rules)
+- [unifiedRoleManagementPolicyRule resource type](https://learn.microsoft.com/en-us/graph/api/resources/unifiedrolemanagementpolicyrule)
+- [Overview of role management through the PIM API](https://learn.microsoft.com/en-us/graph/api/resources/privilegedidentitymanagementv3-overview)
+
+**Microsoft Entra identity and access**
+
+- [Microsoft Entra built-in roles](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/permissions-reference) — role template IDs
+- [Manage emergency access accounts in Microsoft Entra ID](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access)
+- [Securing privileged access for hybrid and cloud deployments in Microsoft Entra ID](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-planning)
+- [Conditional Access: Cloud apps, actions, and authentication context](https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps)
+- [Microsoft Entra data retention](https://learn.microsoft.com/en-us/entra/identity/monitoring-health/reference-reports-data-retention)
+- [Archive Microsoft Entra logs to an Azure storage account](https://learn.microsoft.com/en-us/entra/identity/monitoring-health/howto-archive-logs-to-storage-account)
+
+**Controls**
+
+- NIST SP 800-53 Rev 5, *Security and Privacy Controls for Information Systems and Organizations* — [DOI 10.6028/NIST.SP.800-53r5](https://doi.org/10.6028/NIST.SP.800-53r5)
+- NIST SP 800-53B Moderate baseline, OSCAL resolved profile — [`usnistgov/oscal-content`](https://github.com/usnistgov/oscal-content/blob/main/nist.gov/SP800-53/rev5/json/NIST_SP-800-53_rev5_MODERATE-baseline-resolved-profile_catalog.json)
+- [FedRAMP](https://www.fedramp.gov/) — for the current authorized Moderate baseline and its parameter values
+
+## Related UIAO documents
+
+- [Privileged Access Management — Entra PIM, JIT Access, and PAWs](../../orgcomp-series/Vol_III_Book_01_OrgComp_Privileged_Access_Management.qmd) — the whole-estate PAM programme this guide sits inside
+- [Conditional Access Library](conditional-access-library.qmd) — where the Step 5 policies belong
+- [Help Desk Administrative Responsibilities Guide](../helpdesk-entra-operations/help-desk-administrative-responsibilities.qmd) — the PAG / eligible-not-active model for delegated operations
+- [Entra ID Governance adapter spec](../../adapter-specs/entra-id-governance/entra-id-governance.qmd) — how PIM state is read into the substrate as conformance evidence
