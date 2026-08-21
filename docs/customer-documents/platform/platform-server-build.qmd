@@ -766,7 +766,7 @@ Start-Process msiexec -ArgumentList "/i $msi /qn /norestart" -Wait
     --resource-group  $rg `
     --location $loc `
     --resource-name 'UIAO-GIT01' `
-    --tags 'OrgPath=ORG-IT-INF-PLATFORM' 'DeviceRole=GitServer' 'DeviceTier=Tier0'
+    --tags 'OrgPath=Region=NCR|Department=IT|Division=InfraOps|' 'DeviceRole=GitServer' 'DeviceTier=Tier0'
 
 # 11.c Azure Monitor Agent (for SIEM forwarding in Phase 13)
 $ama = @{
@@ -955,14 +955,14 @@ Update-MgDevice -DeviceId $serverDeviceId `
 az connectedmachine update `
   --name "UIAO-GIT01" `
   --resource-group "rg-uiao-governance" `
-  --tags OrgPath=ORG-IT-INF-PLATFORM `
-         OrgPathBranch=ORG-IT-INF `
-         OrgPathDivision=ORG-IT `
+  --tags 'OrgPath=Region=NCR|Department=IT|Division=InfraOps|' `
+         OrgDepartment=IT `
+         OrgDivision=InfraOps `
          DeviceRole=GitServer `
          DeviceTier=Tier0
 ```
 
-The codebook entry `ORG-IT-INF-PLATFORM` must exist in UIAO_151 before this
+Each facet value must exist in its own codebook enumeration before this
 runs; missing entries are rejected by UIAO_158 (OrgPath JSON Schema) and flagged
 as **Format Drift** by UIAO_163.
 
@@ -988,7 +988,7 @@ Create and populate via MS Graph:
 ```powershell
 # Create the AU (idempotent — pattern per UIAO_154)
 $au = New-MgDirectoryAdministrativeUnit -BodyParameter @{
-  displayName          = "AU-ORG-IT-INF-PLATFORM"
+  displayName          = "AU-NCR-IT-InfraOps"
   description          = "Platform infrastructure team — scoped delegation"
   visibility           = "HiddenMembership"
   isMemberManagementRestricted = $true
@@ -1057,7 +1057,7 @@ $state = [ordered]@{
   deviceId      = $env:ComputerName
   orgPath       = (Get-ArcTag -Key OrgPath)
   expectedPath  = (Get-EntraDeviceAttr -DeviceId $deviceId -Name extensionAttribute1)
-  auId          = (Get-MgDirectoryAdministrativeUnit -Filter "displayName eq 'AU-ORG-IT-INF-PLATFORM'").Id
+  auId          = (Get-MgDirectoryAdministrativeUnit -Filter "displayName eq 'AU-NCR-IT-InfraOps'").Id
   gitEAuthTeams = (Invoke-GiteaApi -Endpoint "/orgs/uiao/teams" | Select-Object -ExpandProperty name)
   timestamp     = (Get-Date -Format o)
 }
@@ -1097,11 +1097,12 @@ inside GCC-Moderate).
 
 Phase 14 passes when:
 
-- [ ] `ORG-IT-INF-PLATFORM` is present in UIAO_151 codebook YAML.
-- [ ] The Entra device object for `UIAO-GIT01` has `extensionAttribute1 =
-      ORG-IT-INF-PLATFORM`.
-- [ ] Azure Arc tags on `UIAO-GIT01` include `OrgPath=ORG-IT-INF-PLATFORM`.
-- [ ] `AU-ORG-IT-INF-PLATFORM` exists, is restricted, and contains the
+- [ ] Every stamped facet value is present in its own codebook enumeration.
+- [ ] The Entra device object for `UIAO-GIT01` carries the facets
+      `extensionAttribute1 = NCR`, `2 = IT`, `3 = InfraOps`, and the
+      derived path `extensionAttribute15 = "Region=NCR|Department=IT|Division=InfraOps|"`.
+- [ ] Azure Arc tags on `UIAO-GIT01` include `OrgPath=Region=NCR|Department=IT|Division=InfraOps|`.
+- [ ] `AU-NCR-IT-InfraOps` exists, is restricted, and contains the
       Platform Stewards and Contributors groups as members.
 - [ ] The three Gitea teams map 1:1 to the dynamic groups in §14.3.
 - [ ] A manual `Submit-DriftReport` returns zero drift findings.

@@ -594,8 +594,8 @@ the following operational properties:
 - **Provenance-bound** --- every config file change is a Git commit; no
   admin-portal clicks permitted; Intune baseline policy enforces this.
 - **OrgTree-governed** --- server carries its own OrgPath
-  (`ORG-IT-INF-PLATFORM`), lives in an Administrative Unit
-  (`AU-ORG-IT-INF-PLATFORM`), and is targeted by an OrgPath-scoped
+  (`Region=NCR|Department=IT|Division=InfraOps|`), lives in an Administrative Unit
+  (`AU-NCR-IT-InfraOps`), and is targeted by an OrgPath-scoped
   Intune compliance policy.
 - **Drift-monitored** --- UIAO_163 reports the server's state on a schedule
   (OrgPath, AU membership, Gitea team mapping, Arc heartbeat). Any drift
@@ -1962,7 +1962,7 @@ Policies live in `policies/azure-arc/` and look like:
 ### Targeting via Azure tags
 
 Arc policy targeting uses Azure resource tags, which UIAO keeps in sync
-with OrgPath. A server tagged `OrgPath=ORG-IT-INF-PLATFORM` +
+with OrgPath. A server tagged `OrgPath=Region=NCR|Department=IT|Division=InfraOps|` +
 `DeviceRole=GitServer` picks up every policy whose `include_tags` match.
 The tag sync is a UIAO_163-monitored job; if an Arc-projected server's tag
 drifts from the Entra device's OrgPath, drift opens a ticket.
@@ -2196,7 +2196,7 @@ DM_015's interface contract:
 
 UIAO tags DNS records with the OrgPath of the owning object. A record
 for `git.iaio.internal` that points to the platform server carries an
-`OrgPath=ORG-IT-INF-PLATFORM` metadata tag in Private DNS. The drift
+`OrgPath=Region=NCR|Department=IT|Division=InfraOps|` metadata tag in Private DNS. The drift
 engine uses this to flag records whose owner has been decommissioned ---
 if the Entra device object for `UIAO-GIT01` is removed, but the DNS
 record still exists, that's **Orphan Drift**.
@@ -2262,10 +2262,11 @@ discovery points:
 Write methods: add / update / retire scopes + reservations, governed via
 the plan pipeline.
 
-### OrgPath-scoping of DHCP
+### LocPath-scoping of DHCP
 
-DHCP scopes are tagged with the OrgPath of the site they serve. A scope
-for the East Baltimore office carries `OrgPath=ORG-LOC-EAST-BALTIMORE`
+DHCP scopes are tagged with the **LocPath** of the site they serve — place is
+LocPath's axis, not an OrgPath facet (ADR-102 §D5). A scope for the
+Annapolis office carries `LocPath=/USA/MD/ANNAPOLIS-HQ`
 in its metadata (stored in the UIAO canon, mirrored to DHCP server
 extension data where supported). This enables drift detection on scope
 ownership and blast-radius analysis for address-pool changes.
@@ -2565,9 +2566,9 @@ projection; the physical host is unchanged.
 
 Every Arc-projected server gets tagged with its OrgPath:
 
-    OrgPath:         ORG-IT-INF-PLATFORM
-    OrgPathBranch:   ORG-IT-INF
-    OrgPathDivision: ORG-IT
+    OrgPath:         Region=NCR|Department=IT|Division=InfraOps|
+    OrgDepartment:   IT
+    OrgDivision:     InfraOps
     DeviceRole:      GitServer
     DeviceTier:      Tier0
     Environment:     Production

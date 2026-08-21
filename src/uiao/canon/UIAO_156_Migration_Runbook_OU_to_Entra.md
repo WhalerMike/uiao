@@ -186,7 +186,7 @@ Enable drift detection engine monitoring (Appendix M).
 
 Activate SLA tracking for all governance operations.
 
-Set extensionAttribute4 = VALIDATED for all users.
+Record VALIDATED in the migration log for all users. Status is not written to a facet slot: extensionAttribute4 is the Role facet.
 
 Notify all division administrators of go-live.
 
