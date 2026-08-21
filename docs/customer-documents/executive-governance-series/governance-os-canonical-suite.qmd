@@ -401,7 +401,7 @@ The OrgPath hierarchy has five levels:
 
 - Each segment must be between 2 and 6 uppercase ASCII letters.
 
-- OrgPath values are stored in extensionAttribute1 within Entra ID, which is within the M365 GCC-Moderate boundary.
+- OrgPath facet values are stored in their codebook slots (`extensionAttribute1-3`, 6, 9 and 10) and the derived path in extensionAttribute15, all on the Entra ID directory object and therefore within the M365 GCC-Moderate boundary.
 
 - No OrgPath may reference external systems or identifiers outside the M365 SaaS perimeter.
 
@@ -427,7 +427,7 @@ This appendix defines all dynamic group definitions that implement the OrgTree s
 
 ## Scope
 
-Covers all dynamic security groups and Microsoft 365 groups whose membership is derived from OrgPath values stored in extensionAttribute1. Applies to all group-based access control, delegation, licensing, and policy targeting within the M365 GCC-Moderate boundary.
+Covers all dynamic security groups and Microsoft 365 groups whose membership is derived from the OrgPath facet values in their codebook slots and the derived path on extensionAttribute15. Applies to all group-based access control, delegation, licensing, and policy targeting within the M365 GCC-Moderate boundary.
 
 ## Canonical Structure
 
@@ -435,39 +435,48 @@ Each dynamic group has a deterministic membership rule that evaluates user.exten
 
 ## Technical Scaffolding
 
-  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  **Group Name**             **Type**   **Membership Rule**                                                                                               **OrgPath Scope**   **Purpose**
-  -------------------------- ---------- ----------------------------------------------------------------------------------------------------------------- ------------------- ---------------------------------------------------------------
-  OrgTree-ORG-AllEmployees   Security   (user.extensionAttribute1 -match \"\^ORG\") and (user.accountEnabled -eq true)                                    ORG (all)           All active employees across entire organization
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+  **Group Name**            **Type**  **Membership Rule**                                                                     **Scope**              **Purpose**
+  ------------------------  --------  --------------------------------------------------------------------------------------  ---------------------  ----------------------------------------------------- 
+  OrgTree-ORG-AllEmployees  Security  (user.extensionAttribute15 -ne null) and (user.accountEnabled -eq true)                 All                    Every active employee carrying a derived OrgPath
 
-  OrgTree-FIN-All            Security   (user.extensionAttribute1 -eq \"ORG-FIN\") or (user.extensionAttribute1 -startsWith \"ORG-FIN-\")                 ORG-FIN             All Finance Division members including subdepartments
+  OrgTree-FIN-All           Security  (user.extensionAttribute2 -eq \"Finance\")                                              Department=Finance     All Finance members, in every region and division
 
-  OrgTree-HR-All             Security   (user.extensionAttribute1 -eq \"ORG-HR\") or (user.extensionAttribute1 -startsWith \"ORG-HR-\")                   ORG-HR              All Human Resources Division members
+  OrgTree-HR-All            Security  (user.extensionAttribute2 -eq \"HR\")                                                   Department=HR          All Human Resources members
 
-  OrgTree-IT-All             Security   (user.extensionAttribute1 -eq \"ORG-IT\") or (user.extensionAttribute1 -startsWith \"ORG-IT-\")                   ORG-IT              All Information Technology Division members
+  OrgTree-IT-All            Security  (user.extensionAttribute2 -eq \"IT\")                                                   Department=IT          All Information Technology members
 
-  OrgTree-OPS-All            Security   (user.extensionAttribute1 -eq \"ORG-OPS\") or (user.extensionAttribute1 -startsWith \"ORG-OPS-\")                 ORG-OPS             All Operations Division members
+  OrgTree-OPS-All           Security  (user.extensionAttribute2 -eq \"Operations\")                                           Department=Operations  All Operations members
 
-  OrgTree-LEG-All            Security   (user.extensionAttribute1 -eq \"ORG-LEG\") or (user.extensionAttribute1 -startsWith \"ORG-LEG-\")                 ORG-LEG             All Legal Division members
+  OrgTree-LEG-All           Security  (user.extensionAttribute2 -eq \"Legal\")                                                Department=Legal       All Legal members
 
-  OrgTree-FIN-AP             Security   (user.extensionAttribute1 -eq \"ORG-FIN-AP\") or (user.extensionAttribute1 -startsWith \"ORG-FIN-AP-\")           ORG-FIN-AP          Accounts Payable department and sub-units
+  OrgTree-FIN-GRC           Security  (user.extensionAttribute2 -eq \"Finance\") and (user.extensionAttribute3 -eq \"GRC\")   Finance / GRC          Governance, Risk and Compliance division of Finance
 
-  OrgTree-FIN-AR             Security   (user.extensionAttribute1 -eq \"ORG-FIN-AR\") or (user.extensionAttribute1 -startsWith \"ORG-FIN-AR-\")           ORG-FIN-AR          Accounts Receivable department and sub-units
+  OrgTree-FIN-Data          Security  (user.extensionAttribute2 -eq \"Finance\") and (user.extensionAttribute3 -eq \"Data\")  Finance / Data         Data and Analytics division of Finance
 
-  OrgTree-IT-SEC             Security   (user.extensionAttribute1 -eq \"ORG-IT-SEC\") or (user.extensionAttribute1 -startsWith \"ORG-IT-SEC-\")           ORG-IT-SEC          Security department and sub-units
+  OrgTree-IT-CyberOps       Security  (user.extensionAttribute2 -eq \"IT\") and (user.extensionAttribute3 -eq \"CyberOps\")   IT / CyberOps          Cybersecurity Operations division
 
-  OrgTree-IT-INF             Security   (user.extensionAttribute1 -eq \"ORG-IT-INF\") or (user.extensionAttribute1 -startsWith \"ORG-IT-INF-\")           ORG-IT-INF          Infrastructure department and sub-units
+  OrgTree-IT-InfraOps       Security  (user.extensionAttribute2 -eq \"IT\") and (user.extensionAttribute3 -eq \"InfraOps\")   IT / InfraOps          Infrastructure Operations division
 
-  OrgTree-IT-DEV             Security   (user.extensionAttribute1 -eq \"ORG-IT-DEV\") or (user.extensionAttribute1 -startsWith \"ORG-IT-DEV-\")           ORG-IT-DEV          Development department and sub-units
+  OrgTree-IT-AppDev         Security  (user.extensionAttribute2 -eq \"IT\") and (user.extensionAttribute3 -eq \"AppDev\")     IT / AppDev            Application Development division
 
-  OrgTree-IT-SEC-SOC         Security   (user.extensionAttribute1 -eq \"ORG-IT-SEC-SOC\") or (user.extensionAttribute1 -startsWith \"ORG-IT-SEC-SOC-\")   ORG-IT-SEC-SOC      Security Operations Center unit and teams
+  OrgTree-Branch-NCR-IT     Security  (user.extensionAttribute15 -startsWith \"Region=NCR|Department=IT|\")                   NCR / IT subtree       The NCR IT branch and every division added beneath it
 
-  OrgTree-ROLE-Managers      Security   (user.extensionAttribute2 -eq \"ROLE-MGR\") and (user.accountEnabled -eq true)                                    Cross-cutting       All users with manager role designation
+  OrgTree-Privileged-All    Security  (user.extensionAttribute10 -eq \"Privileged\") and (user.accountEnabled -eq true)       Cross-cutting          All PIM-eligible privileged accounts, any department
 
-  OrgTree-ROLE-GovStewards   Security   (user.extensionAttribute2 -eq \"ROLE-GOVSTWD\") and (user.accountEnabled -eq true)                                Cross-cutting       All governance stewards across all divisions
+  OrgTree-Cleared-TS        Security  (user.extensionAttribute9 -eq \"TopSecret\")                                            Cross-cutting          All Top Secret cleared personnel, any department
 
-  OrgTree-M365-FIN-Collab    M365       (user.extensionAttribute1 -eq \"ORG-FIN\") or (user.extensionAttribute1 -startsWith \"ORG-FIN-\")                 ORG-FIN             Finance Division M365 collaboration group (Teams, SharePoint)
-  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  OrgTree-M365-FIN-Collab   M365      (user.extensionAttribute2 -eq \"Finance\")                                              Department=Finance     Finance M365 collaboration group (Teams, SharePoint)
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+
+Three rule shapes appear above, and choosing between them is the whole
+skill. A **department-wide or cross-cutting** question is boolean facet
+composition (`extensionAttribute2 -eq "Finance"`, `extensionAttribute10 -eq
+"Privileged"`) and matches in every region. A **node-exact** question adds
+the division facet. Only a **subtree** question uses the derived path on
+`extensionAttribute15` — and that prefix must be anchored at `Region=` and
+carry its trailing `|`, because the path is composed region-first; a prefix
+beginning at `Department=` matches nothing at all (ADR-127).
 
 ## Boundary Rules
 
@@ -593,29 +602,36 @@ Delegation follows a three-tier model: (1) Administrative Units define the scope
 
 ### Administrative Unit Registry
 
-  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  **AU Name**         **OrgPath Scope**   **Membership Type**   **Membership Rule**                                                                                       **Restricted Mgmt**
-  ------------------- ------------------- --------------------- --------------------------------------------------------------------------------------------------------- ---------------------
-  AU-ORG-Enterprise   ORG (all)           Dynamic               user.extensionAttribute1 -match \"\^ORG\"                                                                 Y
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+  **AU Name**         **Scope**                    **Membership Type**  **Membership Rule**
+  ------------------  ---------------------------  -------------------  --------------------------------------------------------------------------------------- 
+  AU-ORG-Enterprise   All                          Dynamic              (user.extensionAttribute15 -ne null)
 
-  AU-FIN              ORG-FIN             Dynamic               (user.extensionAttribute1 -eq \"ORG-FIN\") or (user.extensionAttribute1 -startsWith \"ORG-FIN-\")         Y
+  AU-NCR-Finance      NCR / Finance subtree        Dynamic              (user.extensionAttribute15 -startsWith \"Region=NCR|Department=Finance|\")
 
-  AU-HR               ORG-HR              Dynamic               (user.extensionAttribute1 -eq \"ORG-HR\") or (user.extensionAttribute1 -startsWith \"ORG-HR-\")           Y
+  AU-NCR-HR           NCR / HR subtree             Dynamic              (user.extensionAttribute15 -startsWith \"Region=NCR|Department=HR|\")
 
-  AU-IT               ORG-IT              Dynamic               (user.extensionAttribute1 -eq \"ORG-IT\") or (user.extensionAttribute1 -startsWith \"ORG-IT-\")           Y
+  AU-NCR-IT           NCR / IT subtree             Dynamic              (user.extensionAttribute15 -startsWith \"Region=NCR|Department=IT|\")
 
-  AU-OPS              ORG-OPS             Dynamic               (user.extensionAttribute1 -eq \"ORG-OPS\") or (user.extensionAttribute1 -startsWith \"ORG-OPS-\")         Y
+  AU-NCR-Operations   NCR / Operations subtree     Dynamic              (user.extensionAttribute15 -startsWith \"Region=NCR|Department=Operations|\")
 
-  AU-LEG              ORG-LEG             Dynamic               (user.extensionAttribute1 -eq \"ORG-LEG\") or (user.extensionAttribute1 -startsWith \"ORG-LEG-\")         Y
+  AU-NCR-Legal        NCR / Legal subtree          Dynamic              (user.extensionAttribute15 -startsWith \"Region=NCR|Department=Legal|\")
 
-  AU-IT-SEC           ORG-IT-SEC          Dynamic               (user.extensionAttribute1 -eq \"ORG-IT-SEC\") or (user.extensionAttribute1 -startsWith \"ORG-IT-SEC-\")   Y
+  AU-NCR-IT-CyberOps  NCR / IT / CyberOps          Dynamic              (user.extensionAttribute15 -startsWith \"Region=NCR|Department=IT|Division=CyberOps|\")
 
-  AU-FIN-AP           ORG-FIN-AP          Dynamic               (user.extensionAttribute1 -eq \"ORG-FIN-AP\") or (user.extensionAttribute1 -startsWith \"ORG-FIN-AP-\")   N
+  AU-NCR-IT-InfraOps  NCR / IT / InfraOps          Dynamic              (user.extensionAttribute15 -startsWith \"Region=NCR|Department=IT|Division=InfraOps|\")
 
-  AU-FIN-AR           ORG-FIN-AR          Dynamic               (user.extensionAttribute1 -eq \"ORG-FIN-AR\") or (user.extensionAttribute1 -startsWith \"ORG-FIN-AR-\")   N
+  AU-Finance-GRC      Finance / GRC, all regions   Dynamic              (user.extensionAttribute2 -eq \"Finance\") and (user.extensionAttribute3 -eq \"GRC\")
 
-  AU-IT-INF           ORG-IT-INF          Dynamic               (user.extensionAttribute1 -eq \"ORG-IT-INF\") or (user.extensionAttribute1 -startsWith \"ORG-IT-INF-\")   N
-  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  AU-Finance-Data     Finance / Data, all regions  Dynamic              (user.extensionAttribute2 -eq \"Finance\") and (user.extensionAttribute3 -eq \"Data\")
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+
+An AU that scopes a **subtree** uses the derived path, anchored at
+`Region=` and terminated by `|`. An AU that scopes a **division across
+every region** is facet composition instead — the last two rows. Mixing
+these up is the common failure: a prefix that starts at `Department=`
+never matches, so the AU silently populates with nobody and the
+delegation it carries quietly applies to no one.
 
 ### Role Assignment Matrix
 
@@ -859,7 +875,7 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 **Steps:**
 
-1. For each user, write the OrgPath value to extensionAttribute1.
+1. For each user, write the governance-layer facet values to their codebook slots, then write the recomputed derived path to extensionAttribute15.
 
 2. Write role code to extensionAttribute2 based on role mapping.
 
@@ -869,7 +885,7 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 5. Validate all attribute writes completed successfully.
 
-\# Provision OrgPath for each user foreach (\$Mapping in \$UserOrgPathMappings) { try { \$UserParams = \@{ UserId = \$Mapping.EntraUserId OnPremisesExtensionAttributes = \@{ extensionAttribute1 = \$Mapping.OrgPath extensionAttribute3 = \"ACTIVE\" extensionAttribute4 = \"IN-PROGRESS\" } } Update-MgUser \@UserParams Write-Verbose \"Updated user \$(\$Mapping.EntraUserId) with OrgPath \$(\$Mapping.OrgPath)\" } catch { Write-Error \"Failed to update user \$(\$Mapping.EntraUserId): \$\_\" } } \# Verify provisioning \$ProvisionedUsers = Get-MgUser -All -Property \"Id,OnPremisesExtensionAttributes\" \| Where-Object { \$\_.OnPremisesExtensionAttributes.ExtensionAttribute1 -match \"\^ORG\" } Write-Verbose \"Provisioned users: \$(\$ProvisionedUsers.Count)\" \# Identify failures \$UnprovisionedUsers = Get-MgUser -All -Property \"Id,OnPremisesExtensionAttributes\" \| Where-Object { \[string\]::IsNullOrEmpty(\$\_.OnPremisesExtensionAttributes.ExtensionAttribute1) } Write-Verbose \"Unprovisioned users: \$(\$UnprovisionedUsers.Count)\" \# Update migration status for successful provisions foreach (\$User in \$ProvisionedUsers) { Update-MgUser -UserId \$User.Id -OnPremisesExtensionAttributes \@{ extensionAttribute4 = \"COMPLETED\" } }
+\# Provision OrgPath for each user foreach (\$Mapping in \$UserOrgPathMappings) { try { \$UserParams = \@{ UserId = \$Mapping.EntraUserId OnPremisesExtensionAttributes = \@{ extensionAttribute1 = \$Mapping.OrgPath extensionAttribute3 = \"ACTIVE\" extensionAttribute4 = \"IN-PROGRESS\" } } Update-MgUser \@UserParams Write-Verbose \"Updated user \$(\$Mapping.EntraUserId) with OrgPath \$(\$Mapping.OrgPath)\" } catch { Write-Error \"Failed to update user \$(\$Mapping.EntraUserId): \$\_\" } } \# Verify provisioning \$ProvisionedUsers = Get-MgUser -All -Property \"Id,OnPremisesExtensionAttributes\" \| Where-Object { \$\_.OnPremisesExtensionAttributes.ExtensionAttribute15 -ne \$null } Write-Verbose \"Provisioned users: \$(\$ProvisionedUsers.Count)\" \# Identify failures \$UnprovisionedUsers = Get-MgUser -All -Property \"Id,OnPremisesExtensionAttributes\" \| Where-Object { \[string\]::IsNullOrEmpty(\$\_.OnPremisesExtensionAttributes.ExtensionAttribute15) } Write-Verbose \"Unprovisioned users: \$(\$UnprovisionedUsers.Count)\" \# Update migration status for successful provisions foreach (\$User in \$ProvisionedUsers) { Update-MgUser -UserId \$User.Id -OnPremisesExtensionAttributes \@{ extensionAttribute4 = \"COMPLETED\" } }
 
 **Validation Criteria:** All users have non-null extensionAttribute1 matching regex; zero provisioning errors; extensionAttribute4 = COMPLETED for all provisioned users.
 
@@ -893,7 +909,7 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 5. Update migration status.
 
-\# Create a dynamic security group \$GroupParams = \@{ DisplayName = \"OrgTree-FIN-All\" Description = \"All Finance Division members including subdepartments\" MailEnabled = \$false MailNickname = \"OrgTree-FIN-All\" SecurityEnabled = \$true GroupTypes = @(\"DynamicMembership\") MembershipRule = \'(user.extensionAttribute1 -eq \"ORG-FIN\") or (user.extensionAttribute1 -startsWith \"ORG-FIN-\")\' MembershipRuleProcessingState = \"On\" } New-MgGroup -BodyParameter \$GroupParams \# Verify group creation \$CreatedGroup = Get-MgGroup -Filter \"displayName eq \'OrgTree-FIN-All\'\" Write-Verbose \"Group created: \$(\$CreatedGroup.DisplayName), Id: \$(\$CreatedGroup.Id)\" \# Check membership after processing delay \$Members = Get-MgGroupMember -GroupId \$CreatedGroup.Id -All Write-Verbose \"OrgTree-FIN-All membership count: \$(\$Members.Count)\" \# Validate membership rule matches canonical definition \$CanonicalRule = \'(user.extensionAttribute1 -eq \"ORG-FIN\") or (user.extensionAttribute1 -startsWith \"ORG-FIN-\")\' if (\$CreatedGroup.MembershipRule -ne \$CanonicalRule) { Write-Error \"Membership rule drift detected for OrgTree-FIN-All\" }
+\# Create a dynamic security group \$GroupParams = \@{ DisplayName = \"OrgTree-FIN-All\" Description = \"All Finance Division members including subdepartments\" MailEnabled = \$false MailNickname = \"OrgTree-FIN-All\" SecurityEnabled = \$true GroupTypes = @(\"DynamicMembership\") MembershipRule = \'(user.extensionAttribute2 -eq \"Finance\")\' MembershipRuleProcessingState = \"On\" } New-MgGroup -BodyParameter \$GroupParams \# Verify group creation \$CreatedGroup = Get-MgGroup -Filter \"displayName eq \'OrgTree-FIN-All\'\" Write-Verbose \"Group created: \$(\$CreatedGroup.DisplayName), Id: \$(\$CreatedGroup.Id)\" \# Check membership after processing delay \$Members = Get-MgGroupMember -GroupId \$CreatedGroup.Id -All Write-Verbose \"OrgTree-FIN-All membership count: \$(\$Members.Count)\" \# Validate membership rule matches canonical definition \$CanonicalRule = \'(user.extensionAttribute2 -eq \"Finance\")\' if (\$CreatedGroup.MembershipRule -ne \$CanonicalRule) { Write-Error \"Membership rule drift detected for OrgTree-FIN-All\" }
 
 **Validation Criteria:** All groups from Appendix B exist in tenant; membership rules match canonical definitions exactly; membership counts are non-zero for populated OrgPaths.
 
@@ -917,7 +933,7 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 5. Validate AU membership and role assignment accuracy.
 
-\# Create Administrative Unit \$AUParams = \@{ DisplayName = \"AU-FIN\" Description = \"Administrative Unit for Finance Division (ORG-FIN)\" MembershipType = \"Dynamic\" MembershipRule = \'(user.extensionAttribute1 -eq \"ORG-FIN\") or (user.extensionAttribute1 -startsWith \"ORG-FIN-\")\' MembershipRuleProcessingState = \"On\" } \$NewAU = New-MgDirectoryAdministrativeUnit -BodyParameter \$AUParams Write-Verbose \"AU created: \$(\$NewAU.DisplayName), Id: \$(\$NewAU.Id)\" \# Assign scoped role \$RoleDefinition = Get-MgRoleManagementDirectoryRoleDefinition -Filter \"displayName eq \'User Administrator\'\" \$AssigneeGroup = Get-MgGroup -Filter \"displayName eq \'OrgTree-FIN-Admins\'\" \$RoleAssignment = \@{ RoleDefinitionId = \$RoleDefinition.Id PrincipalId = \$AssigneeGroup.Id DirectoryScopeId = \"/administrativeUnits/\$(\$NewAU.Id)\" } New-MgRoleManagementDirectoryRoleAssignment -BodyParameter \$RoleAssignment \# Validate \$AUMembers = Get-MgDirectoryAdministrativeUnitMember -AdministrativeUnitId \$NewAU.Id -All Write-Verbose \"AU-FIN member count: \$(\$AUMembers.Count)\"
+\# Create Administrative Unit \$AUParams = \@{ DisplayName = \"AU-NCR-Finance\" Description = \"Administrative Unit for the NCR Finance subtree\" MembershipType = \"Dynamic\" MembershipRule = \'(user.extensionAttribute2 -eq \"Finance\")\' MembershipRuleProcessingState = \"On\" } \$NewAU = New-MgDirectoryAdministrativeUnit -BodyParameter \$AUParams Write-Verbose \"AU created: \$(\$NewAU.DisplayName), Id: \$(\$NewAU.Id)\" \# Assign scoped role \$RoleDefinition = Get-MgRoleManagementDirectoryRoleDefinition -Filter \"displayName eq \'User Administrator\'\" \$AssigneeGroup = Get-MgGroup -Filter \"displayName eq \'OrgTree-FIN-Admins\'\" \$RoleAssignment = \@{ RoleDefinitionId = \$RoleDefinition.Id PrincipalId = \$AssigneeGroup.Id DirectoryScopeId = \"/administrativeUnits/\$(\$NewAU.Id)\" } New-MgRoleManagementDirectoryRoleAssignment -BodyParameter \$RoleAssignment \# Validate \$AUMembers = Get-MgDirectoryAdministrativeUnitMember -AdministrativeUnitId \$NewAU.Id -All Write-Verbose \"AU-FIN member count: \$(\$AUMembers.Count)\"
 
 **Validation Criteria:** All AUs from Appendix D exist with correct membership rules; all role assignments from matrix are active; restricted management flags are set correctly.
 
@@ -1149,7 +1165,7 @@ function Test-OrgPathHierarchy { \<# .SYNOPSIS Validates that a child OrgPath ha
 
 ### Function 3: Get-OrgTreeValidationReport
 
-function Get-OrgTreeValidationReport { \<# .SYNOPSIS Runs all OrgTree validations against a tenant and produces a report. .DESCRIPTION Connects to the specified tenant, retrieves all users, validates OrgPath format and hierarchy, and returns a summary report object. .PARAMETER TenantId The target tenant identifier. .PARAMETER CodebookPath Path to the JSON codebook file. .EXAMPLE Get-OrgTreeValidationReport -TenantId \$TenantId -CodebookPath \"./codebook.json\" #\> \[CmdletBinding()\] \[OutputType(\[PSCustomObject\])\] param( \[Parameter(Mandatory = \$true)\] \[ValidateNotNullOrEmpty()\] \[string\]\$TenantId, \[Parameter(Mandatory = \$true)\] \[ValidateScript({ Test-Path \$\_ })\] \[string\]\$CodebookPath ) try { Write-Verbose \"Loading codebook from \$CodebookPath\" \$CodebookJson = Get-Content -Path \$CodebookPath -Raw \| ConvertFrom-Json \$Codebook = \@{} foreach (\$Entry in \$CodebookJson.entries) { \$Codebook\[\$Entry.code\] = \$Entry } Write-Verbose \"Connecting to tenant \$TenantId\" Connect-MgGraph -TenantId \$TenantId -Scopes \"User.Read.All\" -NoWelcome \$AllUsers = Get-MgUser -All -Property \"Id,DisplayName,OnPremisesExtensionAttributes\" \$TotalUsers = \$AllUsers.Count \$ValidCount = 0 \$InvalidCount = 0 \$OrphanedCount = 0 \$DriftDetected = \$false foreach (\$User in \$AllUsers) { \$OrgPath = \$User.OnPremisesExtensionAttributes.ExtensionAttribute1 if (\[string\]::IsNullOrEmpty(\$OrgPath)) { \$OrphanedCount++ \$DriftDetected = \$true continue } \$FormatValid = Test-OrgPathFormat -OrgPath \$OrgPath \$HierarchyValid = Test-OrgPathHierarchy -ChildPath \$OrgPath -Codebook \$Codebook if (\$FormatValid -and \$HierarchyValid -and \$Codebook.ContainsKey(\$OrgPath)) { \$ValidCount++ } else { \$InvalidCount++ \$DriftDetected = \$true } } \$Report = \[PSCustomObject\]@{ TotalUsers = \$TotalUsers ValidOrgPaths = \$ValidCount InvalidOrgPaths = \$InvalidCount OrphanedUsers = \$OrphanedCount DriftDetected = \$DriftDetected } Write-Verbose \"Validation complete. Valid: \$ValidCount, Invalid: \$InvalidCount, Orphaned: \$OrphanedCount\" return \$Report } catch { Write-Error \"Error generating validation report: \$\_\" return \$null } }
+function Get-OrgTreeValidationReport { \<# .SYNOPSIS Runs all OrgTree validations against a tenant and produces a report. .DESCRIPTION Connects to the specified tenant, retrieves all users, validates OrgPath format and hierarchy, and returns a summary report object. .PARAMETER TenantId The target tenant identifier. .PARAMETER CodebookPath Path to the JSON codebook file. .EXAMPLE Get-OrgTreeValidationReport -TenantId \$TenantId -CodebookPath \"./codebook.json\" #\> \[CmdletBinding()\] \[OutputType(\[PSCustomObject\])\] param( \[Parameter(Mandatory = \$true)\] \[ValidateNotNullOrEmpty()\] \[string\]\$TenantId, \[Parameter(Mandatory = \$true)\] \[ValidateScript({ Test-Path \$\_ })\] \[string\]\$CodebookPath ) try { Write-Verbose \"Loading codebook from \$CodebookPath\" \$CodebookJson = Get-Content -Path \$CodebookPath -Raw \| ConvertFrom-Json \$Codebook = \@{} foreach (\$Entry in \$CodebookJson.entries) { \$Codebook\[\$Entry.code\] = \$Entry } Write-Verbose \"Connecting to tenant \$TenantId\" Connect-MgGraph -TenantId \$TenantId -Scopes \"User.Read.All\" -NoWelcome \$AllUsers = Get-MgUser -All -Property \"Id,DisplayName,OnPremisesExtensionAttributes\" \$TotalUsers = \$AllUsers.Count \$ValidCount = 0 \$InvalidCount = 0 \$OrphanedCount = 0 \$DriftDetected = \$false foreach (\$User in \$AllUsers) { \$OrgPath = \$User.OnPremisesExtensionAttributes.ExtensionAttribute15 if (\[string\]::IsNullOrEmpty(\$OrgPath)) { \$OrphanedCount++ \$DriftDetected = \$true continue } \$FormatValid = Test-OrgPathFormat -OrgPath \$OrgPath \$HierarchyValid = Test-OrgPathHierarchy -ChildPath \$OrgPath -Codebook \$Codebook if (\$FormatValid -and \$HierarchyValid -and \$Codebook.ContainsKey(\$OrgPath)) { \$ValidCount++ } else { \$InvalidCount++ \$DriftDetected = \$true } } \$Report = \[PSCustomObject\]@{ TotalUsers = \$TotalUsers ValidOrgPaths = \$ValidCount InvalidOrgPaths = \$InvalidCount OrphanedUsers = \$OrphanedCount DriftDetected = \$DriftDetected } Write-Verbose \"Validation complete. Valid: \$ValidCount, Invalid: \$InvalidCount, Orphaned: \$OrphanedCount\" return \$Report } catch { Write-Error \"Error generating validation report: \$\_\" return \$null } }
 
 ### Function 4: Test-DynamicGroupAlignment
 
@@ -1157,7 +1173,7 @@ function Test-DynamicGroupAlignment { \<# .SYNOPSIS Validates that dynamic group
 
 ### Function 5: Export-OrgTreeSnapshot
 
-function Export-OrgTreeSnapshot { \<# .SYNOPSIS Exports the current OrgTree state as a JSON snapshot. .PARAMETER TenantId The target tenant identifier. .PARAMETER OutputPath File path for the JSON output. #\> \[CmdletBinding()\] param( \[Parameter(Mandatory = \$true)\] \[string\]\$TenantId, \[Parameter(Mandatory = \$true)\] \[string\]\$OutputPath ) try { Connect-MgGraph -TenantId \$TenantId -Scopes \"User.Read.All\",\"Group.Read.All\" -NoWelcome \$Users = Get-MgUser -All -Property \"Id,DisplayName,UserPrincipalName,Department,OnPremisesExtensionAttributes\" \$Groups = Get-MgGroup -All -Property \"Id,DisplayName,MembershipRule,GroupTypes\" \| Where-Object { \$\_.DisplayName -like \"OrgTree-\*\" } \$Snapshot = \[PSCustomObject\]@{ snapshotDate = (Get-Date -Format \"o\") tenantId = \$TenantId userCount = \$Users.Count groupCount = \$Groups.Count users = \$Users \| ForEach-Object { \[PSCustomObject\]@{ id = \$\_.Id upn = \$\_.UserPrincipalName orgPath = \$\_.OnPremisesExtensionAttributes.ExtensionAttribute1 department = \$\_.Department } } groups = \$Groups \| ForEach-Object { \[PSCustomObject\]@{ id = \$\_.Id displayName = \$\_.DisplayName membershipRule = \$\_.MembershipRule } } } \$Snapshot \| ConvertTo-Json -Depth 5 \| Set-Content -Path \$OutputPath -Encoding UTF8 Write-Verbose \"Snapshot exported to \$OutputPath\" } catch { Write-Error \"Error exporting OrgTree snapshot: \$\_\" } }
+function Export-OrgTreeSnapshot { \<# .SYNOPSIS Exports the current OrgTree state as a JSON snapshot. .PARAMETER TenantId The target tenant identifier. .PARAMETER OutputPath File path for the JSON output. #\> \[CmdletBinding()\] param( \[Parameter(Mandatory = \$true)\] \[string\]\$TenantId, \[Parameter(Mandatory = \$true)\] \[string\]\$OutputPath ) try { Connect-MgGraph -TenantId \$TenantId -Scopes \"User.Read.All\",\"Group.Read.All\" -NoWelcome \$Users = Get-MgUser -All -Property \"Id,DisplayName,UserPrincipalName,Department,OnPremisesExtensionAttributes\" \$Groups = Get-MgGroup -All -Property \"Id,DisplayName,MembershipRule,GroupTypes\" \| Where-Object { \$\_.DisplayName -like \"OrgTree-\*\" } \$Snapshot = \[PSCustomObject\]@{ snapshotDate = (Get-Date -Format \"o\") tenantId = \$TenantId userCount = \$Users.Count groupCount = \$Groups.Count users = \$Users \| ForEach-Object { \[PSCustomObject\]@{ id = \$\_.Id upn = \$\_.UserPrincipalName orgPath = \$\_.OnPremisesExtensionAttributes.ExtensionAttribute15 department = \$\_.Department } } groups = \$Groups \| ForEach-Object { \[PSCustomObject\]@{ id = \$\_.Id displayName = \$\_.DisplayName membershipRule = \$\_.MembershipRule } } } \$Snapshot \| ConvertTo-Json -Depth 5 \| Set-Content -Path \$OutputPath -Encoding UTF8 Write-Verbose \"Snapshot exported to \$OutputPath\" } catch { Write-Error \"Error exporting OrgTree snapshot: \$\_\" } }
 
 ### Function 6: Compare-OrgTreeSnapshots
 
@@ -1671,7 +1687,7 @@ The mock tenant is an in-memory data structure (PowerShell hashtable) that simul
 
 ### Mock Tenant Initialization Script
 
-\# Initialize Mock Tenant Data Structure \$MockTenant = \@{ TenantId = \"mock-tenant-00000000-0000-0000-0000-000000000000\" Users = @() Groups = @() AdministrativeUnits = @() RoleAssignments = @() } \# Generate 50 mock users across OrgPaths \$OrgPaths = @(\"ORG\",\"ORG-FIN\",\"ORG-FIN-AP\",\"ORG-FIN-AR\",\"ORG-FIN-BUD\", \"ORG-HR\",\"ORG-HR-REC\",\"ORG-HR-BEN\",\"ORG-IT\",\"ORG-IT-SEC\", \"ORG-IT-INF\",\"ORG-IT-DEV\",\"ORG-IT-SEC-SOC\",\"ORG-OPS\", \"ORG-OPS-LOG\",\"ORG-LEG\",\"ORG-LEG-COM\") for (\$i = 1; \$i -le 50; \$i++) { \$PathIndex = (\$i - 1) % \$OrgPaths.Count \$MockTenant.Users += \[PSCustomObject\]@{ Id = \"user-\$(\'{0:D4}\' -f \$i)\" DisplayName = \"MockUser\$i\" UserPrincipalName = \"mockuser\$i@mock.onmicrosoft.com\" Department = (\$OrgPaths\[\$PathIndex\] -split \"-\")\[1\] EmployeeId = \"EMP\$(\'{0:D6}\' -f \$i)\" AccountEnabled = \$true OnPremisesExtensionAttributes = \@{ ExtensionAttribute1 = \$OrgPaths\[\$PathIndex\] ExtensionAttribute2 = if (\$i % 10 -eq 0) { \"ROLE-MGR\" } else { \"ROLE-IC\" } ExtensionAttribute3 = \"ACTIVE\" ExtensionAttribute4 = \"VALIDATED\" ExtensionAttribute5 = \$null } } } \# Generate 15 mock groups \$GroupDefs = @( \@{Name=\"OrgTree-ORG-AllEmployees\"; Rule=\'user.extensionAttribute1 -match \"\^ORG\"\'}, \@{Name=\"OrgTree-FIN-All\"; Rule=\'(user.extensionAttribute1 -eq \"ORG-FIN\") or (user.extensionAttribute1 -startsWith \"ORG-FIN-\")\'}, \@{Name=\"OrgTree-HR-All\"; Rule=\'(user.extensionAttribute1 -eq \"ORG-HR\") or (user.extensionAttribute1 -startsWith \"ORG-HR-\")\'}, \@{Name=\"OrgTree-IT-All\"; Rule=\'(user.extensionAttribute1 -eq \"ORG-IT\") or (user.extensionAttribute1 -startsWith \"ORG-IT-\")\'}, \@{Name=\"OrgTree-OPS-All\"; Rule=\'(user.extensionAttribute1 -eq \"ORG-OPS\") or (user.extensionAttribute1 -startsWith \"ORG-OPS-\")\'}, \@{Name=\"OrgTree-LEG-All\"; Rule=\'(user.extensionAttribute1 -eq \"ORG-LEG\") or (user.extensionAttribute1 -startsWith \"ORG-LEG-\")\'} \# Additional groups follow same pattern for departments\... ) foreach (\$Def in \$GroupDefs) { \$MockTenant.Groups += \[PSCustomObject\]@{ Id = \"group-\$(\$Def.Name)\" DisplayName = \$Def.Name MembershipRule = \$Def.Rule GroupTypes = @(\"DynamicMembership\") SecurityEnabled = \$true } } Write-Verbose \"Mock tenant initialized: \$(\$MockTenant.Users.Count) users, \$(\$MockTenant.Groups.Count) groups\"
+\# Initialize Mock Tenant Data Structure \$MockTenant = \@{ TenantId = \"mock-tenant-00000000-0000-0000-0000-000000000000\" Users = @() Groups = @() AdministrativeUnits = @() RoleAssignments = @() } \# Generate 50 mock users across OrgPaths \$OrgPaths = @(\"ORG\",\"ORG-FIN\",\"ORG-FIN-AP\",\"ORG-FIN-AR\",\"ORG-FIN-BUD\", \"ORG-HR\",\"ORG-HR-REC\",\"ORG-HR-BEN\",\"ORG-IT\",\"ORG-IT-SEC\", \"ORG-IT-INF\",\"ORG-IT-DEV\",\"ORG-IT-SEC-SOC\",\"ORG-OPS\", \"ORG-OPS-LOG\",\"ORG-LEG\",\"ORG-LEG-COM\") for (\$i = 1; \$i -le 50; \$i++) { \$PathIndex = (\$i - 1) % \$OrgPaths.Count \$MockTenant.Users += \[PSCustomObject\]@{ Id = \"user-\$(\'{0:D4}\' -f \$i)\" DisplayName = \"MockUser\$i\" UserPrincipalName = \"mockuser\$i@mock.onmicrosoft.com\" Department = (\$OrgPaths\[\$PathIndex\] -split \"-\")\[1\] EmployeeId = \"EMP\$(\'{0:D6}\' -f \$i)\" AccountEnabled = \$true OnPremisesExtensionAttributes = \@{ ExtensionAttribute1 = \$OrgPaths\[\$PathIndex\] ExtensionAttribute2 = if (\$i % 10 -eq 0) { \"ROLE-MGR\" } else { \"ROLE-IC\" } ExtensionAttribute3 = \"ACTIVE\" ExtensionAttribute4 = \"VALIDATED\" ExtensionAttribute5 = \$null } } } \# Generate 15 mock groups \$GroupDefs = @( \@{Name=\"OrgTree-ORG-AllEmployees\"; Rule=\'user.extensionAttribute1 -match \"\^ORG\"\'}, \@{Name=\"OrgTree-FIN-All\"; Rule=\'(user.extensionAttribute2 -eq \"Finance\")\'}, \@{Name=\"OrgTree-HR-All\"; Rule=\'(user.extensionAttribute1 -eq \"ORG-HR\") or (user.extensionAttribute1 -startsWith \"ORG-HR-\")\'}, \@{Name=\"OrgTree-IT-All\"; Rule=\'(user.extensionAttribute1 -eq \"ORG-IT\") or (user.extensionAttribute1 -startsWith \"ORG-IT-\")\'}, \@{Name=\"OrgTree-OPS-All\"; Rule=\'(user.extensionAttribute1 -eq \"ORG-OPS\") or (user.extensionAttribute1 -startsWith \"ORG-OPS-\")\'}, \@{Name=\"OrgTree-LEG-All\"; Rule=\'(user.extensionAttribute1 -eq \"ORG-LEG\") or (user.extensionAttribute1 -startsWith \"ORG-LEG-\")\'} \# Additional groups follow same pattern for departments\... ) foreach (\$Def in \$GroupDefs) { \$MockTenant.Groups += \[PSCustomObject\]@{ Id = \"group-\$(\$Def.Name)\" DisplayName = \$Def.Name MembershipRule = \$Def.Rule GroupTypes = @(\"DynamicMembership\") SecurityEnabled = \$true } } Write-Verbose \"Mock tenant initialized: \$(\$MockTenant.Users.Count) users, \$(\$MockTenant.Groups.Count) groups\"
 
 ### Test Scenarios
 
@@ -1680,7 +1696,7 @@ The mock tenant is an in-memory data structure (PowerShell hashtable) that simul
   -------------------------------- -------------------------------------------- ------------------------------
   1\. Valid user creation          Add user with valid OrgPath                  All validations pass
 
-  2\. Invalid OrgPath assignment   Set extensionAttribute1 to \"ORG-INVALID\"   DDE-002 alert raised
+  2\. Invalid OrgPath assignment   Set extensionAttribute3 to \"NotADivision\"   DDE-002 alert raised
 
   3\. Orphan user creation         Add user with null OrgPath                   DDE-003 alert raised
 
@@ -2636,7 +2652,7 @@ Identity data is normalized to Third Normal Form (3NF) with explicitly documente
   ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   **Rule ID**   **Rule**                                                                                                                             **Normal Form**   **Violation Severity**
   ------------- ------------------------------------------------------------------------------------------------------------------------------------ ----------------- ------------------------
-  NRM-001       Every user object must have exactly one OrgPath value in extensionAttribute1 (no multi-valued OrgPaths)                              1NF               Critical
+  NRM-001       Every user object must hold exactly one value per OrgPath facet slot, and a derived path on extensionAttribute15 equal to its recomputation                              1NF               Critical
 
   NRM-002       OrgPath value must exist in the canonical codebook (referential integrity)                                                           1NF               Critical
 
@@ -2683,7 +2699,7 @@ Identity data is normalized to Third Normal Form (3NF) with explicitly documente
 
 ### Validation Queries
 
-\# NRM-001: Verify single OrgPath per user \$MultiValuedOrgPaths = Get-MgUser -All -Property \"Id,OnPremisesExtensionAttributes\" \| Where-Object { (\$\_.OnPremisesExtensionAttributes.ExtensionAttribute1 -split \";\").Count -gt 1 } \# NRM-003: Verify manager references are valid \$InvalidManagers = Get-MgUser -All -Property \"Id,Manager\" -ExpandProperty \"Manager\" \| Where-Object { \$\_.Manager -eq \$null -and \$\_.OnPremisesExtensionAttributes.ExtensionAttribute1 -ne \"ORG\" } \# NRM-008: Verify employeeId uniqueness \$AllEmployeeIds = Get-MgUser -All -Property \"EmployeeId\" \| Where-Object { -not \[string\]::IsNullOrEmpty(\$\_.EmployeeId) } \$DuplicateIds = \$AllEmployeeIds \| Group-Object -Property EmployeeId \| Where-Object { \$\_.Count -gt 1 } \# NRM-010: Verify lifecycle-accountEnabled consistency \$InconsistentState = Get-MgUser -All -Property \"Id,AccountEnabled,OnPremisesExtensionAttributes\" \| Where-Object { (\$\_.OnPremisesExtensionAttributes.ExtensionAttribute3 -eq \"ACTIVE\" -and \$\_.AccountEnabled -eq \$false) -or (\$\_.OnPremisesExtensionAttributes.ExtensionAttribute3 -eq \"SUSPENDED\" -and \$\_.AccountEnabled -eq \$true) }
+\# NRM-001: Verify single OrgPath per user \$MultiValuedOrgPaths = Get-MgUser -All -Property \"Id,OnPremisesExtensionAttributes\" \| Where-Object { (\$\_.OnPremisesExtensionAttributes.ExtensionAttribute15 -split \";\").Count -gt 1 } \# NRM-003: Verify manager references are valid \$InvalidManagers = Get-MgUser -All -Property \"Id,Manager\" -ExpandProperty \"Manager\" \| Where-Object { \$\_.Manager -eq \$null -and \$\_.OnPremisesExtensionAttributes.ExtensionAttribute15 -ne \$null } \# NRM-008: Verify employeeId uniqueness \$AllEmployeeIds = Get-MgUser -All -Property \"EmployeeId\" \| Where-Object { -not \[string\]::IsNullOrEmpty(\$\_.EmployeeId) } \$DuplicateIds = \$AllEmployeeIds \| Group-Object -Property EmployeeId \| Where-Object { \$\_.Count -gt 1 } \# NRM-010: Verify lifecycle-accountEnabled consistency \$InconsistentState = Get-MgUser -All -Property \"Id,AccountEnabled,OnPremisesExtensionAttributes\" \| Where-Object { (\$\_.OnPremisesExtensionAttributes.ExtensionAttribute3 -eq \"ACTIVE\" -and \$\_.AccountEnabled -eq \$false) -or (\$\_.OnPremisesExtensionAttributes.ExtensionAttribute3 -eq \"SUSPENDED\" -and \$\_.AccountEnabled -eq \$true) }
 
 ## Boundary Rules
 
@@ -2816,7 +2832,7 @@ Terms are sorted alphabetically with definition, first-defined reference, and re
 
   Normalization                   The process of organizing identity data to eliminate redundancy and ensure every attribute is derivable from the canonical OrgPath.                                                                             Appendix Y             1NF, 2NF, 3NF, Denormalization
 
-  OrgPath                         A hierarchical code string (e.g., ORG-IT-SEC-SOC) stored in extensionAttribute1 that encodes an identity object\'s position in the organizational hierarchy.                                                    Section 1              Codebook, Extension Attribute, Hierarchy
+  OrgPath                         An identity object\'s position in the organizational hierarchy, held as validated per-facet values in their codebook slots (Region, Department, Division, ...) plus a derived canonical path on extensionAttribute15 recomputed from them.                                                    Section 1              Codebook, Extension Attribute, Hierarchy
 
   OrgTree                         The complete hierarchical identity structure implemented in Entra ID using OrgPath attributes, dynamic groups, and administrative units.                                                                        Section 1              OrgPath, Architecture, Governance OS
 

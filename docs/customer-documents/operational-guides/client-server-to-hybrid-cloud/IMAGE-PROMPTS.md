@@ -1,5 +1,7 @@
 # Image Prompts — Client-Server to Hybrid-Cloud Transformation (Series)
 
+<!-- orgpath-slot-allow-file: generator input for the retired raster image pipeline (ADR-093 replaced it with committed SVG). The prompts describe figures already rendered in the Model A era; editing the text here would not change the committed images, so they are exempted rather than falsified. Re-authoring those figures as SVG is tracked as image-pipeline work. -->
+
 <!-- companion: none -->
 <!-- This series has its own generator (generate-series-images.py) and its
      own heading dialect (## 00-chapter-slug, not ## IMAGE-NN), so the main

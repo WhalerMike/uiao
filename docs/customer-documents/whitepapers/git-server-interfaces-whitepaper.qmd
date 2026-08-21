@@ -306,13 +306,18 @@ forwards the impersonated token into the Python process. This auth
 surface does **not** apply to the Gitea reverse proxy — Gitea handles
 its own auth via LDAPS or OIDC.
 
-### 3.4 Hybrid Entra device join — `extensionAttribute1` carries OrgPath
+### 3.4 Hybrid Entra device join — the OrgPath facets and derived path
 
 The host is registered as a device object in the customer's Entra
 tenant. Two attributes are critical to the governance plane:
 
-- `extensionAttribute1 = ORG-IT-INF-PLATFORM` — the OrgPath, validated
-  against UIAO_151 codebook and UIAO_158 schema
+- The governance-layer facets in their codebook slots — `extensionAttribute1
+  = NCR` (Region), `extensionAttribute2 = IT` (Department), `extensionAttribute3
+  = InfraOps` (Division) — each validated against its own enumeration in the
+  UIAO_151 codebook and the UIAO_158 schema
+- `extensionAttribute15` — the derived OrgPath
+  (`Region=NCR|Department=IT|Division=InfraOps|`), recomputed from those
+  facets on every stamp rather than hand-authored (ADR-127)
 - Azure Arc resource tags mirror the same OrgPath plus `DeviceRole` and
   `DeviceTier` (Phase 14.1)
 
@@ -688,9 +693,9 @@ under operational validation per the build guide's own status warning:
 
 | Gitea role | Dynamic group | Membership rule |
 |---|---|---|
-| Owner | `OrgTree-IT-INF-PLATFORM-CanonStewards` | `extensionAttribute1 -eq "ORG-IT-INF-PLATFORM-STW"` |
-| Write | `OrgTree-IT-INF-PLATFORM-Contributors` | `extensionAttribute1 -startsWith "ORG-IT-INF-PLATFORM"` |
-| Read | `OrgTree-IT-INF-Users` | `extensionAttribute1 -startsWith "ORG-IT-INF"` |
+| Owner | `OrgTree-NCR-IT-InfraOps-CanonStewards` | `(user.extensionAttribute2 -eq "IT") and (user.extensionAttribute3 -eq "InfraOps") and (user.extensionAttribute10 -eq "Privileged")` |
+| Write | `OrgTree-NCR-IT-InfraOps-Contributors` | `(user.extensionAttribute15 -startsWith "Region=NCR\|Department=IT\|Division=InfraOps\|")` |
+| Read | `OrgTree-NCR-IT-Users` | `(user.extensionAttribute15 -startsWith "Region=NCR\|Department=IT\|")` |
 
 A move in the HR feed propagates through dynamic-group recalculation
 into a Gitea permission change in roughly fifteen minutes; no

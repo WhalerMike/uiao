@@ -71,8 +71,10 @@ the literal port and path labels at a glance:
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │ Windows Server 2025 (UIAO-GIT01)                                 │
-│   OrgPath: ORG-IT-INF-PLATFORM  (extensionAttribute1)            │
-│   AU:      AU-ORG-IT-INF-PLATFORM                                │
+│   OrgPath facets: Region=NCR · Department=IT                     │
+│                   Division=InfraOps  (ea1/ea2/ea3)               │
+│   Derived path:   extensionAttribute15                           │
+│   AU:             AU-NCR-IT-InfraOps                             │
 │                                                                  │
 │   IIS :443 (HTTPS) ──reverse proxy──▶ Gitea :3000               │
 │     │                                   │                        │
@@ -913,26 +915,41 @@ auditpol /set /category:'Policy Change'        /success:enable /failure:enable
 Phase 14 registers the platform server inside the Modernization canon. Five
 sub-phases, each citing a MOD_* appendix rather than duplicating it.
 
-![Phase 14 OrgTree projection: UIAO-GIT01 carries an OrgPath in extensionAttribute1, which fans out to the Entra device object, mirrored Azure Arc tags, an AU for scoped delegation, and dynamic groups that map to Gitea teams; the host emits its canonical state to the UIAO_163 drift engine. The OrgPath must exist in the UIAO_151 codebook or the UIAO_158 schema rejects it.](images/platform-server-build-diagram-09-orgtree-projection.png){#fig-orgtree-projection width="100%"}
+![Phase 14 OrgTree projection: UIAO-GIT01 carries its OrgPath facets and the derived path, which fan out to the Entra device object, mirrored Azure Arc tags, an AU for scoped delegation, and dynamic groups that map to Gitea teams; the host emits its canonical state to the UIAO_163 drift engine. The OrgPath must exist in the UIAO_151 codebook or the UIAO_158 schema rejects it.](images/platform-server-build-diagram-09-orgtree-projection.png){#fig-orgtree-projection width="100%"}
 
 ### 14.1 OrgPath tagging
 
-Every governed object — users, groups, devices, servers — carries an
-OrgPath in `extensionAttribute1`. The platform server sits in the IT
-Infrastructure Platform branch.
+Every governed object — users, groups, devices, servers — carries the
+governance-layer facets in their codebook slots plus the derived OrgPath on
+`extensionAttribute15`. The platform server sits in the IT Infrastructure
+Operations branch.
 
 ```
-OrgPath:  ORG-IT-INF-PLATFORM
-Codebook: UIAO_151 (OrgPath Codebook) — validation regex ^ORG(-[A-Z]{2,6}){0,4}$
+Facets:   Region=NCR (ea1) · Department=IT (ea2) · Division=InfraOps (ea3)
+Derived:  extensionAttribute15 = "Region=NCR|Department=IT|Division=InfraOps|"
+Codebook: UIAO_151 — each facet validated against its own enumeration
 ```
+
+The finer "Platform" tier the legacy path encoded (`ORG-IT-INF-PLATFORM`)
+sits *below* Division, and the derived path composes only Region, Department
+and Division (ADR-127). Carry a fourth tier either as a tenant-extension
+facet on `extensionAttribute11-14` — the codebook reserves those slots for
+exactly this, declared by governed PR — or, as below, in group membership
+rather than in the path.
 
 Set the OrgPath on the Entra device object and mirror it to Azure tags on
 the Arc-projected resource:
 
 ```powershell
-# Entra device object — set extensionAttribute1
+# Entra device object — stamp the facets and the derived path together.
+# Devices use -ExtensionAttributes; users use -OnPremisesExtensionAttributes.
 Update-MgDevice -DeviceId $serverDeviceId `
-  -ExtensionAttributes @{ extensionAttribute1 = "ORG-IT-INF-PLATFORM" }
+  -ExtensionAttributes @{
+      extensionAttribute1  = "NCR"
+      extensionAttribute2  = "IT"
+      extensionAttribute3  = "InfraOps"
+      extensionAttribute15 = "Region=NCR|Department=IT|Division=InfraOps|"
+  }
 
 # Azure Arc resource — mirror to tags (extends Posted §14.6)
 az connectedmachine update `
@@ -960,9 +977,9 @@ delegation model.
 
 | Field | Value |
 |---|---|
-| AU name | `AU-ORG-IT-INF-PLATFORM` |
+| AU name | `AU-NCR-IT-InfraOps` |
 | Tier | 3 (Department) |
-| Membership rule | `(user.extensionAttribute1 -startsWith "ORG-IT-INF-PLATFORM")` |
+| Membership rule | `(user.extensionAttribute15 -startsWith "Region=NCR\|Department=IT\|Division=InfraOps\|")` |
 | Restricted | Yes |
 | Scoped roles | Authentication Administrator · User Administrator · Helpdesk Administrator |
 
@@ -999,9 +1016,9 @@ membership. Three groups govern the UIAO canon repo:
 
 | Gitea role | Dynamic group | Membership rule (UIAO_152 §Pattern 1) |
 |---|---|---|
-| Owner | `OrgTree-IT-INF-PLATFORM-CanonStewards` | `(user.extensionAttribute1 -eq "ORG-IT-INF-PLATFORM-STW")` |
-| Write | `OrgTree-IT-INF-PLATFORM-Contributors` | `(user.extensionAttribute1 -startsWith "ORG-IT-INF-PLATFORM")` |
-| Read | `OrgTree-IT-INF-Users` | `(user.extensionAttribute1 -startsWith "ORG-IT-INF")` |
+| Owner | `OrgTree-NCR-IT-InfraOps-CanonStewards` | `(user.extensionAttribute2 -eq "IT") and (user.extensionAttribute3 -eq "InfraOps") and (user.extensionAttribute10 -eq "Privileged")` |
+| Write | `OrgTree-NCR-IT-InfraOps-Contributors` | `(user.extensionAttribute15 -startsWith "Region=NCR\|Department=IT\|Division=InfraOps\|")` |
+| Read | `OrgTree-NCR-IT-Users` | `(user.extensionAttribute15 -startsWith "Region=NCR\|Department=IT\|")` |
 
 Because the Entra OIDC provider (Posted §10) emits group claims, Gitea sees
 dynamic-group membership as native team membership — no manual Gitea user
@@ -1025,7 +1042,7 @@ drift signals are reported; any non-zero count opens an SLA ticket per UIAO_167.
 
 | Signal | Detection | Drift category |
 |---|---|---|
-| OrgPath mismatch (Entra vs. Azure tag) | Compare `extensionAttribute1` to Arc `OrgPath` tag | Value Drift |
+| OrgPath mismatch (Entra vs. Azure tag) | Compare `extensionAttribute15` to the Arc `OrgPath` tag | Value Drift |
 | OrgPath not in codebook | Regex + UIAO_151 lookup | Format Drift / Orphan |
 | AU membership lost | `Get-MgDirectoryAdministrativeUnitMember` returns empty | Hierarchy Drift |
 | Dynamic group missing from Gitea team | Graph group claim vs. Gitea team list | Phantom Drift |
@@ -1061,7 +1078,7 @@ the Platform branch.
 
 ```
 Device dynamic group:  OrgTree-IT-INF-PLATFORM-Devices
-Membership rule:       (device.extensionAttribute1 -startsWith "ORG-IT-INF-PLATFORM")
+Membership rule:       (device.extensionAttribute15 -startsWith "Region=NCR|Department=IT|Division=InfraOps|")
 Intune policy:         "UIAO-GIT-ServerCompliance-v2"
 Assignment scope:      OrgTree-IT-INF-PLATFORM-Devices (include)
 Exclusion:             none

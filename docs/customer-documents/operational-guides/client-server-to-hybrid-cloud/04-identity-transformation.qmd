@@ -58,37 +58,55 @@ drift-detector visibility).
 ## OrgPath — the single source of hierarchy
 
 OrgPath is a deterministic, attribute-encoded organizational hierarchy
-stored in `extensionAttribute1` on every governed user (and, where
-applicable, device and group) object.
+carried on every governed user (and, where applicable, device and group)
+object. It is **not** one composite string in one slot — that was the
+retired Model A form. Under Hybrid-C+Path it is two layers over the
+codebook's slots.
 
 ### The form
 
-```
-ORG-<DIV>[-<DEPT>[-<SUB>[-<LOC>]]]
-```
-
-Every segment is an enumerated short code from UIAO_151's codebook. Depth
-is capped at five segments. The regex that validates any OrgPath is:
+The **governance layer** puts one validated facet in each of its own
+slots. The three that make up the hierarchy are:
 
 ```
-^ORG(-[A-Z]{2,6}){0,4}$
+extensionAttribute1  Region      e.g. NCR, EASTUS, EMEA
+extensionAttribute2  Department  e.g. IT, Finance, HR, Legal
+extensionAttribute3  Division    e.g. CyberOps, InfraOps, GRC, Data
 ```
+
+Each value must appear in that facet's own enumeration in the UIAO_151
+codebook; there is no single regex over a composite string, because there
+is no composite string to validate. Facets are validated one at a time,
+and a bad value is a finding against that facet alone.
+
+The **inheritance layer** is `extensionAttribute15`: a canonical OrgPath
+*derived* from those three facets, in that order, every segment
+terminated by `|`. It is never hand-authored — it is recomputed on every
+stamp, and any stored value that differs from the recomputation is drift.
 
 ### Examples
 
-- `ORG-FIN-AP-EAST` — Finance / Accounts Payable / East region
-- `ORG-IT-INF-PLATFORM` — IT / Infrastructure / Platform team
-- `ORG-HR-BEN` — HR / Benefits (two-segment, department-level)
-- `ORG-EXEC` — Executive (single-segment, division-level)
+| Facets | Derived `extensionAttribute15` |
+|---|---|
+| Region NCR · Department Finance · Division GRC | `Region=NCR\|Department=Finance\|Division=GRC\|` |
+| Region NCR · Department IT · Division InfraOps | `Region=NCR\|Department=IT\|Division=InfraOps\|` |
+| Region EASTUS · Department HR *(no division)* | `Region=EASTUS\|Department=HR\|` |
+| Region NCR · Department Executive | `Region=NCR\|Department=Executive\|` |
+
+Composition stops at the first facet with no value, so the derived path
+is always a contiguous prefix of the hierarchy — never one with a gap in
+the middle.
 
 ### What OrgPath drives
 
 A single attribute drives five downstream outcomes:
 
 1. **Dynamic group membership** — every user with
-   `extensionAttribute1 -startsWith "ORG-FIN"` is in `OrgTree-FIN-Users`.
-2. **Administrative Unit scoping** — the AU `AU-ORG-FIN` has the same
-   membership rule; delegated admins of that AU manage only those users.
+   `extensionAttribute2 -eq "Finance"` is in `OrgTree-FIN-Users`.
+2. **Administrative Unit scoping** — the AU `AU-NCR-Finance` scopes on the
+   derived path (`extensionAttribute15 -startsWith
+   "Region=NCR|Department=Finance|"`); delegated admins of that AU manage
+   only those users.
 3. **Conditional Access targeting** — CA policies include or exclude
    groups keyed to OrgPath segments.
 4. **License assignment** — group-based licensing flows from
@@ -119,37 +137,52 @@ Entra ID computes it by evaluating a dynamic-group rule against
 
 ### The three query patterns (UIAO_152)
 
-Every OrgPath-governed dynamic group uses one of three patterns.
+Every OrgPath-governed dynamic group uses one of three patterns. Which one
+you need depends on the question, and only the first uses the derived path.
 
-**Pattern 1 — Branch Query (subtree).** Captures all users at and below
-a hierarchy level. Use `-startsWith`.
-
-```
-(user.extensionAttribute1 -startsWith "ORG-FIN")
-```
-
-Produces: every Finance user, including AP, Budget, Tax, and every
-sub-subgroup.
-
-**Pattern 2 — Node Query (exact).** Captures only users at a specific
-level. Use `-eq`.
+**Pattern 1 — Branch Query (subtree).** Captures everyone at and below a
+point in the hierarchy, including levels that do not exist yet. Use
+`-startsWith` against the derived OrgPath on `extensionAttribute15`.
 
 ```
-(user.extensionAttribute1 -eq "ORG-FIN-AP")
+(user.extensionAttribute15 -startsWith "Region=NCR|Department=Finance|")
 ```
 
-Produces: users whose OrgPath is *exactly* `ORG-FIN-AP` — not their
-children.
+Produces: every Finance user in the NCR region, across every division under
+Finance and any division added later.
 
-**Pattern 3 — Functional Query (role or attribute).** Combines
-OrgPath with a role-bearing attribute (job title, cost center,
-department), for cross-cutting concerns.
+Two rules are not optional here. The prefix must be **anchored at
+`Region=`** — the derived path is composed region, department, division in
+that order, so a prefix beginning at `Department=` matches nothing at all.
+And it must carry its **trailing `|`**, or `Department=Finance` would also
+capture `Department=FinanceOps` (ADR-127).
+
+**Pattern 2 — Node Query (exact).** Captures users at one specific place in
+the hierarchy and nowhere else. This is boolean facet composition on the
+governance layer, not a path match.
 
 ```
-(user.extensionAttribute1 -startsWith "ORG-IT") and (user.jobTitle -contains "Security")
+(user.extensionAttribute2 -eq "Finance") and (user.extensionAttribute3 -eq "GRC")
 ```
 
-Produces: every IT-organization user whose title includes "Security."
+Produces: users in Finance/GRC exactly. Each clause validates independently
+against its own facet enumeration.
+
+**Pattern 3 — Functional Query (cross-cutting).** Combines a facet with
+another attribute for a question that is not about hierarchy position at
+all.
+
+```
+(user.extensionAttribute2 -eq "IT") and (user.jobTitle -contains "Security")
+```
+
+Produces: every IT user whose title includes "Security," in every region.
+
+> Note the shape of Pattern 3: "all of Finance, everywhere" or "all of IT,
+> everywhere" is **cross-cutting, not a subtree** — it is a facet predicate
+> (`extensionAttribute2 -eq "Finance"`), never a path prefix. Reaching for
+> `-startsWith` on the derived path to express it produces a rule that
+> silently matches no one.
 
 ### Naming convention
 
@@ -276,7 +309,7 @@ of five categories:
 | Category | Example |
 |---|---|
 | **Schema Drift** | A dynamic-group rule references an attribute not in UIAO_151 |
-| **Value Drift** | HR says `ORG-FIN-AP`; user's `extensionAttribute1` says `ORG-FIN-BUD` |
+| **Value Drift** | HR says Division `GRC`; the user's `extensionAttribute3` says `Data` |
 | **Hierarchy Drift** | An AU references an OrgPath segment no longer in the codebook |
 | **Orphan Drift** | A security group exists that isn't in UIAO_152 |
 | **Phantom Drift** | UIAO_151 defines `ORG-FIN-TAX-WEST` but zero users match |
