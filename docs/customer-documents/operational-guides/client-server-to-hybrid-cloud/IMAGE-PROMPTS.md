@@ -38,8 +38,9 @@
 >   lifestyle imagery.
 >
 > **Canon-compliance.** Every diagram must respect UIAO canon:
-> GCC-Moderate boundary visible where relevant; OrgPath format
-> `ORG-XXX-YYY`; MOD_* and DM_* identifiers spelled exactly per canon;
+> GCC-Moderate boundary visible where relevant; OrgPath drawn as named facets, or as the
+> derived path composed region-first with every segment terminated by
+> the `|` delimiter; MOD_* and DM_* identifiers spelled exactly per canon;
 > no tenant-specific GUIDs or UPNs.
 
 ---
@@ -165,11 +166,11 @@ downstream governance outcomes.*
 
 > A user object (small head-and-shoulders outline is acceptable) in
 > the center, captioned with a monospace tag
-> `extensionAttribute1 = ORG-FIN-AP-EAST`. Five labeled arrows radiate
+> `extensionAttribute15 = Region=NCR|Department=Finance|Division=GRC|`. Five labeled arrows radiate
 > outward to five downstream effects:
 > (1) "Dynamic Group Membership" → `OrgTree-FIN-AP-Users` with a group
 > icon;
-> (2) "Administrative Unit Scope" → `AU-ORG-FIN-AP` with a scope icon;
+> (2) "Administrative Unit Scope" → `AU-NCR-Finance-GRC` with a scope icon;
 > (3) "Conditional Access Targeting" → a CA policy badge;
 > (4) "Group-Based License Assignment" → a license SKU badge;
 > (5) "Drift Detection (UIAO_163)" → a green check / red X comparator
