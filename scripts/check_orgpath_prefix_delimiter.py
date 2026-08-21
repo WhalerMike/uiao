@@ -32,6 +32,9 @@ from pathlib import Path
 
 ALLOW_MARKER = "orgpath-prefix-allow"
 
+# The SSOT for the composition order the anchor rule is derived from.
+CODEBOOK = Path("src/uiao/canon/data/orgpath/codebook.yaml")
+
 # Files that may carry -startsWith / like OrgPath prefix expressions.
 SCAN_GLOBS: list[str] = [
     "src/uiao/canon/data/**/*.yaml",
@@ -122,7 +125,42 @@ def is_terminated(value: str) -> bool:
     return value.endswith(DELIMITER)
 
 
-def scan_text(text: str, rel: str) -> list[str]:
+def anchor_label(root: Path) -> str:
+    """First segment label of the derived path, read from the codebook.
+
+    The derived path is composed in ``derived_from`` order, so every
+    non-empty value begins with this label. Read from the SSOT rather
+    than hard-coded, so extending the composition cannot leave the guard
+    checking a stale anchor.
+    """
+    text = (root / CODEBOOK).read_text(encoding="utf-8")
+    block = re.search(r"^  inheritance_layer:\n(?P<body>(?:^    .*\n|^\n)+)", text, re.M)
+    if not block:
+        return ""
+    body = block.group("body")
+    first = re.search(r"^    derived_from:\s*\[\s*([A-Za-z_][A-Za-z0-9_]*)", body, re.M)
+    if not first:
+        return ""
+    facet = first.group(1)
+    label = re.search(rf"^      {re.escape(facet)}:\s*(\S+)", body, re.M)
+    return label.group(1) if label else "".join(w.capitalize() for w in facet.split("_"))
+
+
+def is_anchored(value: str, anchor: str) -> bool:
+    """True when the prefix starts at the first segment of the derived path.
+
+    A prefix that starts mid-path — ``"Department=Finance|"`` against a
+    path composed ``Region=…|Department=…|`` — is well-formed and
+    delimiter-terminated, and matches NOTHING. It is invisible to review
+    and to the slot guard, and the group or AU it scopes silently
+    populates with nobody.
+    """
+    if not anchor:
+        return True
+    return value.startswith(f"{anchor}=")
+
+
+def scan_text(text: str, rel: str, anchor: str = "") -> list[str]:
     findings: list[str] = []
     for lineno, line in enumerate(text.splitlines(), start=1):
         if ALLOW_MARKER in line:
@@ -136,6 +174,13 @@ def scan_text(text: str, rel: str) -> list[str]:
                     f"{rel}:{lineno}: OrgPath prefix '{value}' is missing the trailing "
                     f"'{DELIMITER}' — 'Division=East' also matches 'Division=Eastern'. "
                     f"Terminate the prefix (Get-OrgPathPrefix) per ADR-127."
+                )
+            elif not is_anchored(value, anchor):
+                findings.append(
+                    f"{rel}:{lineno}: OrgPath prefix '{value}' does not start at "
+                    f"'{anchor}=' — the derived path is composed {anchor}-first, so this "
+                    f"prefix matches nothing and its group/AU populates with nobody. "
+                    f"Anchor it, or express a cross-cutting scope as a facet predicate."
                 )
     return findings
 
@@ -162,19 +207,20 @@ def iter_scan_files(root: Path) -> list[Path]:
 def main() -> int:
     root = repo_root()
     files = iter_scan_files(root)
+    anchor = anchor_label(root)
     findings: list[str] = []
     for path in files:
         text = path.read_text(encoding="utf-8", errors="replace")
-        findings.extend(scan_text(text, str(path.relative_to(root))))
+        findings.extend(scan_text(text, str(path.relative_to(root)), anchor))
 
     if findings:
-        print(f"OrgPath prefix guard FAILED — {len(findings)} unterminated prefix(es):\n")
+        print(f"OrgPath prefix guard FAILED — {len(findings)} malformed prefix(es):\n")
         for finding in findings:
             print(f"  {finding}")
         return 1
 
     print(
-        f"OrgPath prefix guard OK — scanned {len(files)} files, every -startsWith/like OrgPath prefix carries its trailing '{DELIMITER}'."
+        f"OrgPath prefix guard OK — scanned {len(files)} files; every -startsWith/like OrgPath prefix carries its trailing '{DELIMITER}' and is anchored at '{anchor}='."
     )
     return 0
 

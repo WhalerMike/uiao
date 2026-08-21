@@ -39,11 +39,11 @@ Exit codes follow the scan_lifecycle_consistency.py precedent:
   0  advisory mode (default) — findings are printed, the gate stays green
   1  --strict and any finding remains
 
-Canon (``src/uiao/canon/**``) is clean and is enforced with ``--strict`` in CI
-today. The authored ``docs/`` corpus still carries ~80 Model A examples whose
-correction needs a per-example semantic remap (``ORG-FIN`` -> which facets?),
-tracked separately; until that lands, a bare run stays advisory so the backlog
-is visible without blocking unrelated PRs.
+Both canon (``src/uiao/canon/**``) and the authored ``docs/`` corpus are clean
+and enforced with ``--strict`` in CI. The docs backlog — 76 findings across 16
+files, each needing a per-example semantic remap (``ORG-FIN`` -> which facets?)
+— was drained, and the gate promoted from advisory to blocking. A bare run
+without ``--strict`` still reports rather than fails, which is useful locally.
 
 Run locally:  python scripts/check_orgpath_slot_binding.py
               python scripts/check_orgpath_slot_binding.py --strict
