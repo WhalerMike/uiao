@@ -63,8 +63,30 @@ evidence the approval gate.
   build steps here target directory roles only.
 - Arc-based just-in-time **server** access and PAW baselines — see the
   [PAM book](../../orgcomp-series/Vol_III_Book_01_OrgComp_Privileged_Access_Management.qmd).
-- Entitlement management access packages, which solve a different problem
-  (granting eligibility) from the one solved here (gating activation).
+- Entitlement management access packages — see the note below on the two
+  layers of self-request.
+
+::: {.callout-note title="\"Self-request\" has two layers — this guide builds the second"}
+The phrase covers two distinct things, and an agency can run either or both:
+
+1. **Self-request for *eligibility*** — a user asks to become eligible for a
+   role, and an approver grants it. This is **entitlement management**: a
+   role-assignable group published as an access package, with an approval
+   workflow on the request. It answers *may this person ever hold this role?*
+2. **Self-request for *activation*** — an already-eligible user asks to turn
+   the role on for a bounded window, and an approver releases it. This is
+   **PIM**, and it is what this guide builds. It answers *may this person use
+   this role right now?*
+
+Microsoft's guidance for the DoD Zero Trust user pillar treats these as
+composable: you can require approval when users request eligibility in
+entitlement management, require approval upon activation in PIM, **or both**.
+
+Layer 2 is the one that produces a per-use, time-bounded, individually
+justified record — which is what an assessor tests against AC-6(9) and
+AC-17(4). Layer 1 without layer 2 grants standing privilege through a nicer
+front door. If the agency runs only one, run this one.
+:::
 
 ### Reading order
 
@@ -83,6 +105,7 @@ can lock an agency out of its own tenant.
 | **Graph permissions (delegated)** | `RoleManagementPolicy.ReadWrite.Directory` to manage rules; `RoleManagement.ReadWrite.Directory` to create eligible assignments. |
 | **MFA** | Microsoft Entra multifactor authentication enabled for all users — MFA is a per-role activation requirement here, not a substitute for tenant-wide MFA. |
 | **Log destination** | An Azure Monitor / Log Analytics workspace (and, where required, an Azure storage account) inside the authorization boundary, for audit retention beyond 30 days. See [Step 8](#step-8-export-audit-records-for-retention). |
+| **Government cloud** | Microsoft Entra ID Governance — which carries PIM — is available in the US Government community cloud (**GCC**), **GCC High**, and **Department of Defense** cloud environments. Feature parity with commercial is a moving target, so confirm any specific capability against the [Microsoft Entra feature availability](https://learn.microsoft.com/entra/identity/authentication/feature-availability) page for the agency's cloud before designing against it. |
 
 ::: {.callout-important title="Licence dependency is a control dependency"}
 Because PIM configuration settings are *removed* when the licence lapses, the
@@ -669,11 +692,76 @@ Access policies — Conditional Access Administrator, Security Administrator —
 can weaken the requirement, remove it, or block eligible users from
 activating at all. Those roles become part of the privileged surface
 protecting elevation. Put them in **Tier 0**, and gate them with this same
-build.
+build. Then close the loop with **protected actions**, below — Tier 0 gating
+controls *who holds* the role, protected actions control *what they must
+prove to use it*.
 :::
 
 The agency's CA policy set for this pattern belongs in the
 [Conditional Access library](conditional-access-library.qmd).
+
+### Step 5a — Close the loop with protected actions {#step-5a-close-the-loop-with-protected-actions}
+
+The dependency in the warning above has a named mitigation. **Protected
+actions** are Microsoft Entra *permissions* that carry a Conditional Access
+policy of their own. Enforcement happens when the user attempts the action —
+not at sign-in, and not at role activation — so it binds regardless of which
+role granted the permission or how the user came to hold it.
+
+That is exactly the shape of the problem: PIM role activation protects
+*becoming* a Conditional Access Administrator, but nothing in PIM protects
+*editing a CA policy* once someone already holds the permission by another
+route. Microsoft states the two are complementary — "Privileged Identity
+Management role activation and protected actions can be used together for
+stronger coverage."
+
+Apply protected actions to the permissions that can dismantle this build:
+
+| Permission | Why it belongs behind a protected action |
+|---|---|
+| `microsoft.directory/conditionalAccessPolicies/basic/update` | Weakening the authentication-context policy silently relaxes the elevation gate |
+| `microsoft.directory/conditionalAccessPolicies/create` | A new policy can shadow or contradict the elevation policy |
+| `microsoft.directory/conditionalAccessPolicies/delete` | Deleting the policy removes the requirement outright |
+| `microsoft.directory/resourceNamespaces/resourceActions/authenticationContext/update` | Repointing an authentication context changes what activation actually demands |
+| `microsoft.directory/deletedItems/delete` | Hard deletion is unrecoverable — soft-deleted objects otherwise stay restorable for 30 days |
+
+Cross-tenant access settings and named-location permissions are also
+eligible, and are worth adding where the agency's policy set depends on them.
+
+**Build order matters here too**, and in the same direction as Step 5:
+
+1. Confirm you hold **Conditional Access Administrator** or **Security
+   Administrator**.
+2. Create the authentication context and its Conditional Access policy —
+   a sensible starting bar is passwordless or phishing-resistant MFA, **with
+   an emergency access account excluded**.
+3. Assign that authentication context to the selected permissions.
+4. Test by performing the action as a normal user and confirming the step-up
+   prompt appears.
+
+Out-of-order configuration produces confusing symptoms, most commonly
+repeated reauthentication prompts that never satisfy the policy.
+
+::: {.callout-warning title="Azure PowerShell fails against protected actions"}
+Step-up authentication for protected actions is supported by the Microsoft
+Entra admin center, **Microsoft Graph PowerShell**, and Graph Explorer.
+**Azure PowerShell will fail** if it attempts a protected action, as will
+creating a new terms-of-use page or custom control in the admin center
+(those register with Conditional Access and are therefore themselves subject
+to the CA create/update/delete protected actions).
+
+Inventory any automation that touches these permissions *before* enabling
+protected actions, or a scheduled job will start failing with an error that
+looks nothing like a policy problem. Protected actions require Microsoft
+Entra ID **P1**.
+:::
+
+One design rule from Microsoft worth repeating, because it is easy to get
+backwards: **do not use protected actions to block access based on identity
+or group membership.** They impose an *access requirement* on performing an
+action. Who may hold the permission at all is an authorization decision, and
+that belongs to role assignment — which is what the rest of this guide
+builds.
 
 ### Step 6 — Notifications and PIM alerts {#step-6-notifications-and-pim-alerts}
 
@@ -897,7 +985,7 @@ whether they hold.
 | **AU-11** | Audit Record Retention | **Native 30-day retention is insufficient.** Satisfied only by the Step 8 export to storage / Log Analytics at the baseline's retention parameter |
 | **AU-12** | Audit Record Generation | Entra generates the audit records for every PIM event without additional instrumentation |
 | **IA-2(1)** | MFA to Privileged Accounts | MFA required at activation; for Tier 0, authentication context with phishing-resistant strength and sign-in frequency *Every time* forces a fresh proof rather than reusing a session claim |
-| **CM-5** | Access Restrictions for Change | Roles that can change the system are held eligible-only and released through the approval gate, making the approval the enforced logical access restriction on change |
+| **CM-5** | Access Restrictions for Change | Roles that can change the system are held eligible-only and released through the approval gate, making the approval the enforced logical access restriction on change; protected actions ([Step 5a](#step-5a-close-the-loop-with-protected-actions)) extend the restriction to the specific permissions that can alter the gate itself, independent of role |
 | **PS-4 / PS-5** | Personnel Termination / Transfer | Eligibility removal is a single revocation point covering every role the individual could elevate into; access reviews catch what offboarding misses |
 
 ### Where this build alone is not sufficient
@@ -918,8 +1006,12 @@ Stating the gaps is part of the mapping.
   assignment outside PIM bypasses it entirely. The compensating detection is
   the "assigned outside PIM" alert, and it is a detection, not a prevention.
 - **Conditional Access administrators can weaken the gate** once
-  authentication context is in play (Step 5). Their inclusion in Tier 0 is
-  what keeps the dependency closed.
+  authentication context is in play (Step 5). Two controls close this, and
+  both are needed: their inclusion in Tier 0 (who holds the role) and
+  protected actions on the CA-policy permissions
+  ([Step 5a](#step-5a-close-the-loop-with-protected-actions) — what they must
+  prove to use it). Tier 0 gating alone leaves the permission reachable by
+  any other route that grants it.
 
 ## Known constraints
 
@@ -928,9 +1020,10 @@ Stating the gaps is part of the mapping.
 | Approval window is **24 hours, not configurable** | Out-of-hours requests expire; size approver groups for real operating hours |
 | **Multi-step approvals are not supported** | A two-level approval chain cannot be expressed in one policy |
 | **Extend / renew approval is not supported by the Graph API** | Automate initial approvals; extensions are portal-driven |
+| **Extend / renew requests are approved by a Global Administrator or Privileged Role Administrator** | Not by the approver group configured for the role — a second, separate approval path the SSP must describe |
 | Activation maximum duration is bounded to **1–24 hours** | Longer windows require a documented risk acceptance and a different mechanism |
 | Assignments **cannot be shorter than five minutes**, nor removed within five minutes of creation | Affects bulk conversion tooling and rollback timing |
-| **Last-remaining Global Administrator assignment is not removed at expiry** | Expiry alone will not clear the final GA assignment; do not read this as failure |
+| **Last active Global Administrator / Privileged Role Administrator assignment cannot be removed** | PIM deliberately prevents removal of the last active assignment for either role, and a last-remaining time-bound Global Administrator assignment is not removed at expiry; do not read either as failure |
 | MFA at activation **may not reprompt** within a session | Use authentication context where fresh proof is the control objective |
 | **10-minute reauthentication window** spans Entra roles, Azure resource roles, and PIM for Groups | A second activation inside the window inherits the first proof |
 | PIM audit history and Entra audit logs retain **30 days** | Export is mandatory for federal retention |
@@ -966,10 +1059,19 @@ the NIST OSCAL publication of SP 800-53 Rev 5.
 
 - [Microsoft Entra built-in roles](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/permissions-reference) — role template IDs
 - [Manage emergency access accounts in Microsoft Entra ID](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access)
+- [What are protected actions in Microsoft Entra ID?](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/protected-actions-overview)
+- [Add protected actions in Microsoft Entra ID](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/protected-actions-add)
+- [Microsoft Entra feature availability](https://learn.microsoft.com/en-us/entra/identity/authentication/feature-availability) — GCC / GCC High / DoD
 - [Securing privileged access for hybrid and cloud deployments in Microsoft Entra ID](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-planning)
 - [Conditional Access: Cloud apps, actions, and authentication context](https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps)
 - [Microsoft Entra data retention](https://learn.microsoft.com/en-us/entra/identity/monitoring-health/reference-reports-data-retention)
 - [Archive Microsoft Entra logs to an Azure storage account](https://learn.microsoft.com/en-us/entra/identity/monitoring-health/howto-archive-logs-to-storage-account)
+
+**Federal guidance**
+
+- [DoD Zero Trust Strategy for the user pillar](https://learn.microsoft.com/en-us/security/zero-trust/dod-zero-trust-strategy-user) — §1.4 Privileged access management maps PIM approval configuration to DoD ZT activities 1.4.2 and 1.4.3
+- [Microsoft Entra ID Governance deployment guide to govern privileged identities](https://learn.microsoft.com/en-us/entra/architecture/governance-deployment-privileged-identities)
+- [Microsoft Entra ID Governance operations reference guide](https://learn.microsoft.com/en-us/entra/architecture/ops-guide-govern)
 
 **Controls**
 
