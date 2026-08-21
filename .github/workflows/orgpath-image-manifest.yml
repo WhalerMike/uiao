@@ -1,0 +1,74 @@
+name: OrgPath Image Manifest
+
+# Fails when docs/customer-documents/orgpath-narrative/image-prompts.manifest.yaml
+# no longer matches the chapters it registers.
+#
+# The manifest pins, per figure: chapter file, figure id, file and sidecar
+# paths, caption, width, and the prompt body — which IS the chapter's fig-alt
+# text. Nothing regenerated it when a chapter changed, so it drifted silently:
+# by the time this gate was added it was missing 76 chapters, and 23 of its
+# stored prompt bodies still described figures in the retired composite-path
+# notation those figures had already been re-authored away from (#1444).
+#
+# A stale manifest is not cosmetic. It is the record of what each figure was
+# generated from, so a wrong prompt body means the provenance for that figure
+# is wrong — and Invoke-OrgPathImageAudit.ps1 reads it to decide whether a
+# figure needs regenerating.
+#
+# Note this is a different manifest from the one image-gen.yml rebuilds
+# (docs/images/.image-manifest.json); that workflow does not touch this file.
+#
+# To resolve a failing run, regenerate and commit:
+#     python scripts/rebuild_orgpath_image_manifest.py --write
+#
+# The sidecar WARN lines are expected and non-fatal: a figure whose PNG was
+# never generated through the raster pipeline has no .png.json beside it.
+
+on:
+  pull_request:
+    paths:
+      - 'docs/customer-documents/orgpath-narrative/**'
+      - 'scripts/rebuild_orgpath_image_manifest.py'
+      - '.github/workflows/orgpath-image-manifest.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/customer-documents/orgpath-narrative/**'
+      - 'scripts/rebuild_orgpath_image_manifest.py'
+      - '.github/workflows/orgpath-image-manifest.yml'
+
+jobs:
+  orgpath-image-manifest:
+    name: Check the OrgPath image manifest matches its chapters
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install manifest dependencies
+        run: pip install --quiet pyyaml
+
+      - name: Fail on drift
+        run: |
+          if ! python scripts/rebuild_orgpath_image_manifest.py --check; then
+            echo "::error::image-prompts.manifest.yaml no longer matches its chapters."
+            echo "Regenerate locally and commit:"
+            echo "  python scripts/rebuild_orgpath_image_manifest.py --write"
+            exit 1
+          fi
+
+      - name: Upload regenerated manifest on failure
+        if: failure()
+        run: python scripts/rebuild_orgpath_image_manifest.py --write
+
+      - name: Upload artifact on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: orgpath-image-manifest-regenerated
+          path: docs/customer-documents/orgpath-narrative/image-prompts.manifest.yaml
