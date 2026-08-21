@@ -145,7 +145,7 @@
 | [`docs/customer-documents/executive-governance-series/ch07-operational-tempo/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/ch07-operational-tempo/index.qmd) | 163 | Navigation hub | ✅ | 2/2 | — |
 | [`docs/customer-documents/executive-governance-series/ch08-governance-at-scale/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/ch08-governance-at-scale/index.qmd) | 197 | Navigation hub | ✅ | 3/3 | — |
 | [`docs/customer-documents/executive-governance-series/ch09-governance-operating-system/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/ch09-governance-operating-system/index.qmd) | 194 | Navigation hub | ✅ | 3/3 | — |
-| [`docs/customer-documents/executive-governance-series/governance-os-canonical-suite.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/governance-os-canonical-suite.qmd) | 2914 | Substantial | ✅ | 6/6 | — |
+| [`docs/customer-documents/executive-governance-series/governance-os-canonical-suite.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/governance-os-canonical-suite.qmd) | 2894 | Substantial | ✅ | 6/6 | — |
 | [`docs/customer-documents/executive-governance-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/index.qmd) | 51 | Navigation hub | ✅ | — | aspirational |
 
 ### `learning/`

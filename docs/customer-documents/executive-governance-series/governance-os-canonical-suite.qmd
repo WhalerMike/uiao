@@ -48,7 +48,7 @@ April 2026 \| Full A--Z Canonical Document Suite
 
 The UIAO Governance Operating System (Governance OS) is a complete, deterministic, drift-resistant operating system for identity modernization using Microsoft Entra ID within the M365 GCC-Moderate boundary. It provides every artifact, schema, decision tree, validation module, and operational runbook required to design, deploy, govern, and sustain a modern identity hierarchy---the OrgTree---without ambiguity, without discretionary interpretation, and without dependency on any single human actor.
 
-The OrgTree is a hierarchical identity structure that replaces legacy Organizational Unit (OU)-based Active Directory models with a portable, attribute-driven hierarchy encoded in Entra ID extension attributes. Each identity object carries an OrgPath---a deterministic, codebook-validated string such as ORG-IT-SEC-SOC---that encodes its exact position in the organizational hierarchy. Dynamic groups, Administrative Units, role-based delegation, Conditional Access policies, and telemetry all derive from this single canonical attribute, eliminating structural duplication and ensuring that every governance decision is traceable to a single source of truth.
+The OrgTree is a hierarchical identity structure that replaces legacy Organizational Unit (OU)-based Active Directory models with a portable, attribute-driven hierarchy encoded as independently-validated facets in Entra ID extension attributes. Each identity object carries an OrgPath---a deterministic, codebook-validated set of facets (Region, Department, Division and the rest), plus a derived canonical path recomputed from them---that encodes its exact position in the organizational hierarchy. Dynamic groups, Administrative Units, role-based delegation, Conditional Access policies, and telemetry all derive from this single canonical attribute, eliminating structural duplication and ensuring that every governance decision is traceable to a single source of truth.
 
 This master document, together with Appendices A through Z, constitutes the full canonical corpus. Every appendix is a standalone, internally complete governance artifact. Taken together, the corpus defines: the codebook of valid OrgPaths (Appendix A), the dynamic groups that implement them (Appendix B), the attribute mappings from legacy to modern (Appendix C), the delegation model (Appendix D), every governance workflow (Appendix E), a step-by-step migration runbook (Appendix F), all architectural diagrams in text-rendered form (Appendix G), the JSON schemas (Appendix H), PowerShell validation modules (Appendix I), enforcement test suites (Appendix J), decision trees (Appendix K), SLA models (Appendix L), drift detection engines (Appendix M), the Chrome-Claude execution substrate integration (Appendix N), a mock tenant test harness (Appendix O), boundary impact models (Appendix P), escalation playbooks (Appendix Q), the canonical repository structure (Appendix R), the governance state machine (Appendix S), identity risk scoring (Appendix T), multi-cloud boundary rules (Appendix U), contributor workflows (Appendix V), the error taxonomy (Appendix W), telemetry models (Appendix X), identity graph normalization (Appendix Y), and the complete glossary (Appendix Z).
 
@@ -311,113 +311,99 @@ Full Canonical Corpus
 
 ## Purpose
 
-This appendix defines the complete enumeration of OrgPath codes used to encode organizational hierarchy in Entra ID extension attributes. Every valid OrgPath in the system must exist in this codebook. An OrgPath that does not appear here is, by definition, invalid and will be flagged as drift.
+This appendix used to carry a full enumeration of OrgPath codes. It no
+longer does, and that is deliberate: a second copy of the codebook in a
+narrative document is a second source of truth, and it drifted from the
+real one.
+
+The codebook is **executable canon**, not prose. It lives at
+[`src/uiao/canon/data/orgpath/codebook.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/codebook.yaml),
+is validated by
+[`codebook.schema.json`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/schemas/orgpath/codebook.schema.json),
+and is loaded by the drift engine and every adapter at runtime. The
+narrative counterpart is
+[UIAO_151](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_151_OrgPath_Codebook.md);
+the reader-facing walkthrough is the
+[OrgPath Codebook page](../reference-architecture/codebook.qmd).
 
 ## Scope
 
-Covers all hierarchical levels (0 through 4) of the OrgTree. Applies to every user object, every dynamic group membership rule, and every Administrative Unit scope within the M365 GCC-Moderate boundary. The codebook is the single source of truth for organizational structure encoding.
+What the model is, in one page. Anything more specific --- the facet
+enumerations, the slot map, deprecations --- is read from the codebook,
+never transcribed here.
 
 ## Canonical Structure
 
-The OrgPath hierarchy has five levels:
+Organizational identity is **not** a composite path string. Per
+[ADR-078](../../adr/adr-078-orgpath-attribute-schema-15-facet.qmd) it is a
+set of independently-validated facets, each bound to one
+`onPremisesExtensionAttribute` slot, and per
+[ADR-127](../../adr/adr-127-orgpath-hybrid-derived-path.qmd) a derived
+canonical path is recomputed from the hierarchy facets on slot 15. Two
+layers, one codebook:
 
-- **Level 0 --- Enterprise Root:** The single root node representing the entire organization. Code: ORG.
+- **Governance layer** --- one semantic facet per slot: Region,
+  Department, Division, Role, CostCenter, Classification, HireDate,
+  TermDate, ClearanceLevel, AccountType on slots 1--10, and the
+  tenant-extension facets AdminTier, DeviceType and Environment on slots
+  11--13 per [ADR-137](../../adr/adr-137-tenant-extension-facets.qmd).
+  Each value is validated against **its own** enumeration, so a bad
+  Division is one finding about Division rather than a malformed path.
 
-- **Level 1 --- Agency/Division:** Top-level organizational divisions. Pattern: ORG-\[A-Z\]{2,6}. Examples: ORG-FIN, ORG-HR, ORG-IT, ORG-OPS, ORG-LEG.
+- **Inheritance layer** --- `extensionAttribute15` carries the derived
+  OrgPath, composed Region, Department, Division in that order as
+  `Label=value|` segments with the trailing delimiter always present. It
+  is never hand-authored: it is recomputed on every stamp, and any stored
+  value that differs from the recomputation is drift.
 
-- **Level 2 --- Department:** Departments within divisions. Pattern: ORG-\[A-Z\]{2,6}-\[A-Z\]{2,6}. Examples: ORG-FIN-AP, ORG-IT-SEC.
+Not every defined facet is written. Per
+[ADR-121](../../adr/adr-121-orgpath-projection-subset.qmd) only the
+*projected* subset is stamped to a directory slot; the rest keep their
+semantics without consuming one. The projected count is a property of the
+codebook, so read it from the codebook.
 
-- **Level 3 --- Unit:** Units within departments. Pattern adds a third segment. Examples: ORG-FIN-AP-EAST, ORG-IT-SEC-SOC.
-
-- **Level 4 --- Team:** Teams within units. Pattern adds a fourth segment. Examples: ORG-IT-SEC-SOC-T1.
-
-**Regex Validation Pattern:** \^ORG(-\[A-Z\]{2,6}){0,4}\$
-
-## Technical Scaffolding
-
-  ------------------------------------------------------------------------------------------------------------------------------------------
-  **OrgPath Code**    **Level**   **Description**                       **Parent Path**   **Allowed Children Pattern**       **Max Depth**
-  ------------------- ----------- ------------------------------------- ----------------- ---------------------------------- ---------------
-  ORG                 0           Enterprise Root                       (none)            \^ORG-\[A-Z\]{2,6}\$               4
-
-  ORG-FIN             1           Finance Division                      ORG               \^ORG-FIN-\[A-Z\]{2,6}\$           3
-
-  ORG-HR              1           Human Resources Division              ORG               \^ORG-HR-\[A-Z\]{2,6}\$            3
-
-  ORG-IT              1           Information Technology Division       ORG               \^ORG-IT-\[A-Z\]{2,6}\$            3
-
-  ORG-OPS             1           Operations Division                   ORG               \^ORG-OPS-\[A-Z\]{2,6}\$           3
-
-  ORG-LEG             1           Legal Division                        ORG               \^ORG-LEG-\[A-Z\]{2,6}\$           3
-
-  ORG-FIN-AP          2           Accounts Payable Department           ORG-FIN           \^ORG-FIN-AP-\[A-Z\]{2,6}\$        2
-
-  ORG-FIN-AR          2           Accounts Receivable Department        ORG-FIN           \^ORG-FIN-AR-\[A-Z\]{2,6}\$        2
-
-  ORG-FIN-BUD         2           Budget Department                     ORG-FIN           \^ORG-FIN-BUD-\[A-Z\]{2,6}\$       2
-
-  ORG-FIN-AUD         2           Internal Audit Department             ORG-FIN           \^ORG-FIN-AUD-\[A-Z\]{2,6}\$       2
-
-  ORG-HR-REC          2           Recruitment Department                ORG-HR            \^ORG-HR-REC-\[A-Z\]{2,6}\$        2
-
-  ORG-HR-BEN          2           Benefits Department                   ORG-HR            \^ORG-HR-BEN-\[A-Z\]{2,6}\$        2
-
-  ORG-HR-TRN          2           Training Department                   ORG-HR            \^ORG-HR-TRN-\[A-Z\]{2,6}\$        2
-
-  ORG-IT-SEC          2           Security Department                   ORG-IT            \^ORG-IT-SEC-\[A-Z\]{2,6}\$        2
-
-  ORG-IT-INF          2           Infrastructure Department             ORG-IT            \^ORG-IT-INF-\[A-Z\]{2,6}\$        2
-
-  ORG-IT-DEV          2           Development Department                ORG-IT            \^ORG-IT-DEV-\[A-Z\]{2,6}\$        2
-
-  ORG-OPS-LOG         2           Logistics Department                  ORG-OPS           \^ORG-OPS-LOG-\[A-Z\]{2,6}\$       2
-
-  ORG-OPS-FAC         2           Facilities Department                 ORG-OPS           \^ORG-OPS-FAC-\[A-Z\]{2,6}\$       2
-
-  ORG-LEG-COM         2           Compliance Department                 ORG-LEG           \^ORG-LEG-COM-\[A-Z\]{2,6}\$       2
-
-  ORG-LEG-LIT         2           Litigation Department                 ORG-LEG           \^ORG-LEG-LIT-\[A-Z\]{2,6}\$       2
-
-  ORG-FIN-AP-EAST     3           Accounts Payable East Unit            ORG-FIN-AP        \^ORG-FIN-AP-EAST-\[A-Z\]{2,6}\$   1
-
-  ORG-FIN-AP-WEST     3           Accounts Payable West Unit            ORG-FIN-AP        \^ORG-FIN-AP-WEST-\[A-Z\]{2,6}\$   1
-
-  ORG-IT-SEC-SOC      3           Security Operations Center Unit       ORG-IT-SEC        \^ORG-IT-SEC-SOC-\[A-Z\]{2,6}\$    1
-
-  ORG-IT-SEC-IAM      3           Identity and Access Management Unit   ORG-IT-SEC        \^ORG-IT-SEC-IAM-\[A-Z\]{2,6}\$    1
-
-  ORG-IT-INF-NET      3           Networking Unit                       ORG-IT-INF        \^ORG-IT-INF-NET-\[A-Z\]{2,6}\$    1
-
-  ORG-IT-SEC-SOC-T1   4           SOC Tier 1 Analysts Team              ORG-IT-SEC-SOC    (none --- max depth)               0
-
-  ORG-IT-SEC-SOC-T2   4           SOC Tier 2 Engineers Team             ORG-IT-SEC-SOC    (none --- max depth)               0
-  ------------------------------------------------------------------------------------------------------------------------------------------
+Rules select on whichever layer answers the question: a department-wide or
+cross-cutting scope is boolean facet composition, a node-exact scope adds
+the division facet, and only a **subtree** scope uses the derived path ---
+anchored at `Region=` and delimiter-terminated, because the path is
+composed region-first.
 
 ## Boundary Rules
 
-- All OrgPath codes must match the regex \^ORG(-\[A-Z\]{2,6}){0,4}\$.
+- The codebook is the only source of valid facet values. This document
+  does not restate them, and a value is valid because the codebook says
+  so, not because prose here agrees.
 
-- Maximum hierarchy depth is 4 segments below root (Level 4).
+- Slot assignments for the named facets are canonical and MUST NOT be
+  remapped without a superseding ADR. `extensionAttribute14` remains the
+  one unclaimed extension slot.
 
-- Each segment must be between 2 and 6 uppercase ASCII letters.
+- Physical place is **not** an OrgPath facet. Site, building and floor are
+  LocPath's axis, which claims no `extensionAttribute` slot at all
+  (ADR-102 §D5); governance rules predicate on the OrgPath × LocPath
+  matrix.
 
-- OrgPath facet values are stored in their codebook slots (`extensionAttribute1-3`, 6, 9 and 10) and the derived path in extensionAttribute15, all on the Entra ID directory object and therefore within the M365 GCC-Moderate boundary.
+- OrgPath facet values are stored in their codebook slots and the derived
+  path on `extensionAttribute15`, all on the Entra ID directory object and
+  therefore within the M365 GCC-Moderate boundary.
 
-- No OrgPath may reference external systems or identifiers outside the M365 SaaS perimeter.
+- No OrgPath may reference external systems or identifiers outside the
+  M365 SaaS perimeter.
+
 
 ## Drift Considerations
 
-- **Value Drift:** A user\'s extensionAttribute1 contains a value not present in this codebook. Severity: High. Auto-remediate: No (requires investigation).
+- **Value Drift:** A facet slot holds a value that is not in that facet\'s own enumeration. Reported per facet, so a bad Division is one finding about Division. Severity: High. Auto-remediate: No (requires investigation).
 
-- **Format Drift:** A user\'s OrgPath does not match the regex pattern. Severity: Critical. Auto-remediate: No (requires manual correction).
+- **Derived-path Drift:** The stored `extensionAttribute15` does not equal the value recomputed from the hierarchy facets. Because the path is a pure function of those facets, this is mechanically detectable rather than a matter of judgement. Severity: Critical. Auto-remediate: No (recompute and restamp under change control).
 
-- **Orphan Drift:** An OrgPath code exists in the codebook but its parent path does not. Severity: Critical. Auto-remediate: No.
+- **Schema Drift:** A rule or object references a slot the codebook does not bind, or populates a slot still marked reserved. Severity: Critical. Auto-remediate: No.
 
-- **Phantom Drift:** An OrgPath exists in user attributes but has been deprecated in the codebook. Severity: Medium. Auto-remediate: Yes (flag for reassignment).
+- **Phantom Drift:** A facet value has been deprecated in the codebook but is still present on principals. The codebook names the governed successor. Severity: Medium. Auto-remediate: Yes (flag for reassignment).
 
 ## Governance Alignment
 
-This codebook implements Principle 2 (Schema Fixity): the codebook structure is fixed; only values (specific OrgPath entries) change through the OrgPath Registration workflow (Appendix E, Workflow 1). Every addition, deprecation, or modification to this codebook requires a governed PR through the contributor workflow (Appendix V), passing all validation gates (Appendix J, Schema Tests), and receiving approval from the Governance Board.
+This appendix implements Principle 2 (Schema Fixity): the facet-to-slot bindings are fixed and move only by superseding ADR; facet *values* change through the OrgPath Registration workflow (Appendix E, Workflow 1), applied to `codebook.yaml` by governed PR rather than to this page. Every addition, deprecation, or modification to this codebook requires a governed PR through the contributor workflow (Appendix V), passing all validation gates (Appendix J, Schema Tests), and receiving approval from the Governance Board.
 
 # Appendix B --- Dynamic Group Library
 
@@ -519,9 +505,9 @@ Each mapping defines a one-to-one correspondence between a legacy AD attribute a
   -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   **Legacy Attribute (AD)**     **Entra ID Attribute**     **Data Type**   **Max Length**   **Required**   **Validation Rule**                                                  **OrgTree Usage**
   ----------------------------- -------------------------- --------------- ---------------- -------------- -------------------------------------------------------------------- -------------------------------------------------------
-  distinguishedName (OU path)   extensionAttribute1        String          256              Y              Regex: \^ORG(-\[A-Z\]{2,6}){0,4}\$                                   Primary OrgPath --- organizational hierarchy position
+  distinguishedName (OU path)   extensionAttribute1        String          256              Y              Region facet; value must be in the Region enumeration                                     Primary OrgPath --- organizational hierarchy position
 
-  (custom: role code)           extensionAttribute2        String          64               N              Enum: ROLE-MGR, ROLE-GOVSTWD, ROLE-IC, ROLE-EXEC, ROLE-CONT          Role designation for cross-cutting group membership
+  (custom: role code)           extensionAttribute2        String          64               N              Department facet; value must be in the Department enumeration          Role designation for cross-cutting group membership
 
   (custom: lifecycle state)     extensionAttribute3        String          32               Y              Enum: ACTIVE, ONBOARDING, TRANSFERRING, OFFBOARDING, SUSPENDED       Identity lifecycle state for workflow triggers
 
@@ -861,7 +847,7 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 5. Generate a mapping report with coverage statistics.
 
-\# Create mapping hashtable \$OUtoOrgPath = \@{ \"OU=Finance,OU=Departments,DC=org,DC=local\" = \"ORG-FIN\" \"OU=AP,OU=Finance,OU=Departments,DC=org,DC=local\" = \"ORG-FIN-AP\" \"OU=HR,OU=Departments,DC=org,DC=local\" = \"ORG-HR\" \"OU=IT,OU=Departments,DC=org,DC=local\" = \"ORG-IT\" \"OU=Security,OU=IT,OU=Departments,DC=org,DC=local\" = \"ORG-IT-SEC\" } \# Validate all users have a mapping \$UnmappedUsers = \$LegacyUsers \| Where-Object { -not \$OUtoOrgPath.ContainsKey(\$\_.DistinguishedName -replace \"CN=.\*?,\",\"\") } Write-Verbose \"Unmapped users: \$(\$UnmappedUsers.Count)\" \# Validate OrgPath codes against regex \$OrgPathRegex = \"\^ORG(-\[A-Z\]{2,6}){0,4}\$\" \$InvalidMappings = \$OUtoOrgPath.Values \| Where-Object { \$\_ -notmatch \$OrgPathRegex } Write-Verbose \"Invalid OrgPath mappings: \$(\$InvalidMappings.Count)\" \# Export mapping \$OUtoOrgPath.GetEnumerator() \| Select-Object \@{N=\"LegacyOU\";E={\$\_.Key}}, \@{N=\"OrgPath\";E={\$\_.Value}} \| Export-Csv -Path \"\$OutputPath\\ou-orgpath-mapping.csv\" -NoTypeInformation
+\# Create mapping hashtable \$OUtoOrgPath = \@{ \"OU=Finance,OU=Departments,DC=org,DC=local\" = \@{ Department = \"Finance\" } \"OU=AP,OU=Finance,OU=Departments,DC=org,DC=local\" = \@{ Department = \"Finance\"; Division = \"GRC\" } \"OU=HR,OU=Departments,DC=org,DC=local\" = \@{ Department = \"HR\" } \"OU=IT,OU=Departments,DC=org,DC=local\" = \@{ Department = \"IT\" } \"OU=Security,OU=IT,OU=Departments,DC=org,DC=local\" = \@{ Department = \"IT\"; Division = \"CyberOps\" } } \# Validate all users have a mapping \$UnmappedUsers = \$LegacyUsers \| Where-Object { -not \$OUtoOrgPath.ContainsKey(\$\_.DistinguishedName -replace \"CN=.\*?,\",\"\") } Write-Verbose \"Unmapped users: \$(\$UnmappedUsers.Count)\" \# Validate every mapped facet value against its own codebook enumeration - there is no composite string to regex \$InvalidMappings = \$OUtoOrgPath.Values \| Where-Object { \$\_ -notmatch \$OrgPathRegex } Write-Verbose \"Invalid OrgPath mappings: \$(\$InvalidMappings.Count)\" \# Export mapping \$OUtoOrgPath.GetEnumerator() \| Select-Object \@{N=\"LegacyOU\";E={\$\_.Key}}, \@{N=\"OrgPath\";E={\$\_.Value}} \| Export-Csv -Path \"\$OutputPath\\ou-orgpath-mapping.csv\" -NoTypeInformation
 
 **Validation Criteria:** 100% of active users have a valid OrgPath mapping; zero invalid OrgPath codes; unmappable OUs documented with resolution plan.
 
@@ -887,7 +873,7 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 \# Provision OrgPath for each user foreach (\$Mapping in \$UserOrgPathMappings) { try { \$UserParams = \@{ UserId = \$Mapping.EntraUserId OnPremisesExtensionAttributes = \@{ extensionAttribute1 = \$Mapping.Region extensionAttribute2 = \$Mapping.Department extensionAttribute3 = \$Mapping.Division extensionAttribute15 = New-OrgPath -Region \$Mapping.Region -Department \$Mapping.Department -Division \$Mapping.Division } } Update-MgUser \@UserParams Write-Verbose \"Updated user \$(\$Mapping.EntraUserId) with OrgPath \$(\$Mapping.OrgPath)\" } catch { Write-Error \"Failed to update user \$(\$Mapping.EntraUserId): \$\_\" } } \# Verify provisioning \$ProvisionedUsers = Get-MgUser -All -Property \"Id,OnPremisesExtensionAttributes\" \| Where-Object { \$\_.OnPremisesExtensionAttributes.ExtensionAttribute15 -ne \$null } Write-Verbose \"Provisioned users: \$(\$ProvisionedUsers.Count)\" \# Identify failures \$UnprovisionedUsers = Get-MgUser -All -Property \"Id,OnPremisesExtensionAttributes\" \| Where-Object { \[string\]::IsNullOrEmpty(\$\_.OnPremisesExtensionAttributes.ExtensionAttribute15) } Write-Verbose \"Unprovisioned users: \$(\$UnprovisionedUsers.Count)\" \# Update migration status for successful provisions foreach (\$User in \$ProvisionedUsers) { Write-MigrationLog -UserId \$User.Id -Status \"COMPLETED\" \# status belongs in the migration log, not in the Role facet slot }
 
-**Validation Criteria:** All users have non-null extensionAttribute1 matching regex; zero provisioning errors; extensionAttribute4 = COMPLETED for all provisioned users.
+**Validation Criteria:** every user carries its projected facet values, each valid in its own codebook enumeration; extensionAttribute15 equals the recomputation from those facets; zero provisioning errors; the migration log records COMPLETED for all provisioned users.
 
 **Rollback Procedure:** Set extensionAttribute1 through extensionAttribute4 to null for all affected users.
 
@@ -975,7 +961,7 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 2. Activate SLA tracking for all governance operations.
 
-3. Set extensionAttribute4 = VALIDATED for all users.
+3. Record VALIDATED in the migration log for all users. Status is not written to a facet slot: extensionAttribute4 is the Role facet.
 
 4. Notify all division administrators of go-live.
 
@@ -983,7 +969,7 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 \# Mark all users as validated \$AllUsers = Get-MgUser -All -Property \"Id\" -Filter \"userType eq \'Member\'\" foreach (\$User in \$AllUsers) { try { Test-OrgPathDrift -Stored \$ea.ExtensionAttribute15 -Region \$ea.ExtensionAttribute1 -Department \$ea.ExtensionAttribute2 -Division \$ea.ExtensionAttribute3 } catch { Write-Error \"Failed to update migration status for \$(\$User.Id): \$\_\" } } \# Create post-cutover snapshot Export-OrgTreeSnapshot -TenantId \$TenantId -OutputPath \"\$OutputPath\\cutover-snapshot.json\" \# Compare against baseline \$DriftReport = Compare-OrgTreeSnapshots -BaselinePath \"\$OutputPath\\baseline-snapshot.json\" \` -CurrentPath \"\$OutputPath\\cutover-snapshot.json\" Write-Verbose \"Drift entries since baseline: \$(\$DriftReport.Count)\"
 
-**Validation Criteria:** Drift detection engine is active; telemetry is flowing; all users have extensionAttribute4 = VALIDATED.
+**Validation Criteria:** Drift detection engine is active; telemetry is flowing; every user's stored derived path equals its recomputation, and the migration log records VALIDATED for all users.
 
 **Rollback Procedure:** Disable drift detection; revert extensionAttribute4 to COMPLETED; return to Phase 6.
 
@@ -1047,7 +1033,7 @@ Each diagram uses ASCII box-drawing characters (+, -, \|) and arrow characters (
 
 ### Diagram 1: OrgTree Hierarchy
 
-+\-\-\-\-\-\--+ \| ORG \| +\-\--+\-\--+ +\-\-\-\-\-\-\-\-\-\--+\-\-\-\-\-\-\-\--+\-\-\-\-\-\-\-\--+\-\-\-\-\-\-\-\-\-\--+ \| \| \| \| \| +\-\--+\-\--+ +\-\-\--+\--+ +\--+\-\--+ +\--+\-\--+ +\-\--+\-\--+ \|ORG-FIN\| \|ORG-HR \| \|ORG-IT\| \|ORG-OPS\| \|ORG-LEG\| +\-\--+\-\--+ +\-\--+\-\--+ +\--+\-\--+ +\-\--+\-\--+ +\-\--+\-\--+ \| \| \| \| \| +\-\-\-\-\--+\-\--+ +\--+\--+ +-+\-\-\-\-\--+ +-+\--+ +\--+\-\--+ \| \| \| \| \| \| \| \| \| \| \| \| AP AR BUD REC BEN SEC INF DEV LOG FAC COM LIT \| \| +\--+\--+ +\-\-\--+\-\-\--+ \| \| \| \| EAST WEST SOC IAM \| +\-\--+\-\--+ \| \| T1 T2
+GOVERNANCE LAYER (one validated facet per slot) +\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-+ \| ea1 Region \| ea2 Department \| ea3 Division \| \| ea6 Classification \| ea9 Clearance \| ea10 AccountType \| \| ea11 AdminTier \| ea12 DeviceType \| ea13 Environment \| +\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-+ \| \| each value validated against its own enumeration \| v INHERITANCE LAYER (derived, never hand-authored) +\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-+ \| ea15  Region=NCR\|Department=IT\|Division=CyberOps\| \| +\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-+ recomputed from ea1/ea2/ea3 on every stamp; divergence is drift. Node-exact and cross-cutting scopes read the governance layer; only a subtree scope reads ea15, anchored at Region= and delimiter-terminated.
 
 ### Diagram 2: Governance Layer Stack
 
@@ -1095,33 +1081,30 @@ These diagrams implement the Governance OS commitment to transparency and determ
 
 ## Purpose
 
-This appendix defines the canonical JSON Schema 2020-12 documents for all OrgTree data objects. These schemas are the machine-readable contract for data validation across the Governance OS.
+This appendix used to inline a JSON Schema for a single OrgPath code
+entry. It no longer does. That schema described the retired Model A
+shape --- one composite code with a parent path and a child regex --- and
+a schema transcribed into a narrative document is a second contract that
+cannot be validated against the first.
 
 ## Scope
 
-Covers JSON Schema definitions for OrgPathEntry, OrgPathCodebook, DynamicGroupDefinition, and AttributeMapping objects. All schemas are tenant-agnostic and validate structure only (not tenant-specific values).
+Where the real schemas live, and what each one governs.
 
 ## Canonical Structure
 
-Each schema follows JSON Schema 2020-12 specification with \$schema, \$id, title, description, type, properties, required, and additionalProperties: false.
+| Contract | Schema | Governs |
+| :--- | :--- | :--- |
+| The codebook itself | [`schemas/orgpath/codebook.schema.json`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/schemas/orgpath/codebook.schema.json) | Facet declarations: the slot each facet binds to, its kind (`enumerated` / `typed` / `reserved`), its enumeration or value pattern, whether it is projected, and whether an empty slot is legitimate |
+| Binding profiles | [`schemas/orgpath/binding-profile.schema.json`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/schemas/orgpath/binding-profile.schema.json) | How facets are carried on non-Entra targets (ADR-098) |
+| Readiness evidence | [`schemas/orgtree-readiness/`](https://github.com/WhalerMike/uiao/tree/main/src/uiao/schemas/orgtree-readiness) | The auditor-facing readiness bundle |
 
-## Technical Scaffolding
+Every schema under `src/uiao/schemas/` is enforced in CI by the
+schema-validation workflow, so a change to a contract fails the build
+rather than diverging quietly from prose. There is no per-code entry
+schema, because there are no codes --- there are facets, and the codebook
+schema governs them.
 
-### OrgPathEntry Schema
-
-{ \"\$schema\": \"https://json-schema.org/draft/2020-12/schema\", \"\$id\": \"https://uiao.gov/schemas/orgpath-entry.schema.json\", \"title\": \"OrgPathEntry\", \"description\": \"Schema for a single OrgPath code entry in the canonical codebook.\", \"type\": \"object\", \"properties\": { \"code\": { \"type\": \"string\", \"pattern\": \"\^ORG(-\[A-Z\]{2,6}){0,4}\$\", \"description\": \"The OrgPath code string.\" }, \"level\": { \"type\": \"integer\", \"minimum\": 0, \"maximum\": 4, \"description\": \"Hierarchy level: 0=Root, 1=Division, 2=Department, 3=Unit, 4=Team.\" }, \"description\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 256, \"description\": \"Human-readable description of this OrgPath node.\" }, \"parentPath\": { \"type\": \[\"string\", \"null\"\], \"pattern\": \"\^ORG(-\[A-Z\]{2,6}){0,3}\$\", \"description\": \"The OrgPath code of the parent node. Null for root.\" }, \"allowedChildrenPattern\": { \"type\": \"string\", \"description\": \"Regex pattern for valid child OrgPath codes.\" }, \"maxDepth\": { \"type\": \"integer\", \"minimum\": 0, \"maximum\": 4, \"description\": \"Maximum additional depth allowed below this node.\" }, \"status\": { \"type\": \"string\", \"enum\": \[\"active\", \"deprecated\", \"pending\"\], \"description\": \"Current lifecycle status of this OrgPath code.\" }, \"createdDate\": { \"type\": \"string\", \"format\": \"date-time\", \"description\": \"ISO 8601 datetime when this code was created.\" }, \"modifiedDate\": { \"type\": \"string\", \"format\": \"date-time\", \"description\": \"ISO 8601 datetime when this code was last modified.\" }, \"owner\": { \"type\": \"string\", \"minLength\": 1, \"description\": \"Role or group responsible for this OrgPath node.\" } }, \"required\": \[\"code\", \"level\", \"description\", \"parentPath\", \"allowedChildrenPattern\", \"maxDepth\", \"status\", \"createdDate\", \"modifiedDate\", \"owner\"\], \"additionalProperties\": false }
-
-### OrgPathCodebook Schema
-
-{ \"\$schema\": \"https://json-schema.org/draft/2020-12/schema\", \"\$id\": \"https://uiao.gov/schemas/orgpath-codebook.schema.json\", \"title\": \"OrgPathCodebook\", \"description\": \"Schema for the complete OrgPath codebook containing all valid OrgPath entries.\", \"type\": \"object\", \"properties\": { \"schemaVersion\": { \"type\": \"string\", \"const\": \"2020-12\", \"description\": \"JSON Schema version used for this codebook.\" }, \"codebookVersion\": { \"type\": \"string\", \"pattern\": \"\^\\\\d+\\\\.\\\\d+\\\\.\\\\d+\$\", \"description\": \"Semantic version of the codebook content.\" }, \"generatedDate\": { \"type\": \"string\", \"format\": \"date-time\", \"description\": \"ISO 8601 datetime when this codebook was generated.\" }, \"entries\": { \"type\": \"array\", \"items\": { \"\$ref\": \"orgpath-entry.schema.json\" }, \"minItems\": 1, \"description\": \"Array of OrgPath entries. Codes must be unique.\" } }, \"required\": \[\"schemaVersion\", \"codebookVersion\", \"generatedDate\", \"entries\"\], \"additionalProperties\": false }
-
-### DynamicGroupDefinition Schema
-
-{ \"\$schema\": \"https://json-schema.org/draft/2020-12/schema\", \"\$id\": \"https://uiao.gov/schemas/dynamic-group.schema.json\", \"title\": \"DynamicGroupDefinition\", \"description\": \"Schema for a dynamic group definition in the OrgTree group library.\", \"type\": \"object\", \"properties\": { \"groupName\": { \"type\": \"string\", \"pattern\": \"\^OrgTree-\[A-Za-z0-9-\]+\$\", \"description\": \"Display name following OrgTree naming convention.\" }, \"groupType\": { \"type\": \"string\", \"enum\": \[\"Security\", \"M365\"\], \"description\": \"Group type: Security or Microsoft 365.\" }, \"membershipRule\": { \"type\": \"string\", \"minLength\": 1, \"description\": \"Entra ID dynamic membership rule syntax.\" }, \"orgPathScope\": { \"type\": \"string\", \"description\": \"The OrgPath prefix this group covers.\" }, \"purpose\": { \"type\": \"string\", \"minLength\": 1, \"description\": \"Business purpose for this group.\" } }, \"required\": \[\"groupName\", \"groupType\", \"membershipRule\", \"orgPathScope\", \"purpose\"\], \"additionalProperties\": false }
-
-### AttributeMapping Schema
-
-{ \"\$schema\": \"https://json-schema.org/draft/2020-12/schema\", \"\$id\": \"https://uiao.gov/schemas/attribute-mapping.schema.json\", \"title\": \"AttributeMapping\", \"description\": \"Schema for a legacy-to-Entra attribute mapping entry.\", \"type\": \"object\", \"properties\": { \"legacyAttribute\": { \"type\": \"string\", \"description\": \"Active Directory attribute name.\" }, \"entraAttribute\": { \"type\": \"string\", \"description\": \"Entra ID / Microsoft Graph attribute name.\" }, \"dataType\": { \"type\": \"string\", \"enum\": \[\"String\", \"Integer\", \"Boolean\", \"Reference\", \"Array\", \"DateTime\"\], \"description\": \"Data type of the attribute value.\" }, \"maxLength\": { \"type\": \[\"integer\", \"null\"\], \"minimum\": 1, \"description\": \"Maximum character length. Null for non-string types.\" }, \"required\": { \"type\": \"boolean\", \"description\": \"Whether this attribute is required for every user.\" }, \"validationRule\": { \"type\": \"string\", \"description\": \"Validation rule description or regex.\" }, \"orgTreeUsage\": { \"type\": \"string\", \"description\": \"How this attribute is used in the OrgTree model.\" } }, \"required\": \[\"legacyAttribute\", \"entraAttribute\", \"dataType\", \"required\", \"validationRule\", \"orgTreeUsage\"\], \"additionalProperties\": false }
 
 ## Boundary Rules
 
@@ -1143,41 +1126,38 @@ These schemas are the machine-readable expression of Principle 2 (Schema Fixity)
 
 ## Purpose
 
-This appendix provides a complete PowerShell module for validating OrgTree configuration against the canonical schemas and codebook. The module is the primary validation tool used in migration (Appendix F), enforcement testing (Appendix J), and drift detection (Appendix M).
+This appendix used to inline `Test-OrgPathFormat` and
+`Test-OrgPathHierarchy` --- functions that validated a composite path
+against a regex and checked that its parent existed in the codebook.
+Neither operation exists under the current model: there is no composite
+string to regex, and facets have no parent-child relationship to walk.
+
+Shipped, tested code replaces them. Copying a validator into prose gives
+readers a second implementation that no test covers.
 
 ## Scope
 
-Covers six validation functions that operate against any M365 GCC-Moderate tenant via Microsoft Graph API. All functions are tenant-agnostic, using parameterized \$TenantId variables.
+The operator surface, and where it is maintained.
 
 ## Canonical Structure
 
-Each function includes comment-based help, parameter validation attributes, try/catch error handling, and Write-Verbose logging. All Graph API calls use the Microsoft Graph PowerShell SDK (Connect-MgGraph).
+The `UIAO.OrgPath` PowerShell module
+([`tools/powershell/UIAO.OrgPath/`](https://github.com/WhalerMike/uiao/tree/main/tools/powershell/UIAO.OrgPath))
+ships four functions, covered by Pester tests in CI:
 
-## Technical Scaffolding
+| Function | Does |
+| :--- | :--- |
+| `New-OrgPath` | Composes the derived canonical OrgPath from the hierarchy facets. Output always ends in the delimiter |
+| `Get-OrgPathPrefix` | Normalizes a subtree prefix for `-startsWith` / `like` use; idempotent, and appends the terminator when missing |
+| `Test-OrgPathDrift` | Compares a stored derived path against the value recomputed from the facets |
+| `Update-OrgAttributes` | Stamps the governance facets and the derived path in one Graph update --- `Update-MgUser` with `onPremisesExtensionAttributes` for users, `Update-MgDevice` with `extensionAttributes` for devices, because the property differs by object type |
 
-### Function 1: Test-OrgPathFormat
+Per-facet *value* validation is not this module's job: it is the drift
+engine's, reading the codebook directly
+([`uiao.modernization.orgtree.codebook`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/modernization/orgtree/codebook.py)).
+Validating a value against anything other than the codebook is how prose
+and canon drift apart.
 
-function Test-OrgPathFormat { \<# .SYNOPSIS Validates an OrgPath string against the canonical regex pattern. .DESCRIPTION Returns \$true if the OrgPath matches \^ORG(-\[A-Z\]{2,6}){0,4}\$, otherwise \$false. .PARAMETER OrgPath The OrgPath string to validate. .EXAMPLE Test-OrgPathFormat -OrgPath \"ORG-FIN-AP\" #\> \[CmdletBinding()\] \[OutputType(\[bool\])\] param( \[Parameter(Mandatory = \$true)\] \[ValidateNotNullOrEmpty()\] \[string\]\$OrgPath ) try { \$Pattern = \"\^ORG(-\[A-Z\]{2,6}){0,4}\$\" \$IsValid = \$OrgPath -match \$Pattern Write-Verbose \"OrgPath \'\$OrgPath\' format valid: \$IsValid\" return \$IsValid } catch { Write-Error \"Error validating OrgPath format: \$\_\" return \$false } }
-
-### Function 2: Test-OrgPathHierarchy
-
-function Test-OrgPathHierarchy { \<# .SYNOPSIS Validates that a child OrgPath has a valid parent in the codebook. .DESCRIPTION Checks that the parent path of the given OrgPath exists in the provided codebook hashtable. Returns \$true if valid, \$false otherwise. .PARAMETER ChildPath The OrgPath to validate. .PARAMETER Codebook Hashtable of valid OrgPath codes (keys = OrgPath codes). .EXAMPLE Test-OrgPathHierarchy -ChildPath \"ORG-FIN-AP\" -Codebook \$CodebookHash #\> \[CmdletBinding()\] \[OutputType(\[bool\])\] param( \[Parameter(Mandatory = \$true)\] \[ValidateNotNullOrEmpty()\] \[string\]\$ChildPath, \[Parameter(Mandatory = \$true)\] \[hashtable\]\$Codebook ) try { if (\$ChildPath -eq \"ORG\") { Write-Verbose \"Root OrgPath \'ORG\' has no parent; hierarchy valid.\" return \$true } \$Segments = \$ChildPath -split \"-\" if (\$Segments.Count -lt 2) { Write-Verbose \"OrgPath \'\$ChildPath\' has insufficient segments.\" return \$false } \$ParentSegments = \$Segments\[0..(\$Segments.Count - 2)\] \$ParentPath = \$ParentSegments -join \"-\" \$ParentExists = \$Codebook.ContainsKey(\$ParentPath) Write-Verbose \"Parent \'\$ParentPath\' of \'\$ChildPath\' exists in codebook: \$ParentExists\" return \$ParentExists } catch { Write-Error \"Error validating OrgPath hierarchy: \$\_\" return \$false } }
-
-### Function 3: Get-OrgTreeValidationReport
-
-function Get-OrgTreeValidationReport { \<# .SYNOPSIS Runs all OrgTree validations against a tenant and produces a report. .DESCRIPTION Connects to the specified tenant, retrieves all users, validates OrgPath format and hierarchy, and returns a summary report object. .PARAMETER TenantId The target tenant identifier. .PARAMETER CodebookPath Path to the JSON codebook file. .EXAMPLE Get-OrgTreeValidationReport -TenantId \$TenantId -CodebookPath \"./codebook.json\" #\> \[CmdletBinding()\] \[OutputType(\[PSCustomObject\])\] param( \[Parameter(Mandatory = \$true)\] \[ValidateNotNullOrEmpty()\] \[string\]\$TenantId, \[Parameter(Mandatory = \$true)\] \[ValidateScript({ Test-Path \$\_ })\] \[string\]\$CodebookPath ) try { Write-Verbose \"Loading codebook from \$CodebookPath\" \$CodebookJson = Get-Content -Path \$CodebookPath -Raw \| ConvertFrom-Json \$Codebook = \@{} foreach (\$Entry in \$CodebookJson.entries) { \$Codebook\[\$Entry.code\] = \$Entry } Write-Verbose \"Connecting to tenant \$TenantId\" Connect-MgGraph -TenantId \$TenantId -Scopes \"User.Read.All\" -NoWelcome \$AllUsers = Get-MgUser -All -Property \"Id,DisplayName,OnPremisesExtensionAttributes\" \$TotalUsers = \$AllUsers.Count \$ValidCount = 0 \$InvalidCount = 0 \$OrphanedCount = 0 \$DriftDetected = \$false foreach (\$User in \$AllUsers) { \$OrgPath = \$User.OnPremisesExtensionAttributes.ExtensionAttribute15 if (\[string\]::IsNullOrEmpty(\$OrgPath)) { \$OrphanedCount++ \$DriftDetected = \$true continue } \$FormatValid = Test-OrgPathFormat -OrgPath \$OrgPath \$HierarchyValid = Test-OrgPathHierarchy -ChildPath \$OrgPath -Codebook \$Codebook if (\$FormatValid -and \$HierarchyValid -and \$Codebook.ContainsKey(\$OrgPath)) { \$ValidCount++ } else { \$InvalidCount++ \$DriftDetected = \$true } } \$Report = \[PSCustomObject\]@{ TotalUsers = \$TotalUsers ValidOrgPaths = \$ValidCount InvalidOrgPaths = \$InvalidCount OrphanedUsers = \$OrphanedCount DriftDetected = \$DriftDetected } Write-Verbose \"Validation complete. Valid: \$ValidCount, Invalid: \$InvalidCount, Orphaned: \$OrphanedCount\" return \$Report } catch { Write-Error \"Error generating validation report: \$\_\" return \$null } }
-
-### Function 4: Test-DynamicGroupAlignment
-
-function Test-DynamicGroupAlignment { \<# .SYNOPSIS Validates that dynamic groups in the tenant match the canonical library. .PARAMETER TenantId The target tenant identifier. .PARAMETER GroupLibraryPath Path to the JSON group library file. #\> \[CmdletBinding()\] \[OutputType(\[PSCustomObject\])\] param( \[Parameter(Mandatory = \$true)\] \[ValidateNotNullOrEmpty()\] \[string\]\$TenantId, \[Parameter(Mandatory = \$true)\] \[ValidateScript({ Test-Path \$\_ })\] \[string\]\$GroupLibraryPath ) try { \$Library = Get-Content -Path \$GroupLibraryPath -Raw \| ConvertFrom-Json Connect-MgGraph -TenantId \$TenantId -Scopes \"Group.Read.All\" -NoWelcome \$AlignedGroups = 0 \$MisalignedGroups = 0 \$MissingGroups = 0 \$Details = @() foreach (\$Definition in \$Library) { \$TenantGroup = Get-MgGroup -Filter \"displayName eq \'\$(\$Definition.groupName)\'\" -ErrorAction SilentlyContinue if (-not \$TenantGroup) { \$MissingGroups++ \$Details += \[PSCustomObject\]@{ GroupName = \$Definition.groupName; Status = \"Missing\" } continue } if (\$TenantGroup.MembershipRule -eq \$Definition.membershipRule) { \$AlignedGroups++ \$Details += \[PSCustomObject\]@{ GroupName = \$Definition.groupName; Status = \"Aligned\" } } else { \$MisalignedGroups++ \$Details += \[PSCustomObject\]@{ GroupName = \$Definition.groupName; Status = \"Misaligned\" } } } return \[PSCustomObject\]@{ AlignedGroups = \$AlignedGroups MisalignedGroups = \$MisalignedGroups MissingGroups = \$MissingGroups Details = \$Details } } catch { Write-Error \"Error testing dynamic group alignment: \$\_\" return \$null } }
-
-### Function 5: Export-OrgTreeSnapshot
-
-function Export-OrgTreeSnapshot { \<# .SYNOPSIS Exports the current OrgTree state as a JSON snapshot. .PARAMETER TenantId The target tenant identifier. .PARAMETER OutputPath File path for the JSON output. #\> \[CmdletBinding()\] param( \[Parameter(Mandatory = \$true)\] \[string\]\$TenantId, \[Parameter(Mandatory = \$true)\] \[string\]\$OutputPath ) try { Connect-MgGraph -TenantId \$TenantId -Scopes \"User.Read.All\",\"Group.Read.All\" -NoWelcome \$Users = Get-MgUser -All -Property \"Id,DisplayName,UserPrincipalName,Department,OnPremisesExtensionAttributes\" \$Groups = Get-MgGroup -All -Property \"Id,DisplayName,MembershipRule,GroupTypes\" \| Where-Object { \$\_.DisplayName -like \"OrgTree-\*\" } \$Snapshot = \[PSCustomObject\]@{ snapshotDate = (Get-Date -Format \"o\") tenantId = \$TenantId userCount = \$Users.Count groupCount = \$Groups.Count users = \$Users \| ForEach-Object { \[PSCustomObject\]@{ id = \$\_.Id upn = \$\_.UserPrincipalName orgPath = \$\_.OnPremisesExtensionAttributes.ExtensionAttribute15 department = \$\_.Department } } groups = \$Groups \| ForEach-Object { \[PSCustomObject\]@{ id = \$\_.Id displayName = \$\_.DisplayName membershipRule = \$\_.MembershipRule } } } \$Snapshot \| ConvertTo-Json -Depth 5 \| Set-Content -Path \$OutputPath -Encoding UTF8 Write-Verbose \"Snapshot exported to \$OutputPath\" } catch { Write-Error \"Error exporting OrgTree snapshot: \$\_\" } }
-
-### Function 6: Compare-OrgTreeSnapshots
-
-function Compare-OrgTreeSnapshots { \<# .SYNOPSIS Compares two OrgTree snapshots and identifies drift entries. .PARAMETER BaselinePath Path to the baseline snapshot JSON. .PARAMETER CurrentPath Path to the current snapshot JSON. #\> \[CmdletBinding()\] \[OutputType(\[PSCustomObject\[\]\])\] param( \[Parameter(Mandatory = \$true)\] \[ValidateScript({ Test-Path \$\_ })\] \[string\]\$BaselinePath, \[Parameter(Mandatory = \$true)\] \[ValidateScript({ Test-Path \$\_ })\] \[string\]\$CurrentPath ) try { \$Baseline = Get-Content -Path \$BaselinePath -Raw \| ConvertFrom-Json \$Current = Get-Content -Path \$CurrentPath -Raw \| ConvertFrom-Json \$DriftEntries = @() \$BaselineUserMap = \@{} foreach (\$User in \$Baseline.users) { \$BaselineUserMap\[\$User.id\] = \$User } foreach (\$CurrentUser in \$Current.users) { if (-not \$BaselineUserMap.ContainsKey(\$CurrentUser.id)) { \$DriftEntries += \[PSCustomObject\]@{ ObjectId = \$CurrentUser.id ObjectType = \"User\" DriftType = \"NewObject\" Field = \"N/A\" BaselineValue = \$null CurrentValue = \$CurrentUser.orgPath } continue } \$BaselineUser = \$BaselineUserMap\[\$CurrentUser.id\] if (\$BaselineUser.orgPath -ne \$CurrentUser.orgPath) { \$DriftEntries += \[PSCustomObject\]@{ ObjectId = \$CurrentUser.id ObjectType = \"User\" DriftType = \"ValueDrift\" Field = \"orgPath\" BaselineValue = \$BaselineUser.orgPath CurrentValue = \$CurrentUser.orgPath } } } Write-Verbose \"Drift entries found: \$(\$DriftEntries.Count)\" return \$DriftEntries } catch { Write-Error \"Error comparing snapshots: \$\_\" return @() } }
 
 ## Boundary Rules
 
@@ -1214,7 +1194,7 @@ Each test has a unique ID, name, category, defined input, expected output, pass 
   -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   **Test ID**   **Test Name**                              **Category**   **Input**                                 **Expected Output**             **Pass Criteria**                    **Severity**
   ------------- ------------------------------------------ -------------- ----------------------------------------- ------------------------------- ------------------------------------ --------------
-  GOV-TST-001   Valid OrgPath format accepted              Schema         ORG-FIN-AP                                true                            Format matches regex                 Critical
+  GOV-TST-001   Valid OrgPath format accepted              Schema         Division=\"GRC\"                            true                            Format matches regex                 Critical
 
   GOV-TST-002   Invalid lowercase OrgPath rejected         Schema         org-fin-ap                                false                           Format fails regex                   Critical
 
@@ -1222,25 +1202,25 @@ Each test has a unique ID, name, category, defined input, expected output, pass 
 
   GOV-TST-004   Empty OrgPath rejected                     Schema         \"\"                                      false                           Empty string fails                   Critical
 
-  GOV-TST-005   OrgPath with special characters rejected   Schema         ORG-FIN_AP                                false                           Underscore not allowed               High
+  GOV-TST-005   OrgPath with special characters rejected   Schema         Division=\"NotADivision\"                   false                           Underscore not allowed               High
 
   GOV-TST-006   Root OrgPath accepted                      Schema         ORG                                       true                            Root node valid                      Critical
 
   GOV-TST-007   Single-char segment rejected               Schema         ORG-F                                     false                           Min 2 chars per segment              High
 
-  GOV-TST-008   Seven-char segment rejected                Schema         ORG-FINANCE                               false                           Max 6 chars per segment              High
+  GOV-TST-008   Seven-char segment rejected                Schema         Region=\"Atlantis\"                         false                           Max 6 chars per segment              High
 
   GOV-TST-009   Required attribute present                 Schema         User with all required attrs              true                            All required fields non-null         Critical
 
   GOV-TST-010   Invalid lifecycle state rejected           Schema         extensionAttribute3=\"INVALID\"           false                           Value not in enum                    High
 
-  GOV-TST-011   Valid parent-child relationship            Hierarchy      Child: ORG-FIN-AP, Parent: ORG-FIN        true                            Parent exists in codebook            Critical
+  GOV-TST-011   Valid parent-child relationship            Derived        Facets NCR/IT/CyberOps -> slot 15 matches   true                            Parent exists in codebook            Critical
 
-  GOV-TST-012   Orphan child detected                      Hierarchy      Child: ORG-XYZ-ABC, no parent ORG-XYZ     false                           Missing parent flagged               Critical
+  GOV-TST-012   Orphan child detected                      Derived        Stored slot 15 differs from recomputation  false                           Missing parent flagged               Critical
 
   GOV-TST-013   Root has no parent requirement             Hierarchy      ORG with parentPath=null                  true                            Root exempt from parent check        High
 
-  GOV-TST-014   Depth matches level calculation            Hierarchy      ORG-IT-SEC-SOC                            level=3                         Segments minus 1 equals level        Medium
+  GOV-TST-014   Depth matches level calculation            Derived        Region only -> truncates to one segment    len=1                           Segments minus 1 equals level        Medium
 
   GOV-TST-015   Circular reference prevention              Hierarchy      Parent of A is B; parent of B is A        false                           Cycle detected and rejected          Critical
 
@@ -1262,11 +1242,11 @@ Each test has a unique ID, name, category, defined input, expected output, pass 
 
   GOV-TST-024   M365 group has correct type                Group          OrgTree-M365-FIN-Collab                   GroupTypes includes Unified     Correct group type set               High
 
-  GOV-TST-025   Cross-cutting group membership valid       Group          OrgTree-ROLE-Managers                     All members have ROLE-MGR       extensionAttribute2 = ROLE-MGR       Medium
+  GOV-TST-025   Cross-cutting group membership valid       Group          OrgTree-ROLE-Managers                     All members are Privileged      extensionAttribute10 = Privileged       Medium
 
   GOV-TST-026   Deprecated OrgPath group empty             Group          Group for deprecated path                 Count = 0                       No active users on deprecated path   Low
 
-  GOV-TST-027   AU scope matches OrgPath                   Delegation     AU-FIN membership rule                    Covers ORG-FIN subtree          Rule matches canonical definition    Critical
+  GOV-TST-027   AU scope matches OrgPath                   Delegation     AU-FIN membership rule                    Covers the NCR/IT subtree       Rule matches canonical definition    Critical
 
   GOV-TST-028   Role assignment has valid AU scope         Delegation     User Admin role on AU-FIN                 Assignment exists               Role + AU + principal match matrix   Critical
 
@@ -1329,7 +1309,7 @@ Each decision tree has labeled decision nodes (questions), branch conditions (ye
 
 ### Decision Tree 1: OrgPath Validation
 
-\[INPUT: OrgPath string\] \| v \[Q1\] Does format match \^ORG(-\[A-Z\]{2,6}){0,4}\$ ? \| \| YES NO \--\> REJECT: GOV-SCH-001 (Invalid format) \| v \[Q2\] Does parent path exist in codebook? \| \| YES NO \--\> REJECT: GOV-HIR-001 (Orphan path) \| v \[Q3\] Is hierarchy depth within maxDepth of parent? \| \| YES NO \--\> REJECT: GOV-HIR-002 (Depth exceeded) \| v \[Q4\] Is OrgPath status = \"active\" in codebook? \| \| YES NO \--\> REJECT: GOV-SCH-002 (Deprecated/pending) \| v ACCEPT: OrgPath is valid.
+\[INPUT: facet name + value\] \| v \[Q1\] Does the codebook bind that facet to a slot? \| \| YES NO \--\> REJECT: GOV-SCH-001 (Unbound or reserved slot) \| v \[Q2\] Is the value in that facet\'s own enumeration (or empty on an optional facet)? \| \| YES NO \--\> REJECT: GOV-VAL-001 (Orphan path) \| v \[Q3\] Is hierarchy depth within maxDepth of parent? \| \| YES NO \--\> REJECT: GOV-HIR-002 (Depth exceeded) \| v \[Q4\] Is OrgPath status = \"active\" in codebook? \| \| YES NO \--\> REJECT: GOV-SCH-002 (Deprecated/pending) \| v ACCEPT: OrgPath is valid.
 
 ### Decision Tree 2: Drift Classification
 
@@ -2658,7 +2638,7 @@ Identity data is normalized to Third Normal Form (3NF) with explicitly documente
 
   NRM-003       Manager reference must point to a valid, active user object in Entra ID                                                              1NF               High
 
-  NRM-004       Department value must match the OrgPath Level 1 mapping (e.g., ORG-FIN maps to \"Finance\")                                          2NF               High
+  NRM-004       The Department property must equal the Department facet on the same object (no second copy of the value)                                             2NF               High
 
   NRM-005       Dynamic group memberships must be derivable from OrgPath; no manual group assignments for OrgTree groups                             2NF               High
 
