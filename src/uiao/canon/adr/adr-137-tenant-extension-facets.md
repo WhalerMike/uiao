@@ -6,7 +6,7 @@ decided: 2026-08-21
 deciders: Michael Stratton
 updated: 2026-08-21
 next_review: 2027-02-21
-review_trigger: A tenant needs a fourth extension facet and slot 14 is the last one free; a rule library stops targeting one of these three (it should then be demoted to projected:false rather than deleted); directory schema extensions escape the 15-slot cap; admin tiering is superseded by a Microsoft-native construct that carries the tier itself
+review_trigger: A tenant needs a fourth extension facet and slot 14 is the last one free (note that site is not a candidate — see the Site is not the fourth facet section); a rule library stops targeting one of these three (it should then be demoted to projected:false rather than deleted); directory schema extensions escape the 15-slot cap; admin tiering is superseded by a Microsoft-native construct that carries the tier itself
 supersedes: null
 superseded_by: null
 amends:
@@ -161,3 +161,30 @@ concepts — an admin tier is not a job title.
 the CA and Intune libraries describe controls the programme intends to ship.
 Rewriting them to target facets that exist today would silently drop admin
 tiering, kiosk handling and environment scoping from the control set.
+
+## Site is not the fourth facet
+
+The same sweep found two rules scoped by **site** — a place name (`HQ`,
+`HeraldHarbor`) sitting in the `department` facet. That is the identical
+defect class, and the obvious symmetry would be to spend `extensionAttribute14`
+on a `site` facet.
+
+**Do not.** Physical place is already a governed, first-class axis:
+[ADR-102](adr-102-locpath-location-addressing.md) establishes **LocPath**
+(`/Country/Region/Site/Building/Floor/Space`, Site as the minimum governance
+unit), specified by [UIAO_194](../UIAO_194_LocPath_Codebook.md). ADR-102 §D5 is
+explicit that LocPath *"is not a sixteenth OrgPath facet and claims no
+`extensionAttribute` slot"* — governance rules predicate on the **OrgPath ×
+LocPath matrix**, prefix-matching on each axis independently.
+
+So a site-scoped policy targets the LocPath exposure's site group or
+Administrative Unit (`LocPath-Site-<SITE>-Users`, `AU-Site-<SITE>`), whose
+membership is **assigned** from the governed Primary-LocPath assignments rather
+than read from a stamped attribute. A deployment that later adopts LocPath
+storage-on-target gets a locator through an
+[ADR-098](adr-098-orgpath-vendor-neutral-binding-profiles.md) binding profile —
+a per-target parameter, never a claimed slot.
+
+This ADR therefore leaves `extensionAttribute14` unclaimed *and* records why the
+most likely candidate for it is not a candidate at all. The site-scoped rules
+found by the sweep were repointed to LocPath site groups, not to a new facet.
