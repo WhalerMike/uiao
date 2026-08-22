@@ -247,7 +247,7 @@ Describe 'Test-OrgPathFacets — per-principal 10-facet validation (offline via 
         $cb = New-FixtureCodebook
         $snapshot = @{
             extensionAttribute1  = 'NCR'
-            extensionAttribute2  = 'BogusDept'
+            extensionAttribute2  = 'BogusDept'  # orgpath-codebook-allow: negative fixture
             extensionAttribute3  = 'CyberOps'
             extensionAttribute4  = 'Engineer'
             extensionAttribute5  = 'CC-BAL'
@@ -277,7 +277,7 @@ Describe 'Test-OrgPathFacets — per-principal 10-facet validation (offline via 
     It 'flags Phantom Drift with replacement_for when value is deprecated' {
         $cb = New-FixtureCodebook
         $snapshot = @{
-            extensionAttribute3 = 'OldCyber'
+            extensionAttribute3 = 'OldCyber'  # orgpath-codebook-allow: negative fixture
         }
         $results = Test-OrgPathFacets -PrincipalSnapshot $snapshot -Codebook $cb
         $phantom = @($results | Where-Object { $_.IsDeprecated })

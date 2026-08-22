@@ -1110,14 +1110,14 @@ A plan is a YAML document that looks, in abbreviated form, like this:
           canon: UIAO_154/tier2-au
         rollback:
           type: delete-administrative-unit
-          target: AU-ORG-FIN
+          target: AU-NCR-Finance
         depends_on: []
       - id: A0002
         type: assign-role-scoped
         target:
           role: User Administrator
-          principal: OrgTree-FIN-Admins
-          scope: /administrativeUnits/AU-ORG-FIN
+          principal: OrgTree-NCR-Finance-Admins
+          scope: /administrativeUnits/AU-NCR-Finance
         provenance: …
         depends_on: [A0001]
 
@@ -1245,11 +1245,12 @@ continuous-monitoring cadence.
 ## Concrete example --- the end-to-end shape
 
 To make it concrete: an assessment discovers a Finance OU with 312
-users. The Analyze stage proposes an OrgPath scheme (`ORG-FIN`,
-`ORG-FIN-AP`, `ORG-FIN-BUD`), three dynamic groups (`OrgTree-FIN-Users`,
-`OrgTree-FIN-AP-Users`, `OrgTree-FIN-BUD-Users`), one Tier-2 AU
-(`AU-ORG-FIN`), and a role scoping (`User Administrator` →
-`OrgTree-FIN-Admins` → `AU-ORG-FIN`).
+users. The Analyze stage proposes a facet scheme (Department `Finance`
+with divisions `GRC` and `Data`), three dynamic groups
+(`OrgTree-NCR-Finance-Users`, `OrgTree-Finance-GRC-Users`,
+`OrgTree-Finance-Data-Users`), one Tier-2 AU (`AU-NCR-Finance`), and a
+role scoping (`User Administrator` → `OrgTree-NCR-Finance-Admins` →
+`AU-NCR-Finance`).
 
 The Plan stage expands that into \~320 actions: 312 user attribute sets,
 3 dynamic-group creates, 1 AU create, 1 role assignment, plus validation
@@ -1353,62 +1354,85 @@ drift-detector visibility).
 ## OrgPath --- the single source of hierarchy
 
 OrgPath is a deterministic, attribute-encoded organizational hierarchy
-stored in `extensionAttribute1` on every governed user (and, where
-applicable, device and group) object.
+carried on every governed user (and, where applicable, device and group)
+object. It is **not** one composite string in one slot --- that was the
+retired Model A form. Under Hybrid-C+Path it is two layers over the
+codebook's slots.
 
 ### The form
 
-    ORG-<DIV>[-<DEPT>[-<SUB>[-<LOC>]]]
+The **governance layer** puts one validated facet in each of its own
+slots. The three that make up the hierarchy are:
 
-Every segment is an enumerated short code from UIAO_151's codebook. Depth
-is capped at five segments. The regex that validates any OrgPath is:
+```
+extensionAttribute1  Region      e.g. NCR, EASTUS, EMEA
+extensionAttribute2  Department  e.g. IT, Finance, HR, Legal
+extensionAttribute3  Division    e.g. CyberOps, InfraOps, GRC, Data
+```
 
-    ^ORG(-[A-Z]{2,6}){0,4}$
+Each value must appear in that facet's own enumeration in the UIAO_151
+codebook; there is no single regex over a composite string, because there
+is no composite string to validate. Facets are validated one at a time,
+and a bad value is a finding against that facet alone.
+
+The **inheritance layer** is `extensionAttribute15`: a canonical OrgPath
+*derived* from those three facets, in that order, every segment
+terminated by `|`. It is never hand-authored --- it is recomputed on every
+stamp, and any stored value that differs from the recomputation is drift.
 
 ### Examples
 
-- `ORG-FIN-AP-EAST` --- Finance / Accounts Payable / East region
-- `ORG-IT-INF-PLATFORM` --- IT / Infrastructure / Platform team
-- `ORG-HR-BEN` --- HR / Benefits (two-segment, department-level)
-- `ORG-EXEC` --- Executive (single-segment, division-level)
+| Facets | Derived `extensionAttribute15` |
+|---|---|
+| Region NCR · Department Finance · Division GRC | `Region=NCR\|Department=Finance\|Division=GRC\|` |
+| Region NCR · Department IT · Division InfraOps | `Region=NCR\|Department=IT\|Division=InfraOps\|` |
+| Region EASTUS · Department HR *(no division)* | `Region=EASTUS\|Department=HR\|` |
+| Region NCR · Department Executive | `Region=NCR\|Department=Executive\|` |
+
+Composition stops at the first facet with no value, so the derived path
+is always a contiguous prefix of the hierarchy --- never one with a gap in
+the middle.
 
 ### What OrgPath drives
 
-A single attribute drives five downstream outcomes:
+One stamped set of facets drives five downstream outcomes:
 
-1.  **Dynamic group membership** --- every user with
-    `extensionAttribute2 -eq "Finance"` is in `OrgTree-FIN-Users`.
-2.  **Administrative Unit scoping** --- the AU `AU-NCR-Finance` scopes on
-    the derived path (`extensionAttribute15 -startsWith
-    "Region=NCR|Department=Finance|"`); delegated admins of that AU manage
-    only those users.
-3.  **Conditional Access targeting** --- CA policies include or exclude
-    groups keyed to OrgPath segments.
-4.  **License assignment** --- group-based licensing flows from
-    OrgPath-scoped dynamic groups.
-5.  **Drift detection** --- UIAO_163 validates that every user's OrgPath
-    exists in the codebook and matches the HR-system source of truth.
+1. **Dynamic group membership** --- every user with
+   `extensionAttribute2 -eq "Finance"` is in `OrgTree-FIN-Users`.
+2. **Administrative Unit scoping** --- the AU `AU-NCR-Finance` scopes on the
+   derived path (`extensionAttribute15 -startsWith
+   "Region=NCR|Department=Finance|"`); delegated admins of that AU manage
+   only those users.
+3. **Conditional Access targeting** --- CA policies include or exclude
+   groups keyed to OrgPath segments.
+4. **License assignment** --- group-based licensing flows from
+   OrgPath-scoped dynamic groups.
+5. **Drift detection** --- UIAO_163 validates that every user's OrgPath
+   exists in the codebook and matches the HR-system source of truth.
 
-One attribute. Five governance outcomes. Zero admin-portal clicks to
+One stamp. Five governance outcomes. Zero admin-portal clicks to
 assign any of them.
 
 ### The codebook (UIAO_151)
 
-UIAO_151 is a YAML file in Gitea that enumerates every valid OrgPath code.
-Every code has a description, a parent path, allowed children patterns,
-and a max depth. An OrgPath that is not in the codebook is invalid by
+UIAO_151 is a YAML file in Gitea that enumerates every valid value of
+every facet. There are no codes, so there are no parent paths, no
+allowed-children patterns and no max depth --- a facet value is valid
+because it appears in that facet's own enumeration, and each is checked
+on its own. A value absent from its enumeration is invalid by
 definition; the JSON schema (UIAO_158) rejects it at validation time.
 
 The codebook is not freely edited. Changes go through the Canon Change
-Protocol (UIAO_172) --- PR → review → merge. This preserves OrgPath
-stability across time; an OrgPath issued to a user in 2026 means the
-same thing in 2030.
+Protocol (UIAO_172) --- PR → review → merge. This preserves OrgPath stability
+across time; a facet value stamped on a user in 2026 means the same thing
+in 2030.
 
 ## Dynamic groups --- materializing every subtree
 
 AD computed "who is in the Finance branch?" by walking the OU tree.
-Entra ID computes it by evaluating a dynamic-group rule against
-`extensionAttribute1`.
+Entra ID computes it by evaluating a dynamic-group rule against the
+facets --- and, for a subtree, against the derived path on
+`extensionAttribute15`.
 
 ### The three query patterns (UIAO_152)
 
@@ -1477,20 +1501,20 @@ depth:
   **Tier 1 ---    All governed    `AU-ORG-Enterprise`     Global Reader,
   Enterprise**    users                                   Security Reader
 
-  **Tier 2 ---    All users in    `AU-ORG-[DIV]`          User
+  **Tier 2 ---    All users in    `AU-[REGION]-[DEPT]`          User
   Division**      one division                            Administrator,
                                                           Groups
                                                           Administrator
 
-  **Tier 3 ---    Users in one    `AU-ORG-[DIV]-[DEPT]`   Helpdesk
+  **Tier 3 ---    Users in one    `AU-[REGION]-[DEPT]-[DIV]`  Helpdesk
   Department**    department                              Administrator,
                                                           Password
                                                           Administrator
   ------------------------------------------------------------------------
 
 The membership rule of each AU is an exact mirror of the corresponding
-OrgPath dynamic-group rule. `AU-ORG-FIN` contains exactly the same users
-as `OrgTree-FIN-Users`.
+OrgPath dynamic-group rule. `AU-NCR-Finance` contains exactly the same
+users as `OrgTree-NCR-Finance-Users`.
 
 ### Restricted management
 
@@ -1506,11 +1530,11 @@ Roles are scoped to AUs, never granted tenant-wide except for
 break-glass accounts. The assignment pattern:
 
     role:        User Administrator
-    principal:   OrgTree-FIN-Admins            ← a dynamic group
-    scope:       /administrativeUnits/AU-ORG-FIN
+    principal:   OrgTree-NCR-Finance-Admins    ← a dynamic group
+    scope:       /administrativeUnits/AU-NCR-Finance
 
-A member of `OrgTree-FIN-Admins` can reset passwords, create groups, and
-manage users --- but only for users in `AU-ORG-FIN`. Outside that scope,
+A member of `OrgTree-NCR-Finance-Admins` can reset passwords, create
+groups, and manage users --- but only for users in `AU-NCR-Finance`. Outside that scope,
 the role has no effect.
 
 The full role matrix (UIAO_154 §Role Assignment Matrix) is stored in Gitea.
@@ -1525,8 +1549,9 @@ OU-inheritance pattern.
 
 Example: a GPO that applied at `OU=East,DC=contoso` configured lockout
 policies for all East-region users. The CA equivalent is a CA policy
-targeting `OrgTree-EAST-Users` (branch query on `ORG-EAST`). Users whose
-OrgPath starts with `ORG-EAST` get the policy; everyone else doesn't.
+targeting `OrgTree-EASTUS-Users`, whose rule is the region facet alone
+(`user.extensionAttribute1 -eq "EASTUS"`). Users in that region get the
+policy; everyone else doesn't.
 
 More precisely: inheritance is simulated by **group targeting at the
 branch level**. CA doesn't inherit through AUs the way GPOs inherited
@@ -1553,10 +1578,11 @@ The lifecycle is:
 
 ### Mover
 
-The employee's HR record changes `department` from `AP` to `BUD`. The
-same `assign-orgpath` workflow runs; the OrgPath updates from
-`ORG-FIN-AP` to `ORG-FIN-BUD`; every downstream group, AU, CA scope, and
-license assignment recomputes automatically. No hand edits; no ticket;
+The employee's HR record moves them from the GRC division to Data. The
+same `assign-orgpath` workflow runs; `extensionAttribute3` updates from
+`GRC` to `Data` and the derived path on `extensionAttribute15` is
+recomputed from it; every downstream group, AU, CA scope, and license
+assignment follows automatically. No hand edits; no ticket;
 no drift window.
 
 ### Leaver
@@ -1585,20 +1611,20 @@ five categories:
                                  references an attribute not in
                                  UIAO_151
 
-  **Value Drift**                HR says `ORG-FIN-AP`; user's
-                                 `extensionAttribute1` says
-                                 `ORG-FIN-BUD`
+  **Value Drift**                HR says Division `GRC`; user's
+                                 `extensionAttribute3` says
+                                 `Data`
 
-  **Hierarchy Drift**            An AU references an OrgPath
-                                 segment no longer in the
+  **Hierarchy Drift**            An AU prefix names a facet
+                                 value no longer in the
                                  codebook
 
   **Orphan Drift**               A security group exists that
                                  isn't in UIAO_152
 
-  **Phantom Drift**              UIAO_151 defines
-                                 `ORG-FIN-TAX-WEST` but zero
-                                 users match
+  **Phantom Drift**              The codebook defines Division
+                                 `Governance` but zero users
+                                 carry it
   -------------------------------------------------------------
 
 Every drift finding opens an SLA ticket per UIAO_167. Standard response

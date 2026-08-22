@@ -223,7 +223,7 @@ FUNCTION CompareTenantToBaseline(snapshot, codebook):
     RETURN findings
 ```
 
-Per-facet validation is **per-clause** for dynamic group rule drift: a rule like `(extensionAttribute2 -eq "IT") and (extensionAttribute3 -eq "OldDivision")` that references a now-deprecated `OldDivision` value surfaces the second clause as a Phantom-facet finding while the first clause continues to validate cleanly. The engine does *not* fail the entire rule on one clause's drift.
+Per-facet validation is **per-clause** for dynamic group rule drift: a rule like `(extensionAttribute2 -eq "IT") and (extensionAttribute3 -eq "OldDivision")` that references a now-deprecated `OldDivision` value surfaces the second clause as a Phantom-facet finding while the first clause continues to validate cleanly. The engine does *not* fail the entire rule on one clause's drift. <!-- orgpath-codebook-allow: OldDivision is the deprecated value the example turns on -->
 
 ## Alert Routing
 

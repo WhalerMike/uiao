@@ -1,0 +1,73 @@
+name: OrgPath Codebook Conformance
+
+# Compares what the corpus SHOWS against src/uiao/canon/data/orgpath/codebook.yaml:
+# composite-path literals from the retired Model A/B era (ORG-FIN-AP-EAST,
+# /Root/Finance, CORP/US/EAST), and facet values absent from their enumeration.
+#
+# This closes the hole the two sibling guards share. orgpath-prefix-lint
+# validates Facet=Value prefix EXPRESSIONS and excludes legacy path styles by
+# construction; orgpath-slot-lint only fires on a line naming exactly one
+# extensionAttribute slot. Neither sees a bare literal in a paragraph or a
+# figure caption, and neither scans .svg — the prefix guard excludes /images/
+# outright, which is why twenty-nine narrative diagrams survived four
+# consecutive lint-driven passes over the Model A backlog.
+#
+# Enforced with --strict over the executable SSOT surfaces (canon data and the
+# JSON schemas), which are clean. Everything else runs advisory, following the
+# orgpath-slot-lint precedent: that gate started advisory, its docs backlog was
+# drained, and it was then promoted to blocking. The backlog here is the OrgPath
+# narrative series, whose prose still carries the /Root model its figures no
+# longer draw; promote the corresponding --strict step as each surface drains.
+#
+# To resolve a failing run: fix the example against the codebook, or — for
+# content deliberately naming the retired era in order to declare it retired —
+# append 'orgpath-codebook-allow' to the line, or 'orgpath-codebook-allow-file'
+# anywhere in a wholly historical document. Lines already carrying a sibling
+# marker ('orgpath-slot-allow', 'orgpath-prefix-allow') are exempt too.
+#
+# Run locally:
+#     python scripts/check_orgpath_codebook_conformance.py --summary
+#     python scripts/check_orgpath_codebook_conformance.py --strict --path src/uiao/canon/data
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - 'src/uiao/canon/**'
+      - 'src/uiao/schemas/**'
+      - 'docs/**/*.md'
+      - 'docs/**/*.qmd'
+      - 'docs/**/*.svg'
+      - 'registry/**'
+      - 'tools/**'
+      - 'scripts/check_orgpath_codebook_conformance.py'
+      - 'tests/test_orgpath_codebook_conformance.py'
+
+jobs:
+  orgpath-codebook-conformance:
+    name: Check OrgPath examples against the codebook
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install guard dependencies
+        run: pip install --quiet pyyaml
+
+      - name: Enforce canon data (blocking)
+        run: python scripts/check_orgpath_codebook_conformance.py --strict --path src/uiao/canon/data
+
+      - name: Enforce schemas (blocking)
+        run: python scripts/check_orgpath_codebook_conformance.py --strict --path src/uiao/schemas
+
+      - name: Enforce the operational guides (blocking)
+        run: python scripts/check_orgpath_codebook_conformance.py --strict --path docs/customer-documents/operational-guides
+
+      - name: Report the remaining corpus (advisory)
+        run: python scripts/check_orgpath_codebook_conformance.py --summary

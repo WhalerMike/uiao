@@ -32,7 +32,9 @@
 > - **No human figures.** Infrastructure documentation only.
 >
 > **Canon-compliance.** Every diagram must respect UIAO canon: GCC-Moderate
-> boundary visible where relevant; OrgPath format `ORG-XXX-YYY`; UIAO_NNN
+> boundary visible where relevant; OrgPath drawn as named facets, or as the
+> derived path composed region-first with every segment terminated by
+> the `|` delimiter; UIAO_NNN
 > identifiers spelled exactly per canon; no tenant-specific GUIDs or UPNs.
 
 ---
