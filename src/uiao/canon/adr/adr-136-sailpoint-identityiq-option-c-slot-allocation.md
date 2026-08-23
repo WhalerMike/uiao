@@ -1,11 +1,11 @@
 ---
 adr_id: adr-136
 title: "SailPoint IdentityIQ — Option-C Slot Allocation and Vendor Contract Pin"
-status: PROPOSED
-decided: null
+status: ACCEPTED
+decided: 2026-08-22
 deciders: Michael Stratton
-updated: 2026-08-20
-next_review: 2027-02-20
+updated: 2026-08-22
+next_review: 2027-02-22
 review_trigger: The target deployment's IdentityIQ version is confirmed (this ADR pins the 9.0 spec on a documented assumption); the `sailpoint-iiq-governance` slot promotes from reserved to active (a per-adapter activation ADR is required first); the deployment-half object-model export lands (UIAO_210 §4); SailPoint publishes a 10.x IIQ line or retires the 9.0 spec; the branded "SAM" deployment is confirmed to be ISC-based rather than IdentityIQ, which would retire this ADR by supersession
 impact: "Adopts Option C — the IdentityIQ on-prem path that ADR-059 recorded as a deliberate alternative and never decided — narrowly, for a single read-only conformance slot. Allocates `sailpoint-iiq-governance` at `status: reserved`, and pins the vendor half of its contract as UIAO_210 (SailPoint's own OpenAPI spec, vendored verbatim and hash-anchored, at upstream commit 9b7cb428). Unlike ADR-059 and ADR-135, this allocation requires NO boundary expansion: IdentityIQ is customer-hosted inside the agency boundary, so the slot takes the existing `gcc-moderate` value, the `gcc-boundary` schema enum is unchanged, and AGENTS.md's Commercial-exception list is untouched — this ADR adds no fourth exception. Establishes the two-part contract doctrine for deployment-customised vendor products: the vendor spec is only half, and a site-local object-model export is the other half, required before activation. Registry-shaped and pin-shaped; no runtime code, no schema change, no adapter implementation."
 supersedes: null
@@ -19,7 +19,7 @@ published_at: docs/adr/adr-136-sailpoint-identityiq-option-c-slot-allocation.htm
 
 ## Status
 
-**PROPOSED** — 2026-08-20
+**ACCEPTED** — 2026-08-22
 
 ## Context
 

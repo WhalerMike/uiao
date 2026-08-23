@@ -150,10 +150,8 @@ That is a registry decision, not a schema one, so this pin flags it
 ## 6. Relationship to other pins
 
 - **ADR-136 §Decision 5** — establishes the two-part doctrine and names
-  ServiceNow as the other live case. This document is that case. *(ADR-136 is
-  PROPOSED at the time of writing; if it is not ratified, this pin stands on
-  its own evidence and the doctrine citation becomes a cross-reference rather
-  than an authority.)*
+  ServiceNow as the other live case. This document is that case. Ratified
+  2026-08-22, so the citation is an authority rather than a cross-reference.
 - **UIAO_210** — the SailPoint IdentityIQ pin, whose §4 states the same
   requirement for IIQ's deployment half.
 - **UIAO_143** — the RFC 7643 substrate pin, and the shape all of these follow:
