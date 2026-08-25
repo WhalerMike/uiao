@@ -39,7 +39,7 @@ Phase 5 is the rebuild of those consumers per-facet. The ADR-078 implementation 
 
 Picking these answers per-PR risks 5 inconsistent designs that don't compose into a coherent runtime. A doctrine ADR locks the design pattern once so each rebuild PR is a mechanical implementation against the contract.
 
-The per-facet `Codebook` loader at [`src/uiao/modernization/orgtree/codebook.py`](../modernization/orgtree/codebook.py) (shipped in ADR-078 Phase 1) is the only Model C consumer currently in the codebase. It already exposes the per-facet API (`Codebook.facet(name)`, `Facet.is_active(value)`, `Facet.is_deprecated(value)`, `Facet.replacement_for(value)`) and enforces the slot-uniqueness invariant after JSON Schema validation. This ADR builds on that foundation — the 5 consumers depend on `Codebook`, not on the YAML file directly.
+The per-facet `Codebook` loader at [`src/uiao/modernization/orgtree/codebook.py`](../../modernization/orgtree/codebook.py) (shipped in ADR-078 Phase 1) is the only Model C consumer currently in the codebase. It already exposes the per-facet API (`Codebook.facet(name)`, `Facet.is_active(value)`, `Facet.is_deprecated(value)`, `Facet.replacement_for(value)`) and enforces the slot-uniqueness invariant after JSON Schema validation. This ADR builds on that foundation — the 5 consumers depend on `Codebook`, not on the YAML file directly.
 
 ## Decision
 
@@ -246,7 +246,7 @@ Each phase PR closes a subset of the ~84 `DRIFT-PROVENANCE` P2 findings introduc
 
 | Source | Reference | Last Verified |
 |---|---|---|
-| Per-facet Codebook loader (current SSOT) | [`src/uiao/modernization/orgtree/codebook.py`](../modernization/orgtree/codebook.py) | 2026-05-24 |
+| Per-facet Codebook loader (current SSOT) | [`src/uiao/modernization/orgtree/codebook.py`](../../modernization/orgtree/codebook.py) | 2026-05-24 |
 | Per-facet drift engine spec | [`UIAO_163_Drift_Detection_Engine_Specification.md`](../UIAO_163_Drift_Detection_Engine_Specification.md) v2.0 | 2026-05-24 |
 | Per-facet codebook narrative | [`UIAO_151_OrgPath_Codebook.md`](../UIAO_151_OrgPath_Codebook.md) v4.0 | 2026-05-24 |
 | Per-facet JSON Schema appendix | [`UIAO_158_OrgPath_JSON_Schema.md`](../UIAO_158_OrgPath_JSON_Schema.md) v3.0 | 2026-05-24 |

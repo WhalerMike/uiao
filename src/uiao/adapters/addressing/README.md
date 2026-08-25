@@ -1,7 +1,7 @@
 # UIAO Addressing-Plane Drift Collector
 
 DNS and namespace governance tools for the UIAO addressing plane.
-Canon: [UIAO_195](../canon/UIAO_195_Addressing_Plane_Drift_Taxonomy.md) · [ADR-108](../canon/adr/adr-108-addressing-plane-drift-gate.md)
+Canon: [UIAO_195](../../canon/UIAO_195_Addressing_Plane_Drift_Taxonomy.md) · [ADR-108](../../canon/adr/adr-108-addressing-plane-drift-gate.md)
 
 ---
 

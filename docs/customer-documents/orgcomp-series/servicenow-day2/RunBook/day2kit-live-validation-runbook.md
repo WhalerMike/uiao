@@ -77,7 +77,7 @@ endpoint actually enforce its role.
 **What a PDI does not validate:** anything downstream of the MID Server — a PDI
 has no domain-joined MID and no reachable domain controller, so the AD leg's
 `_dispatch` calls will queue an `ecc_queue` record that nothing ever picks up.
-That's the [AD lab track](CURRENT-STATE-AD-LAB-VALIDATION.md) and the
+That's the [AD lab track](../CURRENT-STATE-AD-LAB-VALIDATION.md) and the
 `mid/Invoke-Day2AdAction.ps1` script directly. A PDI is also **not a FedRAMP-authorized boundary** — it's a personal
 sandbox. Nothing here substitutes for a real ATO; it substitutes for "an AI
 read the code and believes it's correct."
@@ -253,7 +253,7 @@ against fixture data, which is a different thing than a real MID dispatching
 to a real DC. ... None of this has been exercised against a live domain
 controller yet."*
 
-A [ServiceNow PDI](./CURRENT-STATE-PDI-VALIDATION.md) closes a different gap —
+A [ServiceNow PDI](../CURRENT-STATE-PDI-VALIDATION.md) closes a different gap —
 real platform behavior (ACLs, the ATF Test Runner, Scripted REST) — but a PDI
 has no domain-joined MID and no reachable domain controller, so anything past
 `ecc_queue` is still untested there too (`CURRENT-STATE-PDI-VALIDATION.md` §0).
@@ -281,7 +281,7 @@ or any signup — it's a local Hyper-V VM.
 
 ## 2. Running the lab
 
-Provision with [`lab/New-Day2AdLab.ps1`](./lab/New-Day2AdLab.ps1) — read it
+Provision with [`lab/New-Day2AdLab.ps1`](../lab/New-Day2AdLab.ps1) — read it
 before running it; it is meant to be run by a human, one phase at a time, not
 piped into automation. Three phases:
 

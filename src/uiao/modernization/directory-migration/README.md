@@ -70,7 +70,7 @@ FedRAMP Evidence Bundle.
 
 | Discovery surface | Implementation | Output artifact |
 |---|---|---|
-| Forest archaeological survey (OUs, users, computers, GPOs, sites) | [`src/uiao/adapters/customer-documents/reference-architecture/active_directory/survey.py`](../../adapters/customer-documents/reference-architecture/active_directory/survey.py) — `run_discovery()` entry point | `ADSurveyReport` → orgtree-readiness bundle |
+| Forest archaeological survey (OUs, users, computers, GPOs, sites) | [`src/uiao/adapters/customer-documents/reference-architecture/active_directory/survey.py`](../../adapters/modernization/active_directory/survey.py) — `run_discovery()` entry point | `ADSurveyReport` → orgtree-readiness bundle |
 | Service account scan (SPN inventory, delegation, AdminCount, naming patterns, risk classification) | Spec3-D1.1 — [`UIAO_139`](../../canon/specs/Spec3-D1.1-Get-ServiceAccountScan.md); implemented inline in `survey.py` (`ServiceAccountRisk`, `classify_sa_adcs_dependency`) | `service-accounts.json` + risk-scored `ServiceAccountRisk` records |
 | **SPN inventory** (`MSSQLSvc/*` and related service-class SPNs, phase-tagged) | `survey.py::extract_spn_inventory()` (added in PR #395) | `spn_inventory` field on the orgtree-readiness bundle — see schema [`src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json`](../../schemas/orgtree-readiness/orgtree-readiness.schema.json) `#/definitions/spnInventory` |
 | OrgPath / Intune / Azure Arc readiness plans | OrgTree plane modules under [`src/uiao/modernization/orgtree/`](../orgtree/) | `orgpath_plan`, `intune_plan`, `arc_plan` sections of the orgtree-readiness bundle |

@@ -108,7 +108,7 @@ Authorization Act.
 
 ### Why this is an ADR and not just a finding
 
-[FINDING-PGM-001](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+[FINDING-PGM-001](../../../../docs/findings/fedramp-20x-moderate-pilot.qmd)
 records the framework movement as an environmental constraint. This
 ADR records the substrate-level *decision* about how UIAO responds:
 the substrate emits KSI-tagged OSCAL evidence, applies the Minimum
@@ -211,7 +211,7 @@ The substrate's KSI emission surface is well-defined and stable
 regardless of whether any specific CSP (Microsoft, AWS, Google) has
 filed a 20x-aligned package for its sovereign-cloud offering. CSP
 filings are tracked as external-remedy items in
-[FINDING-PGM-001](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+[FINDING-PGM-001](../../../../docs/findings/fedramp-20x-moderate-pilot.qmd)
 and propagate to UIAO only as inherited control evidence becomes
 available; they do not block substrate-side readiness.
 
@@ -301,8 +301,8 @@ operational companion to this ADR.
 - [ADR-043 — FedRAMP RFC-0026 CA-7 Integration](./adr-043-fedramp-rfc-0026-ca7-integration.md)
 - UIAO_132 — FedRAMP RFC-0026 CA-7 Pathway Integration spec
 - UIAO_133 — FedRAMP 20x Integration spec (operational mechanics)
-- [FINDING-001 — FedRAMP GCC-Moderate INR unavailability](../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.md)
-- [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+- [FINDING-001 — FedRAMP GCC-Moderate INR unavailability](../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.qmd)
+- [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.qmd)
 - Phase 0 §1 — Master Plan, FedRAMP Boundary Gap paragraph (forward-looking note)
 - Phase 2 §13.3 — KSI Emission Surface (TBL-P2-011)
 - Phase 3 §4.1.1 — FedRAMP 20x KSI Crosswalk (P3-T-001a)

@@ -12,7 +12,7 @@ publication_style: include
 
 # UIAO Privacy Impact Assessment
 
-> **Status: Current — authoritative template.** PIA identified in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/uiao-aan-integration/09-compliance-mapping.qmd) and tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). Addresses the **PT (Personally Identifiable Information Processing and Transparency)** family and the privacy considerations of identity data processed during AD-to-Entra ID modernization. Bracketed `[PLACEHOLDER]` fields are completed per authorizing system.
+> **Status: Current — authoritative template.** PIA identified in [`compliance-mapping.qmd §7.1`](../../../docs/customer-documents/uiao-orgcomp-integration/09-compliance-mapping.qmd) and tracked in [UIAO_184](UIAO_184_Gap_Closure_Register.md) (Workstream A). Addresses the **PT (Personally Identifiable Information Processing and Transparency)** family and the privacy considerations of identity data processed during AD-to-Entra ID modernization. Bracketed `[PLACEHOLDER]` fields are completed per authorizing system.
 
 ## Purpose
 
@@ -63,4 +63,4 @@ This PIA addresses the PT family; until adopted, PT controls remain open POA&M i
 - [UIAO_189](UIAO_189_POAM_Template.md) — POA&M Template
 - [UIAO_191](UIAO_191_Supply_Chain_Risk_Management_Plan.md) — SCRM Plan (disposal)
 - [UIAO_184](UIAO_184_Gap_Closure_Register.md) — gap-closure register (Workstream A)
-- [`compliance-mapping.qmd`](../../../docs/customer-documents/uiao-aan-integration/09-compliance-mapping.qmd) — PT-family gap analysis
+- [`compliance-mapping.qmd`](../../../docs/customer-documents/uiao-orgcomp-integration/09-compliance-mapping.qmd) — PT-family gap analysis

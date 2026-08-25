@@ -14,7 +14,7 @@ All content is derived from the official (now archived) FedRAMP OSCAL repository
   - Registry/Resources: `/dist/content/rev5/resources/`
 
 ## Attribution
-See root-level [NOTICE](../../../NOTICE) file for full attribution to GSA/FedRAMP PMO and NIST.
+See root-level [NOTICE](../../../../../../docs/governance/NOTICE) file for full attribution to GSA/FedRAMP PMO and NIST.
 
 ## Usage in this repo
 - Baselines are referenced via `import-profile` href in generated SSP/POA&M.

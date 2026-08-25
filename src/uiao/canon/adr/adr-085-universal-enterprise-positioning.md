@@ -29,7 +29,7 @@ The repository was consolidated from four predecessors (`uiao-core`, `uiao-docs`
 
 - [`README.md`](../../../../README.md) L10 — "Governance OS for FedRAMP-Moderate identity, telemetry, policy, and enforcement modernization."
 - [`AGENTS.md`](../../../../AGENTS.md) L10 — Repository identity: "FedRAMP-Moderate governance substrate".
-- [`docs/customer-documents/uiao-aan-integration/11-scuba-value-proposition.qmd`](../../../../docs/customer-documents/uiao-aan-integration/11-scuba-value-proposition.qmd) §8.2 — Pitch-deck slide title: "UIAO --- The Governance Layer for Federal Cloud Compliance".
+- [`docs/customer-documents/uiao-aan-integration/11-scuba-value-proposition.qmd`](../../../../docs/customer-documents/uiao-orgcomp-integration/11-scuba-value-proposition.qmd) §8.2 — Pitch-deck slide title: "UIAO --- The Governance Layer for Federal Cloud Compliance".
 - [`docs/customer-documents/executive-briefs/uiao-executive-brief.qmd`](../../../../docs/customer-documents/executive-briefs/uiao-executive-brief.qmd) — Opens with "Every federal agency running Microsoft 365 in GCC-Moderate…" with no preceding statement that the underlying engine is vertical-agnostic.
 - [`src/uiao/canon/charter/CHARTER-001.md`](../charter/CHARTER-001.md) §1 — "This document defines a cross-division modernization plan for federal hybrid-cloud environments."
 
@@ -78,7 +78,7 @@ New artifacts that describe the core engine must use universal-enterprise positi
 
 - [`README.md`](../../../../README.md) — product positioning line and "What UIAO is" intro rewritten.
 - [`AGENTS.md`](../../../../AGENTS.md) — Repository identity purpose line rewritten.
-- [`docs/customer-documents/uiao-aan-integration/11-scuba-value-proposition.qmd`](../../../../docs/customer-documents/uiao-aan-integration/11-scuba-value-proposition.qmd) §8.2 — pitch-slide title rewritten.
+- [`docs/customer-documents/uiao-aan-integration/11-scuba-value-proposition.qmd`](../../../../docs/customer-documents/uiao-orgcomp-integration/11-scuba-value-proposition.qmd) §8.2 — pitch-slide title rewritten.
 - [`docs/customer-documents/executive-briefs/uiao-executive-brief.qmd`](../../../../docs/customer-documents/executive-briefs/uiao-executive-brief.qmd) — intro paragraph rewritten to lead with universal positioning and frame the federal-agency scenario as the example vertical the brief addresses.
 
 **Not updated in this PR (deliberate):**

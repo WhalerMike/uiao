@@ -1,7 +1,7 @@
 # Provenance — FedRAMP CR26 Snapshot c31eb04
 
 Vendored snapshot of the unofficial Palladium CR26 OSCAL generator
-output, governed by [`ADR-061`](../../../../adr/adr-061-fedramp-cr26-catalog-vendoring.md).
+output, governed by [`ADR-061`](../../../../../adr/adr-061-fedramp-cr26-catalog-vendoring.md).
 
 This snapshot is **immutable**. Local edits are not permitted. Updates
 land under a new sibling `snapshot/<upstream-sha>/` directory; see
@@ -72,7 +72,7 @@ directory.
 | **Total** | | **46** |
 
 The KSI theme IDs above are the surface that
-[`UIAO_133 §2.1`](../../../../specs/fedramp-20x-integration.md)
+[`UIAO_133 §2.1`](../../../../../specs/fedramp-20x-integration.md)
 `fedramp:ksi-themes` props enumerate. The catalog at this SHA is the
 first concrete machine-readable enumeration of those themes uiao has
 access to.

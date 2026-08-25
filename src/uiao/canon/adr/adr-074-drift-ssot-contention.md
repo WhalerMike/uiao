@@ -43,7 +43,7 @@ Accepted — 2026-06-15
 
 ## Context
 
-[UIAO_001](../UIAO_001_UIAO-SSOT.md) defines the substrate's drift
+[UIAO_001](../UIAO-SSOT.md) defines the substrate's drift
 taxonomy as six canonical classes: `DRIFT-SCHEMA`,
 `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY`,
 and `DRIFT-BOUNDARY` (ADR-033). [ADR-012](adr-012-canonical-drift-taxonomy.md) is

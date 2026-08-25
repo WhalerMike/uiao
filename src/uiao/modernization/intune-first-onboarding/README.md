@@ -102,7 +102,7 @@ The doctrinal anchor lives separately at [`../../canon/adr/adr-071-intune-first-
 - **Not a replacement for the OrgPath/Intune narrative.** The deep
   enrollment-script detail (Autopilot OrgPath stamping PowerShell, KQL
   compliance dashboards, scope tag delegation) lives in
-  [`inbox/drafts/complete-narrative/source-docx/OrgPath and Microsoft Intune — Structural Device Governance at Enterprise Scale.md`](../../../inbox/drafts/complete-narrative/source-docx/OrgPath%20and%20Microsoft%20Intune%20%E2%80%94%20Structural%20Device%20Governance%20at%20Enterprise%20Scale.md).
+  [`inbox/drafts/complete-narrative/source-docx/OrgPath and Microsoft Intune — Structural Device Governance at Enterprise Scale.md`](../../../../inbox/drafts/complete-narrative/source-docx/OrgPath%20and%20Microsoft%20Intune%20%E2%80%94%20Structural%20Device%20Governance%20at%20Enterprise%20Scale.md).
   This module references that document; it does not duplicate it.
 - **Not Apple/Google/Samsung product documentation.** Per-platform docs
   here describe the *governance integration*, not vendor-program

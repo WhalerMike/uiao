@@ -48,7 +48,7 @@ Out of scope for this document:
 
 - CSP-side 20x package filings. Those are external-remedy items
   tracked in
-  [FINDING-PGM-001 §4](../../../../docs/findings/fedramp-20x-moderate-pilot.md).
+  [FINDING-PGM-001 §4](../../../../docs/findings/fedramp-20x-moderate-pilot.qmd).
 - Agency-side authorization sponsor selection and onboarding. Those
   are agency-program decisions; UIAO_133 covers only the substrate's
   emission-side surface that an authorization sponsor consumes.
@@ -354,5 +354,5 @@ Until all five conditions are met, this spec stays at status `Draft`.
 - [UIAO_132 — FedRAMP RFC-0026 CA-7 Pathway Integration spec](./fedramp-rfc-0026-ca7-integration.md)
 - [Phase 2 §13.3 KSI Emission Surface (UIAO_022)](../../../../docs/customer-documents/operational-guides/uiao-modernization-program/03-phase2-governance-os.qmd)
 - [Phase 3 §4.1.1 20x KSI Crosswalk (UIAO_023)](../../../../docs/customer-documents/operational-guides/uiao-modernization-program/04-phase3-optimization-cato.qmd)
-- [FINDING-001 — FedRAMP GCC-Moderate INR unavailability](../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.md)
-- [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+- [FINDING-001 — FedRAMP GCC-Moderate INR unavailability](../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.qmd)
+- [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.qmd)
