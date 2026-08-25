@@ -3,13 +3,13 @@
 [![Live Site](https://img.shields.io/badge/docs-whalermike.github.io%2Fuiao-blue?logo=github-pages)](https://whalermike.github.io/uiao/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](../LICENSE)
 
-**Module in the consolidated monorepo:** [`docs/`](.) · sibling modules: [`core/`](../core/) (canon authority) · [`impl/`](../impl/) (Python implementation)
+**Module in the consolidated monorepo:** [`docs/`](.) · sibling modules: [`src/uiao/canon/`](../src/uiao/canon/) (canon authority) · [`src/uiao/`](../src/uiao/) (Python implementation)
 
 **Role:** Derived publication — Quarto pipeline, narrative articles, rendered site. **Consumer** of `core/` canon; every document traces provenance.
 
 **Live site:** <https://whalermike.github.io/uiao/> — served by `.github/workflows/quarto.yml` on every push to `main`. Requires repo Settings → Pages → source = GitHub Actions.
 
-→ **[UIAO Architecture](../core/ARCHITECTURE.md)** in `core/ARCHITECTURE.md`. Defines how this module's pipeline, image flow, and rendering inherit from `core/` canon. See [ADR-028](../src/uiao/canon/adr/adr-028-monorepo-consolidation-gos-integration.md) for the history of the monorepo consolidation.
+→ **[UIAO Architecture](governance/ARCHITECTURE.qmd)** in `core/ARCHITECTURE.md`. Defines how this module's pipeline, image flow, and rendering inherit from `core/` canon. See [ADR-028](../src/uiao/canon/adr/adr-028-monorepo-consolidation-gos-integration.md) for the history of the monorepo consolidation.
 
 ## Compliance with Presidential Executive Orders
 

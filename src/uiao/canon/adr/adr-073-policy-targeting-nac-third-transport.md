@@ -319,7 +319,7 @@ this addition.
 
 - [ADR-039](adr-039-policy-targeting.md) — the dual-transport
   predecessor this ADR amends.
-- [ADR-047](adr-047-network-aaa-adapter-registration.md) — sibling
+- [ADR-107](adr-107-network-aaa-adapter-registration.md) — sibling
   ADR registering the AAA-tier adapter category.
 - [ADR-071](adr-071-intune-first-asset-onboarding.md) — Intune-First
   doctrine whose Pillar 1 this ADR's network-edge enforcement

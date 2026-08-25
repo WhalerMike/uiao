@@ -14,7 +14,7 @@ every first run as a `-WhatIf` dry run.
 
 ::: {.callout-important}
 If you expect to add governance later, this path is designed so you can — see
-[Add OrgPath later (retrofit)](retrofit-path.qmd). Nothing here forecloses it.
+[Add OrgPath later (retrofit)](../../../../docs/customer-documents/operational-guides/intune-arc-modernization/retrofit-path.qmd). Nothing here forecloses it.
 :::
 
 ## 0. Phases and run order

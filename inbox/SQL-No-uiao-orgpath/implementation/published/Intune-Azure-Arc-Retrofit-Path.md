@@ -1,13 +1,13 @@
 
 # Intune + Azure Arc — Add OrgPath Later (Retrofit) {.unnumbered}
 
-You built the [manual path](manual-path.qmd) — servers are Arc-onboarded,
+You built the [manual path](../../../../docs/customer-documents/operational-guides/ai-identity-governance/manual-path.qmd) — servers are Arc-onboarded,
 endpoints are Intune-enrolled, NTLM is restricted, SPNs are clean, SQL is
 hardened, Conditional Access is enforced. Now you want governance: ownership,
 approval routing, continuous evidence, drift detection.
 
 **You do not re-do any of it.** The retrofit *adopts the estate you already have*
-into the [governed path](governed-path.qmd). The Microsoft-side configuration
+into the [governed path](../../../../docs/customer-documents/operational-guides/ai-identity-governance/governed-path.qmd). The Microsoft-side configuration
 stays exactly as it is; you add the binding from organizational intent to the
 objects that already exist.
 
@@ -18,7 +18,7 @@ enrollment GPOs, CA policies, and the audit CSVs in `.\artifacts`. The retrofit
 **attaches the loop**. No reimaging, no re-onboarding, no re-enrollment.
 :::
 
-![Retrofit flow: an existing manually-built estate is inventoried, OrgPath is derived from existing tags/OUs/groups and stamped back, the estate is registered as desired state, and the observe/advise/gated loop is switched on — without changing the Microsoft-side configuration.](images/intune-arc-diagram-04-retrofit.png){#fig-retrofit fig-alt="Retrofit pipeline turning a manually-built estate into a governed estate without rebuilding it"}
+![Retrofit flow: an existing manually-built estate is inventoried, OrgPath is derived from existing tags/OUs/groups and stamped back, the estate is registered as desired state, and the observe/advise/gated loop is switched on — without changing the Microsoft-side configuration.](../../../../docs/customer-documents/operational-guides/intune-arc-modernization/images/intune-arc-diagram-04-retrofit.png){#fig-retrofit fig-alt="Retrofit pipeline turning a manually-built estate into a governed estate without rebuilding it"}
 
 ## Why this works
 
@@ -26,7 +26,7 @@ The two paths share **one set of scripts** and converge on **one end state**.
 The only difference is whether a state-changing call carries `-OrgPath` +
 `-ApprovalRef`. So "adding governance" is not a migration — it is turning on the
 seam that was always there. The read-only scripts you have been running *are
-already* the observe step of the [reconciliation loop](governed-path.qmd#5-the-reconciliation-loop);
+already* the observe step of the [reconciliation loop](../../../../docs/customer-documents/operational-guides/ai-identity-governance/governed-path.qmd#5-the-reconciliation-loop);
 the retrofit just gives their output an owner and a home.
 
 ## The retrofit, step by step
@@ -143,6 +143,6 @@ half of the governed path.
 
 ## Where to go next
 
-- The full governed model: [Governed path (UIAO / OrgPath)](governed-path.qmd).
-- The runbook you already followed: [Manual path](manual-path.qmd).
-- The runnable kit: [Download](../../../download/index.qmd#intune--azure-arc-modernization).
+- The full governed model: [Governed path (UIAO / OrgPath)](../../../../docs/customer-documents/operational-guides/ai-identity-governance/governed-path.qmd).
+- The runbook you already followed: [Manual path](../../../../docs/customer-documents/operational-guides/ai-identity-governance/manual-path.qmd).
+- The runnable kit: [Download](../../../../docs/index.qmd#intune--azure-arc-modernization).

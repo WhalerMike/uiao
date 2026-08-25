@@ -40,7 +40,7 @@ Draft — pending governance review.
 
 UIAO's value proposition centers on **OSCAL-native compliance pipelines**
 that produce continuous evidence against FedRAMP Moderate and the broader
-federal control set ([VISION.md](../../docs/governance/VISION.md)). The
+federal control set ([VISION.md](../../../docs/governance/VISION.qmd)). The
 canon assumes a **per-system** ATO model implicitly — every authorized
 system has its own SSP, POA&M, and authorization decision.
 

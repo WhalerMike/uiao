@@ -165,7 +165,7 @@ Phases 1-6 are not strictly blocked on each other beyond their listed sequencing
 | Source | Reference | Last Verified |
 |---|---|---|
 | Three-model cross-surface review | The 146-line extract at `inbox/_identity-orgtree-extract.md` (generated 2026-05-22) | 2026-05-22 |
-| Model A canon | [`codebook.yaml`](../data/orgpath/codebook.yaml), [`UIAO_151_OrgPath_Codebook.md`](../UIAO_151_OrgPath_Codebook.md), [`docs/modernization/codebook.qmd`](../../../../docs/modernization/codebook.qmd) | 2026-05-22 |
+| Model A canon | [`codebook.yaml`](../data/orgpath/codebook.yaml), [`UIAO_151_OrgPath_Codebook.md`](../UIAO_151_OrgPath_Codebook.md), [`docs/modernization/codebook.qmd`](../../../../docs/customer-documents/reference-architecture/codebook.qmd) | 2026-05-22 |
 | Model B example | `docs/customer-documents/modernization/identity-orgtree/ad-to-entraid-tree.qmd` lines 96, 466, 775, 1484 | 2026-05-22 |
 | Model C example | `docs/customer-documents/modernization/identity-orgtree/identity-modernization.qmd` lines 192, 384–404, 1689–1717 | 2026-05-22 |
 | ADR-076 tier-coexistence wording (superseded clause) | [`adr-076-tier-conformance-model.md`](adr-076-tier-conformance-model.md), "OrgPath attribute semantics" section | 2026-05-22 |
@@ -188,5 +188,5 @@ This ADR must be re-evaluated when any of the following occur:
 - [ADR-072 — Canon Publication Policy](adr-072-canon-publication-policy.md) — `publish_to_site` machinery the new schema fields will plug into
 - [ADR-035 — OrgPath Codebook Binding](adr-035-orgpath-codebook-binding.md) — current binding of `codebook.yaml`; this ADR restructures the binding target in Phase 1
 - [ADR-048 — OrgPath Attribute Selection](adr-048-orgpath-attribute-selection.md) — predecessor decision on which single attribute to use; this ADR supersedes its single-attribute conclusion for new adoption
-- [`docs/customer-documents/modernization/identity-orgtree/identity-modernization.qmd`](../../../../docs/customer-documents/modernization/identity-orgtree/identity-modernization.qmd) — the Model C source narrative
+- [`docs/customer-documents/modernization/identity-orgtree/identity-modernization.qmd`](../../../../docs/customer-documents/operational-guides/identity-orgtree/identity-modernization.qmd) — the Model C source narrative
 - [`src/uiao/canon/data/orgpath/codebook.yaml`](../data/orgpath/codebook.yaml) — current Model A code SSOT (will be restructured in Phase 1)

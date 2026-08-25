@@ -131,7 +131,7 @@ Phases 1–5 are not strictly blocked on each other beyond the listed sequencing
 | Source | Reference | Last Verified |
 |---|---|---|
 | 3-principle code SSOT | [`src/uiao/canon/substrate-manifest.yaml`](../substrate-manifest.yaml) (UIAO_200) — referenced by `docs/customer-documents/executive-briefs/governance-os-overview.qmd` lines 27–43 | 2026-05-22 |
-| 7-principle canon narrative | [`docs/modernization/index.qmd`](../../../../docs/modernization/index.qmd) "Seven Governance Principles" section | 2026-05-22 |
+| 7-principle canon narrative | [`docs/modernization/index.qmd`](../../../../docs/customer-documents/reference-architecture/index.qmd) "Seven Governance Principles" section | 2026-05-22 |
 | 1-principle OrgPath narrative | `docs/customer-documents/orgpath-narrative/15-uiao-governance-os-complete-narrative.qmd` | 2026-05-22 (ADR-076 context) |
 | ADR-076 tier-mapping hints | [`adr-076-tier-conformance-model.md`](adr-076-tier-conformance-model.md) — "Two-Brain Execution applies Tier 3+; Boundary Enforcement applies Tier 4" | 2026-05-22 |
 | ADR-078 supersession pattern | [`adr-078-orgpath-attribute-schema-15-facet.md`](adr-078-orgpath-attribute-schema-15-facet.md) — template for "code SSOT wins; narrative reconciles toward code" | 2026-05-22 |
@@ -153,4 +153,4 @@ This ADR must be re-evaluated when any of the following occur:
 - [ADR-078 — OrgPath Attribute Schema — 15-Facet Multi-Attribute Model](adr-078-orgpath-attribute-schema-15-facet.md) — same pattern: code SSOT wins over narrative drift
 - [`src/uiao/canon/substrate-manifest.yaml`](../substrate-manifest.yaml) — code SSOT for the 3 universal principles; Phase 1 adds tier-specific section
 - [`docs/customer-documents/executive-briefs/governance-os-overview.qmd`](../../../../docs/customer-documents/executive-briefs/governance-os-overview.qmd) — customer-facing 3-principle declaration; stays as-is
-- [`docs/modernization/index.qmd`](../../../../docs/modernization/index.qmd) — narrative source of the "Seven Principles" framing; rewritten in Phase 2
+- [`docs/modernization/index.qmd`](../../../../docs/customer-documents/reference-architecture/index.qmd) — narrative source of the "Seven Principles" framing; rewritten in Phase 2

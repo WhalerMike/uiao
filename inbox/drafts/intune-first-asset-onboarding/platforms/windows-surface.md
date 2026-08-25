@@ -324,7 +324,7 @@ integration-plan.md) §5.
 
 ## References
 
-- [ADR-071 — Intune-First Asset Onboarding](../../../canon/adr/adr-071-intune-first-asset-onboarding.md)
+- [ADR-071 — Intune-First Asset Onboarding](../adr-071-intune-first-asset-onboarding.md)
 - [ADR-001 — HAADJ deprecated, Entra-Join-only](../../../../docs/adr/adr-001-haadj-deprecated-entra-join-only.qmd)
 - [Parent annex — Windows Autopilot Device Preparation](windows-autopilot.md)
 - [Surface integration plan (umbrella draft)](../../surface-integration-plan.md)

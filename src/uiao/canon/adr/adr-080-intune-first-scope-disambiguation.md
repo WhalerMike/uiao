@@ -149,5 +149,5 @@ This ADR must be re-evaluated when any of the following occur:
 - [ADR-079 — Governance Principle Reconciliation](adr-079-governance-principle-reconciliation.md) — same pattern: name reconciliation across surfaces
 - [ADR-071 — Intune-First Asset Onboarding](adr-071-intune-first-asset-onboarding.md) — the ADR that established the canon Asset Onboarding doctrine being reserved here
 - [`src/uiao/modernization/intune-first-onboarding/`](../../modernization/intune-first-onboarding/) — canon directory whose name "Intune-First" is reserved as the canonical doctrine name
-- [`docs/customer-documents/modernization/target-surface/intune-policy-templates.qmd`](../../../../docs/customer-documents/modernization/target-surface/intune-policy-templates.qmd) — Phase 1 target for rename to "GPO Sunset Program"
-- [`docs/customer-documents/modernization/client-server-to-hybrid-cloud/05-policy-transformation.qmd`](../../../../docs/customer-documents/modernization/client-server-to-hybrid-cloud/05-policy-transformation.qmd) — Phase 3 target for relationship clarification
+- [`docs/customer-documents/modernization/target-surface/intune-policy-templates.qmd`](../../../../docs/customer-documents/operational-guides/target-surface/intune-policy-templates.qmd) — Phase 1 target for rename to "GPO Sunset Program"
+- [`docs/customer-documents/modernization/client-server-to-hybrid-cloud/05-policy-transformation.qmd`](../../../../docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/05-policy-transformation.qmd) — Phase 3 target for relationship clarification

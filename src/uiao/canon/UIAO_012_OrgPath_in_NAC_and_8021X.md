@@ -19,7 +19,7 @@ updated_at: "2026-05-15"
 > `nac_assignments[]` section of
 > [`canon/data/orgpath/policy-targets.yaml`](data/orgpath/policy-targets.yaml).
 > The adapter-registration surface is decided in
-> [ADR-047](adr/adr-047-network-aaa-adapter-registration.md).
+> [ADR-107](adr/adr-107-network-aaa-adapter-registration.md).
 > This document explains *what an operator does, in what order, and
 > what catches them when they get it wrong*.
 >
@@ -81,7 +81,7 @@ Out of scope:
 | Canonical data | [`canon/data/orgpath/policy-targets.yaml`](data/orgpath/policy-targets.yaml) — `nac_assignments[]` (introduced by ADR-073) |
 | JSON Schema | [`schemas/orgpath/policy-targets.schema.json`](../schemas/orgpath/policy-targets.schema.json) — extended by ADR-073 |
 | Targeting decision | [ADR-073: OrgTree Policy Targeting — NAC as Third Transport](adr/adr-073-policy-targeting-nac-third-transport.md) (amends ADR-039) |
-| Adapter registration | [ADR-047: Network AAA Adapter Registration](adr/adr-047-network-aaa-adapter-registration.md) |
+| Adapter registration | [ADR-107: Network AAA Adapter Registration](adr/adr-107-network-aaa-adapter-registration.md) |
 | Migration source-to-target | [DM_030 RADIUS / NPS Adapter Interface](../modernization/directory-migration/adapters/radius/radius-adapter-interface.md) |
 | OrgPath codebook (selector vocabulary) | [UIAO_151_OrgPath_Codebook](UIAO_151_OrgPath_Codebook.md) |
 | Dynamic-group canon (target groups) | [UIAO_152_Dynamic_Group_Library](UIAO_152_Dynamic_Group_Library.md) |
@@ -459,4 +459,4 @@ and UIAO_011.
 - [UIAO_153_Attribute_Mapping_Table](UIAO_153_Attribute_Mapping_Table.md) — OrgPath device-plane writeback origin; carries OrgPath into Intune-issued certs.
 - [DM_030 RADIUS / NPS Adapter Interface](../modernization/directory-migration/adapters/radius/radius-adapter-interface.md) — migration source-to-target (this doc is the steady-state sibling).
 - [Intune-First Asset Onboarding doctrine](../modernization/intune-first-onboarding/doctrine.md) §5 — the OrgPath assignment authority chain whose output is what the AAA server reads.
-- ADRs that anchor this binding chain: [ADR-001](adr/adr-001-haadj-deprecated-entra-join-only.md), [ADR-034](adr/adr-034-three-plane-device-model.md), [ADR-035](adr/adr-035-orgpath-codebook-binding.md), [ADR-036](adr/adr-036-dynamic-group-provisioning.md), [ADR-038](adr/adr-038-device-plane-orgpath.md), [ADR-039](adr/adr-039-policy-targeting.md), [ADR-047](adr/adr-047-network-aaa-adapter-registration.md), [ADR-073](adr/adr-073-policy-targeting-nac-third-transport.md).
+- ADRs that anchor this binding chain: [ADR-001](adr/adr-001-haadj-deprecated-entra-join-only.md), [ADR-034](adr/adr-034-three-plane-device-model.md), [ADR-035](adr/adr-035-orgpath-codebook-binding.md), [ADR-036](adr/adr-036-dynamic-group-provisioning.md), [ADR-038](adr/adr-038-device-plane-orgpath.md), [ADR-039](adr/adr-039-policy-targeting.md), [ADR-107](adr/adr-107-network-aaa-adapter-registration.md), [ADR-073](adr/adr-073-policy-targeting-nac-third-transport.md).

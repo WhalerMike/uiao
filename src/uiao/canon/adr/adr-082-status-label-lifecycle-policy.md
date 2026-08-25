@@ -38,7 +38,7 @@ The 2026-05-22 cross-surface review found status labels applied inconsistently a
 2. **Hand-authored banners drift.** 12 canon pages carry essentially the same callout block as Markdown prose. Any update to the wording requires touching 12 files. The wording IS subtly different across pages already (some say "canonically declared, not yet fully adopted"; others say "operational instantiation is under development").
 3. **No machine-readable adoption state.** Tools that want to summarize "what is adopted at Tier N" or "which canon docs are aspirational" have nothing to query — the information lives only in callout prose.
 
-[ADR-076](adr-076-tier-conformance-model.md) introduced the source-vs-release distinction (GitHub repo = pre-release / canon; Platform Server = released artifact at version X.Y.Z) but did not formalize per-page mechanics. [ADR-072](adr-072-canon-publication-policy.qmd) introduced the `publish_to_site:` frontmatter machinery and scanner — exactly the right pattern to extend for lifecycle.
+[ADR-076](adr-076-tier-conformance-model.md) introduced the source-vs-release distinction (GitHub repo = pre-release / canon; Platform Server = released artifact at version X.Y.Z) but did not formalize per-page mechanics. [ADR-072](../../../../docs/adr/adr-072-canon-publication-policy.qmd) introduced the `publish_to_site:` frontmatter machinery and scanner — exactly the right pattern to extend for lifecycle.
 
 ### Code-is-SSOT direction
 

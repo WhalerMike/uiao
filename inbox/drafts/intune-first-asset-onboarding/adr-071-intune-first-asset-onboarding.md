@@ -256,9 +256,9 @@ enrollment mechanics documented as platform annexes.
 | Microsoft Learn — Apple Business Manager and Intune | https://learn.microsoft.com/en-us/mem/intune/enrollment/device-enrollment-program-enroll-ios | 2026-05-13 |
 | Microsoft Learn — Android Enterprise enrollment | https://learn.microsoft.com/en-us/mem/intune/enrollment/android-enrollment-overview | 2026-05-13 |
 | Microsoft Learn — Azure Arc onboarding | https://learn.microsoft.com/en-us/azure/azure-arc/servers/onboard-portal | 2026-05-13 |
-| ADR-001 — HAADJ Deprecated | [adr-001-haadj-deprecated-entra-join-only.md](../../src/uiao/canon/adr/adr-001-haadj-deprecated-entra-join-only.md) | 2026-04-28 |
-| ADR-002 — Arc-Enabled Servers Require Non-Domain-Joined | [adr-002-arc-entra-join-no-domain-join.md](../../src/uiao/canon/adr/adr-002-arc-entra-join-no-domain-join.md) | 2026-04-28 |
-| ADR-038 — Device-Plane OrgPath | [adr-038-device-plane-orgpath.md](../../src/uiao/canon/adr/adr-038-device-plane-orgpath.md) | (in canon) |
+| ADR-001 — HAADJ Deprecated | [adr-001-haadj-deprecated-entra-join-only.md](../../../src/uiao/canon/adr/adr-001-haadj-deprecated-entra-join-only.md) | 2026-04-28 |
+| ADR-002 — Arc-Enabled Servers Require Non-Domain-Joined | [adr-002-arc-entra-join-no-domain-join.md](../../../src/uiao/canon/adr/adr-002-arc-entra-join-no-domain-join.md) | 2026-04-28 |
+| ADR-038 — Device-Plane OrgPath | [adr-038-device-plane-orgpath.md](../../../src/uiao/canon/adr/adr-038-device-plane-orgpath.md) | (in canon) |
 | OrgPath/Intune narrative — Chapters 4, 6, 8 | `inbox/drafts/complete-narrative/source-docx/OrgPath and Microsoft Intune — Structural Device Governance at Enterprise Scale.md` | 2026-05-13 |
 
 ## Review Triggers

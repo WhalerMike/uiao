@@ -505,7 +505,8 @@ against the synthetic three-agency (OPM + Treasury + IRS) fixture.
 
 #### Canon
 
-- **ADR-058** (`src/uiao/canon/adr/adr-058-hrit-productization-mission.md`) —
+- **ADR-058** (renumbered to ADR-065 after this release to clear an ADR-058
+  slot collision; now `src/uiao/canon/adr/adr-065-hrit-productization-mission.md`) —
   HRIT Single-ATO Productization as v0.6.0 Mission Theme. Status: Accepted.
   Ratifies the runtime emission contract, ConMon SLA cadences (30-day draft SSP,
   45-day final SSP, 30-day reauthorization window), and the KSI-RECIP-001..008
@@ -751,7 +752,7 @@ Spec1-D1.7..D1.9, Spec2-D1.8, and Spec3-D1.1 remain pending (corrupted during th
 #### Canon — FedRAMP 20x integration
 
 - **UIAO_133** (`src/uiao/canon/specs/fedramp-20x-integration.md`) — FedRAMP 20x Integration spec. KSI emission tagging contract, MAS classification rubric, KSI-staleness drift class, dual-pathway posture (#278).
-- **ADR-047** (`src/uiao/canon/adr/adr-047-fedramp-20x-integration.md`) — substrate-level decision committing UIAO to KSI emission tagging, MAS classification, and KSI-staleness drift class. Status: PROPOSED. Ratification gate: RFC-0010 publication + stable Moderate KSI catalog + clean dry-run + steward signoff (#278).
+- **ADR-047** (renumbered to ADR-106 after this release to clear an ADR-047 slot collision; now `src/uiao/canon/adr/adr-106-fedramp-20x-integration.md`) — substrate-level decision committing UIAO to KSI emission tagging, MAS classification, and KSI-staleness drift class. Status: PROPOSED. Ratification gate: RFC-0010 publication + stable Moderate KSI catalog + clean dry-run + steward signoff (#278).
 - **FINDING-002** (`docs/findings/fedramp-20x-moderate-pilot.md`) — governance finding documenting the FedRAMP 20x Moderate Pilot framework movement and external assessment, with internal remedy across Phase 0/2/3 (#278).
 
 #### Canon — Microsoft coverage doctrine + ingestion contract

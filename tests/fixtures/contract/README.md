@@ -1,18 +1,18 @@
 # `impl/tests/fixtures/contract/` — Tier-2 Contract Fixtures
 
-Per [UIAO_131 §3.2](../../../../core/canon/specs/adapter-test-strategy.md),
+Per [UIAO_131 §3.2](../../../src/uiao/canon/specs/adapter-test-strategy.md),
 tier-2 tests are **contract tests against recorded fixtures**. Every
 fixture in this tree encodes an expected vendor request/response pair
 that the adapter must handle correctly — including the **absence**
 of a capability in a particular cloud variant (e.g., the
-[FINDING-001 INR unavailability](../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.md)
+[FINDING-001 INR unavailability](../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.qmd)
 in GCC-Moderate).
 
 ## Directory layout
 
 One subdirectory per adapter. Adapters match entries in
-[`core/canon/modernization-registry.yaml`](../../../../core/canon/modernization-registry.yaml)
-and [`core/canon/adapter-registry.yaml`](../../../../core/canon/adapter-registry.yaml).
+[`core/canon/modernization-registry.yaml`](../../../src/uiao/canon/modernization-registry.yaml)
+and [`core/canon/adapter-registry.yaml`](../../../src/uiao/canon/adapter-registry.yaml).
 
 ```
 contract/
@@ -148,8 +148,8 @@ signals "adapter registered, tier-2 fixtures pending" rather than
 
 ## Cross-references
 
-- [UIAO_131 Adapter Test Strategy](../../../../core/canon/specs/adapter-test-strategy.md) — authorizing spec
-- [UIAO_121 Adapter Conformance Test Plan — Template](../../../../core/canon/specs/adapter-conformance-test-plan-template.md)
-- [UIAO_123 Adapter Integration Test Plan — Canonical Template](../../../../core/canon/specs/adapter-integration-test-plan.md)
-- [Academy — Contributor tier-1 setup](../../../../docs/academy/contributor-tier-1-setup.qmd) — where fixtures are captured
-- [FINDING-001 — FedRAMP-INR](../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.md) — first fixture provenance class
+- [UIAO_131 Adapter Test Strategy](../../../src/uiao/canon/specs/adapter-test-strategy.md) — authorizing spec
+- [UIAO_121 Adapter Conformance Test Plan — Template](../../../src/uiao/canon/specs/adapter-conformance-test-plan-template.md)
+- [UIAO_123 Adapter Integration Test Plan — Canonical Template](../../../src/uiao/canon/specs/adapter-integration-test-plan.md)
+- [Academy — Contributor tier-1 setup](../../../docs/academy/contributor-tier-1-setup.qmd) — where fixtures are captured
+- [FINDING-001 — FedRAMP-INR](../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.qmd) — first fixture provenance class

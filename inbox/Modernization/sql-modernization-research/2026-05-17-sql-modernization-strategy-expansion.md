@@ -1466,7 +1466,7 @@ convenience:
 
 The customer-facing modernization narrative (the seven-chapter
 UIAO Modernization Program at
-[`docs/customer-documents/modernization/uiao-modernization-program/`](../../../docs/customer-documents/modernization/uiao-modernization-program/))
+[`docs/customer-documents/modernization/uiao-modernization-program/`](../../../docs/customer-documents/operational-guides/uiao-modernization-program/))
 intersects this research at three points:
 
 1. **Phase 0 — Foundation.** The program overview describes OrgPath
@@ -1474,13 +1474,13 @@ intersects this research at three points:
    Phase 0 also includes core-DB stand-up — schema v1.0 deployed
    and Entra-only auth verified before any Phase 1 work begins.
 2. **Phase 2 — Governance OS.** The Phase 2 chapter
-   ([`03-phase2-governance-os.qmd`](../../../docs/customer-documents/modernization/uiao-modernization-program/03-phase2-governance-os.qmd))
+   ([`03-phase2-governance-os.qmd`](../../../docs/customer-documents/operational-guides/uiao-modernization-program/03-phase2-governance-os.qmd))
    describes drift detection and SCuBA integration. Under the new
    doctrine, drift findings land as rows in the core DB; ScubaGear
    evidence is ingested via the Raw zone and joined to OrgPath at
    the Normalized zone projection.
 3. **Phase 4 — Multi-Agent.** Multi-agent governance
-   ([`05-phase4-multi-agent.qmd`](../../../docs/customer-documents/modernization/uiao-modernization-program/05-phase4-multi-agent.qmd))
+   ([`05-phase4-multi-agent.qmd`](../../../docs/customer-documents/operational-guides/uiao-modernization-program/05-phase4-multi-agent.qmd))
    presumes a shared substrate. The core DB is that substrate —
    every agent reads canonical rows, writes via the same write
    queue, and produces evidence into the same chain.

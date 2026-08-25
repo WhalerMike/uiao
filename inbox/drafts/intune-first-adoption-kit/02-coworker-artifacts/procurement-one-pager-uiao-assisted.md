@@ -121,9 +121,9 @@ The mechanics of the vendor relationship are unchanged.
 
 UIAO anchors for procurement live in the organization's internal repository
 under
-[`src/uiao/modernization/intune-first-onboarding/`](../../../src/uiao/modernization/intune-first-onboarding/),
+[`src/uiao/modernization/intune-first-onboarding/`](../../../../src/uiao/modernization/intune-first-onboarding/),
 principally in
-[`procurement-handoff.md`](../../../src/uiao/modernization/intune-first-onboarding/procurement-handoff.md)
+[`procurement-handoff.md`](../../intune-first-asset-onboarding/procurement-handoff.md)
 and the surrounding doctrine and process specifications anchored by ADR-067
 and ADR-071. The OrgPath taxonomy specification, the vendor adapter
 specifications, and the procurement evidence ledger schema are also
