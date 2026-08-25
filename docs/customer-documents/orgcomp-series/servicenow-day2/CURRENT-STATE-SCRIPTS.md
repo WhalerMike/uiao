@@ -144,7 +144,7 @@ write *path* for synced objects changes.
 | `x_fed_day2_ops.ad_mid_server` | The domain-joined, in-boundary MID that reaches a writable DC |
 | `x_fed_day2_ops.ad_dc` | The preferred writable DC (write + verify hit the same one) |
 | `x_fed_day2_ops.ad_disabled_ou` | The OU leavers are moved to on disable |
-| `x_fed_day2_ops.ad_managed_ous` | Comma-separated allowlist of target OU distinguished names `moveUserOuAd` may move an object into; empty/unset fails closed (no moves permitted) |
+| `x_fed_day2_ops.ad_managed_ous` | **Semicolon**- or newline-separated allowlist of target OU distinguished names `moveUserOuAd` may move an object into; empty/unset fails closed (no moves permitted). A DN contains commas, so commas cannot delimit this list — `OU=A,DC=x,DC=y;OU=B,DC=x,DC=y` |
 | `x_fed_day2_ops.ad_protected_groups` | Comma-separated deny-list of tier-0/protected AD group names (substring match) `addGroupMemberAd` refuses to modify; defaults to the built-in AD privileged-group set |
 
 See `CURRENT-STATE-BUILD-DELTA.md` for how these are provisioned and the delegated

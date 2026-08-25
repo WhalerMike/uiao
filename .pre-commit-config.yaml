@@ -252,6 +252,56 @@ repos:
         pass_filenames: false
         files: ^docs/customer-documents/orgcomp-series/(servicenow-day2/(check_actuator_coverage\.py|.*-control-map\.json|script-includes/.*\.js)|x_fed_compliance/(data/control-map\.json|script-includes/.*\.js))$
 
+      # The kit JavaScript is ~3,700 lines whose only tests (ATF specs) run
+      # nowhere but inside a ServiceNow instance — so until these three hooks
+      # existed, nothing in this repo ever EXECUTED any of it. The gates above
+      # read it as text. That is the same shape as the 2026-07-29 review finding,
+      # where test_mode short-circuited before the vulnerable path and all 12 ATF
+      # specs passed while the injection path had never run.
+      #
+      # Cheapest first: a parse error should surface before a lint run does.
+      - id: servicenow-kit-syntax
+        name: "ServiceNow kit JS parses (node --check)"
+        entry: bash -c 'fail=0; for f in "$@"; do node --check "$f" || fail=1; done; exit $fail' --
+        language: system
+        files: ^(docs/customer-documents/orgcomp-series/(servicenow-day2|x_fed_compliance)|infoblox-ddi-book/servicenow-app)/.*\.js$
+
+      # ES5 + the Glide globals. An undeclared global or an ES6 construct is a
+      # runtime failure on the instance that no reviewer reliably catches by eye.
+      # Config lives at the repo root because ESLint 9 ignores files outside its
+      # own base path; the toolchain stays under scripts/servicenow-harness/ so
+      # the repo does not become a Node project.
+      - id: servicenow-kit-eslint
+        name: "ServiceNow kit ESLint (ES5 + Glide globals)"
+        entry: bash -c 'ESLINT=./scripts/servicenow-harness/node_modules/.bin/eslint; if [ ! -x "$ESLINT" ]; then echo "eslint not installed — run npm install inside scripts/servicenow-harness"; exit 1; fi; "$ESLINT" .'
+        language: system
+        pass_filenames: false
+        files: ^(docs/customer-documents/orgcomp-series/(servicenow-day2|x_fed_compliance)|infoblox-ddi-book/servicenow-app)/.*\.js$|^eslint\.config\.mjs$|^scripts/servicenow-harness/.*\.js$
+
+      # Executes the Script Includes against a Glide shim and observes the
+      # refusal paths — the P0-1..P0-4 remediations, MACD-R clause 1 (Origin),
+      # the ComplianceGate read-only precondition, and the native actuator's
+      # "never writes to the estate" claim. On its first run this caught a live
+      # defect: _isAllowedOu split a DN allowlist on ',' — the DN component
+      # separator — so no OU could ever match and the allowlist was inert.
+      - id: servicenow-kit-harness
+        name: "ServiceNow kit harness (Script Includes execute)"
+        entry: bash -c 'node scripts/servicenow-harness/run.js'
+        language: system
+        pass_filenames: false
+        files: ^(docs/customer-documents/orgcomp-series/(servicenow-day2|x_fed_compliance)|infoblox-ddi-book/servicenow-app)/.*\.js$|^scripts/servicenow-harness/.*$
+
+      # The AD parameter allowlist is declared twice on purpose (defence in
+      # depth): AdHybridClient.ACTIONS on the ServiceNow side, $Contracts on the
+      # MID side. Two artifacts that must agree, with nothing comparing them, is
+      # the UIAO_211 defect class exactly. This is the comparison.
+      - id: servicenow-ad-allowlist-parity
+        name: "AD allowlist parity (JS vs PowerShell)"
+        entry: bash -c 'cd "docs/customer-documents/orgcomp-series/servicenow-day2" && python check_allowlist_parity.py'
+        language: system
+        pass_filenames: false
+        files: ^docs/customer-documents/orgcomp-series/servicenow-day2/(check_allowlist_parity\.py|script-includes/AdHybridClient\.js|mid/Invoke-Day2AdAction\.ps1)$
+
       # ADR-092 s4: the federal production ceiling is L3 — a human approves before
       # anything changes the estate. `approval: automated` on an estate write is an
       # L4 claim and needs a Governance-Plane decision behind it. Four such items

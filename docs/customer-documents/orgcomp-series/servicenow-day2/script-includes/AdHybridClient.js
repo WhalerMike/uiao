@@ -331,14 +331,23 @@ AdHybridClient.prototype = {
         return { ok: true, args: out };
     },
 
+    // The allowlist is SEMICOLON- or newline-separated, not comma-separated.
+    // A distinguished name contains commas ('OU=Users,DC=corp,DC=gov'), so a
+    // comma cannot delimit a list of them: splitting on ',' shredded every DN
+    // into its components and _isAllowedOu could never match a well-formed
+    // value. The allowlist was therefore permanently empty in effect, and
+    // createUserAd / moveUserOuAd refused every OU. Fail-closed, so not a
+    // security defect -- but the OU allowlist did not work at all, and no test
+    // exercised it. Found by scripts/servicenow-harness on its first run.
     _isAllowedOu: function (targetOu) {
         var allow = gs.getProperty('x_fed_day2_ops.ad_managed_ous', '');
         if (!allow) return false;   // fail closed: no allowlist means no writes to any OU
         if (!targetOu) return false;
-        var ous = allow.split(',');
+        var ous = ('' + allow).split(/[;\r\n]+/);
         var norm = ('' + targetOu).trim().toLowerCase();
         for (var i = 0; i < ous.length; i++) {
-            if (norm === ous[i].trim().toLowerCase()) return true;
+            var candidate = ous[i].trim().toLowerCase();
+            if (candidate && norm === candidate) return true;
         }
         return false;
     },
