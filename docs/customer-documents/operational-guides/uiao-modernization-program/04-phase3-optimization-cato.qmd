@@ -299,8 +299,10 @@ mandates:
                       validated through SLA enforcement and dashboard
                       optimization
 
-  FedRAMP Rev 5 /     cATO alignment maps Governance OS controls to IA,
-  NIST 800-53r5       AC, AU, SC, SI, CM, RA, CA control families
+  FedRAMP 20x /       cATO alignment maps Governance OS controls to IA,
+  CR26 KSI /          AC, AU, SC, SI, CM, RA, CA control families and
+  NIST 800-53r5       forward to the CR26 KSI themes anchored on them
+                      (Phase 2 §5.2)
   -----------------------------------------------------------------------
 
 # 3. Architecture Overview
@@ -449,20 +451,33 @@ machine-generated evidence packages at defined cadences.
 | must be defined with the authorizing official\]**                    |
 +----------------------------------------------------------------------+
 
-### 4.1.1 FedRAMP 20x KSI Crosswalk (Q2 2026 forward)
+### 4.1.1 FedRAMP 20x / CR26 KSI Crosswalk
 
-**\[SOURCED --- FedRAMP RFC-0006 (Phase One KSIs), RFC-0014 (Phase Two
-KSIs), RFC-0024 (Rev5 Machine-Readable Packages); FINDING-PGM-001\]**
+**\[SOURCED --- FedRAMP Consolidated Rules for 2026 (CR26)
+`2026.06.24.01`; RFC-0005 (Minimum Assessment Scope); RFC-0024 (Rev5
+Machine-Readable Packages); ADR-126; ADR-106; FINDING-PGM-001\]**
 
-FedRAMP 20x Phase Two — Moderate Pilot active November 2025; public
-Moderate path Q2 2026 — replaces the SSP-narrative authorization model
-with **Key Security Indicators (KSIs)**: ~61 machine-readable,
-continuously-validated evidence themes at Moderate baseline that sit
-above NIST SP 800-53. Phase 3's cATO framework retargets against this
-federal evidence model. The cATO Alignment Matrix in P3-T-001 above
-remains valid as a control-family mapping; the table below adds a
-parallel KSI-mapping layer that determines how each cATO row's
-evidence is presented to a FedRAMP 20x authorization package.
+FedRAMP 20x replaces the SSP-narrative authorization model with **Key
+Security Indicators (KSIs)**: machine-readable, continuously validated
+statements of security outcome that sit above NIST SP 800-53. The
+catalog is settled by CR26 at **46 indicators across 10 themes**
+(KSI-CNA 8, KSI-SVC 8, KSI-IAM 6, KSI-MLA 5, KSI-PIY 5, KSI-CMT 4,
+KSI-RPL 4, KSI-INR 3, KSI-SCR 2, KSI-CED 1). CR26 is mandatory for all
+FedRAMP stakeholders from **2027-01-01**, which makes this crosswalk a
+dated obligation rather than forward planning.
+
+Phase 3's cATO framework retargets against this federal evidence model.
+The cATO Alignment Matrix in P3-T-001 above remains valid as a
+control-family mapping; the table below adds a parallel KSI-mapping
+layer that determines how each cATO row's evidence is presented to a
+FedRAMP 20x authorization package.
+
+Note that `KSI-AFR` — cited in pre-CR26 planning drafts as the
+FedRAMP-reporting theme — **is not a CR26 theme**. The reporting and
+aggregation obligations it stood for are carried by `KSI-PIY` (policy
+and inventory evidence), `KSI-CMT` (change and continuous-monitoring
+evidence), and the FRR rule categories. The crosswalk below is stated
+against the CR26 themes that actually exist.
 
 The retargeting does not change the substrate's evidence emissions
 (those are defined by Phase 2 §13.3 KSI Emission Surface). It changes
@@ -479,12 +494,12 @@ and signal-to-noise.
 |---|---|---|---|---|
 | cATO-001 | IA | CA evaluation evidence; sign-in / MFA logs | KSI-IAM | §4.2 drift threshold calibration on identity signals; §4.5 AO-facing identity dashboards |
 | cATO-002 | AC | Conditional Access logs; RBAC/ABAC evaluations | KSI-IAM, KSI-CMT | §4.2 access-review automation; §4.4 SLA enforcement on access exceptions |
-| cATO-003 | AU | Sentinel analytics; M365 Audit; provenance chain | KSI-MLA, KSI-AFR | §4.5 retention/freshness telemetry; §4.6 cost-aware retention tiers |
+| cATO-003 | AU | Sentinel analytics; M365 Audit; provenance chain | KSI-MLA, KSI-PIY | §4.5 retention/freshness telemetry; §4.6 cost-aware retention tiers |
 | cATO-004 | CM | Intune compliance; Arc Guest Config; SCuBA | KSI-CNA, KSI-SVC, KSI-CMT | §4.2 drift trend analysis; §4.3 automated remediation maturation |
 | cATO-005 | SC | SD-WAN tunnel status; mTLS cert validation; overlay path telemetry | KSI-CNA, KSI-SVC | §4.4 tunnel-health SLA enforcement; §4.5 network-pillar dashboards |
 | cATO-006 | SI | Defender risk signals; Intune remediation; Arc remediation | KSI-MLA, KSI-CMT | §4.3 vulnerability remediation SLA; §4.5 patch compliance dashboards |
-| cATO-007 | RA | Governance OS drift aggregation; Sentinel correlation; risk scoring | KSI-MLA, KSI-AFR | §4.5 risk-posture trend forecasting; §4.6 risk-aware sampling |
-| cATO-008 | CA | cATO evidence packages (aggregated); AO dashboard; provenance chain | KSI-AFR | §4.5 AO-facing evidence portal; §4.7 adapter doctrine for new KSI sources |
+| cATO-007 | RA | Governance OS drift aggregation; Sentinel correlation; risk scoring | KSI-MLA, KSI-PIY, KSI-SCR | §4.5 risk-posture trend forecasting; §4.6 risk-aware sampling |
+| cATO-008 | CA | cATO evidence packages (aggregated); AO dashboard; provenance chain | KSI-PIY, KSI-CMT | §4.5 AO-facing evidence portal; §4.7 adapter doctrine for new KSI sources |
 
 **Two operational consequences** carry into Phase 3 execution:
 
@@ -498,14 +513,29 @@ and signal-to-noise.
    The four-element acceptance package above (evidence-chain
    integrity, drift coverage certification, remediation SLA
    compliance, exception register) gains a fifth element: a KSI
-   coverage certification listing every KSI in the agency's Moderate
-   baseline, the substrate-emitted evidence backing it, and the
-   freshness window of the most recent payload.
+   coverage certification listing all 46 CR26 indicators, the
+   substrate-emitted evidence backing each, and the freshness window of
+   the most recent payload. The certification must distinguish three
+   states, not two: **covered** (32 indicators today), **open** (14,
+   concentrated in KSI-CNA, KSI-SVC, and KSI-MLA), and **mapped but not
+   yet evaluable** (the 4 KSI-CMT scaffolds pending the CR26 VDR/VER
+   evidence contract). Folding the third state into either of the first
+   two is the failure mode this element exists to prevent --- counted as
+   covered it overstates the posture, counted as open it understates the
+   work already done.
+3. **Minimum Assessment Scope classification is part of the package.**
+   Each component contributing evidence carries its `in-scope` /
+   `metadata-out-of-scope` / `agency-side-out-of-scope` classification
+   (Phase 2 §2.1a). An authorization sponsor reads that classification
+   to confirm the assessed surface, which under 20x is a scope
+   declaration rather than a boundary diagram.
 
 This crosswalk does not assert that any specific cloud service
 provider has filed a 20x-aligned package for its sovereign-cloud
-offering as of the Phase 3 publication date. CSP-side filing is an
-external action tracked in
+offering as of the Phase 3 publication date, and the CR26 mandatory
+date does not change that: it binds the stakeholders filing packages,
+not the substrate's readiness to supply their evidence. CSP-side filing
+is an external action tracked in
 [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../findings/fedramp-20x-moderate-pilot.html);
 Phase 3 readiness for 20x is substrate-side and proceeds independently
 of CSP timing.
