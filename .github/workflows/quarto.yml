@@ -96,7 +96,31 @@ jobs:
         # ships for those is the committed PNG.
         run: |
           set -euo pipefail
-          python -m pip install --quiet cairosvg Pillow pyyaml
+          # `jupyter` is defensive, not decorative. The full-site HTML render
+          # and DOCX shard 4 — and only those two — have died mid-run on:
+          #   "Starting python3 kernel... Broken pipe (os error 32)"
+          #   "Jupyter is not available in this Python installation."
+          # (runs 32593369617 on 2026-08-22, 32869453758 on 2026-08-25; both
+          # predate the change that surfaced them, and both killed the Pages
+          # deploy and the customer-document .docx bundles with them.)
+          #
+          # The trigger is not understood. No document under docs/ carries an
+          # executable cell — no ```{python}/{r}/{julia}/{ojs} fence, no
+          # `engine:`/`jupyter:` key, no .ipynb, no {{< embed >}} — so on
+          # content alone nothing should ever request a kernel. python3 also
+          # works earlier in the very same job (the SVG rasterizer step runs
+          # it for ~3 min), and the failure lands ~20-25 min in, on the two
+          # longest, widest-scope jobs, while every narrower section render
+          # passes. That shape is as consistent with runner resource pressure
+          # as with a real kernel request.
+          #
+          # So this is a cheap guard, not a root-cause fix: installing jupyter
+          # costs seconds and lets the render survive a kernel request whatever
+          # provokes one. If the render still dies here, the cause is NOT a
+          # missing dependency and the next step is runner diagnostics (memory
+          # and disk during the render step), not more packages. Carried only
+          # by the two job types that actually fail; section renders stay lean.
+          python -m pip install --quiet cairosvg Pillow pyyaml jupyter
           bash scripts/ci_render_untracked_figures.sh
 
       - name: Render HTML site
@@ -155,7 +179,31 @@ jobs:
         # must exist before the DOCX render embeds them.
         run: |
           set -euo pipefail
-          python -m pip install --quiet cairosvg Pillow pyyaml
+          # `jupyter` is defensive, not decorative. The full-site HTML render
+          # and DOCX shard 4 — and only those two — have died mid-run on:
+          #   "Starting python3 kernel... Broken pipe (os error 32)"
+          #   "Jupyter is not available in this Python installation."
+          # (runs 32593369617 on 2026-08-22, 32869453758 on 2026-08-25; both
+          # predate the change that surfaced them, and both killed the Pages
+          # deploy and the customer-document .docx bundles with them.)
+          #
+          # The trigger is not understood. No document under docs/ carries an
+          # executable cell — no ```{python}/{r}/{julia}/{ojs} fence, no
+          # `engine:`/`jupyter:` key, no .ipynb, no {{< embed >}} — so on
+          # content alone nothing should ever request a kernel. python3 also
+          # works earlier in the very same job (the SVG rasterizer step runs
+          # it for ~3 min), and the failure lands ~20-25 min in, on the two
+          # longest, widest-scope jobs, while every narrower section render
+          # passes. That shape is as consistent with runner resource pressure
+          # as with a real kernel request.
+          #
+          # So this is a cheap guard, not a root-cause fix: installing jupyter
+          # costs seconds and lets the render survive a kernel request whatever
+          # provokes one. If the render still dies here, the cause is NOT a
+          # missing dependency and the next step is runner diagnostics (memory
+          # and disk during the render step), not more packages. Carried only
+          # by the two job types that actually fail; section renders stay lean.
+          python -m pip install --quiet cairosvg Pillow pyyaml jupyter
           bash scripts/ci_render_untracked_figures.sh
 
       - name: Render DOCX shard
