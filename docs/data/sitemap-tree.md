@@ -233,6 +233,7 @@
 - [SailPoint ISC Governance — Option-B Ratification and Native Cloud IAM/RBAC Reconciliation Binding](adr/adr-135-sailpoint-isc-governance-option-b-ratification.html)
 - [SailPoint IdentityIQ — Option-C Slot Allocation and Vendor Contract Pin](adr/adr-136-sailpoint-identityiq-option-c-slot-allocation.html)
 - [Tenant-extension facets — admin tier, device type, and environment on slots 11-13](adr/adr-137-tenant-extension-facets.html)
+- [Ephemeral Governance Engine — decompose the substrate by lifetime, not by function](adr/adr-138-ephemeral-governance-engine.html)
 
 ## Schema Reference
 
