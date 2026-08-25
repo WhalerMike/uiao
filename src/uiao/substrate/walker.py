@@ -5,8 +5,21 @@ canon document registry to detect structural and provenance drift.
 Drift classes reported (per docs/docs/16_DriftDetectionStandard.qmd):
   DRIFT-SCHEMA      — declared module path or registry path does not exist
   DRIFT-PROVENANCE  — canon document referenced by the registry is missing,
+                      OR a canon document declares a `document_id` the registry
+                      does not allocate to it,
                       OR a canon document cites a code path under src/uiao/
                       (or the retired impl/ prefix) that does not resolve.
+
+The registry walk runs in both directions, and only the pair is a closed loop:
+
+  registry -> disk   every registered path exists  (the original check)
+  disk -> registry   every declared `document_id` is allocated, to this path
+
+Registry-to-disk alone cannot see a document that allocates itself an ID nobody
+recorded, or two documents claiming the same ID — the registry simply has no row
+to walk. Those documents are invisible to every surface built on the registry
+(the status table, the published document index, ID-based citation), which is
+the failure this direction exists to catch.
 
 Resolution order for the workspace root:
   1. Explicit `workspace_root` argument
@@ -46,6 +59,29 @@ DOCUMENT_REGISTRY_BASE = "."
 # boundaries.
 CANON_ROOT = "src/uiao/canon"
 DOCS_ROOT = "docs"
+
+# Reverse registry walk. `document_id` carries two different meanings in canon
+# depending on file class, and conflating them produces noise rather than drift:
+#
+#   .md / .qmd  — an identity claim. This file *is* UIAO_NNN, so the registry
+#                 must allocate that ID and bind it to exactly this path.
+#   .yaml / .yml — a back-reference. Data files under canon/data/ carry the ID
+#                 of the canon document they are the executable form of (their
+#                 headers say so: "Canonical source: ...UIAO_193_...md"). The ID
+#                 must be allocated; requiring it to bind to the data file's own
+#                 path would be asserting the opposite of what the field means.
+DOCUMENT_ID_DOC_SUFFIXES: frozenset[str] = frozenset({".md", ".qmd"})
+DOCUMENT_ID_DATA_SUFFIXES: frozenset[str] = frozenset({".yaml", ".yml"})
+
+# document-registry.yaml allocates the UIAO_NNN namespace and says so in its
+# header. Canon also carries `document_id` values from other namespaces —
+# CHARTER-NNN under canon/charter/, descriptive slugs on some data files — which
+# this registry does not govern and must not be judged against.
+DOCUMENT_ID_NAMESPACE_RE = re.compile(r"^UIAO_\d{3}$")
+
+# Frontmatter block at the top of a canon document. Mirrors the pattern in
+# scripts/validate_canon_frontmatter.py and generate_substrate_status_table.py.
+CANON_FRONTMATTER_RE = re.compile(r"\A---\s*\n(?P<body>.*?)\n---\s*(?:\n|$)", re.DOTALL)
 CODE_REF_PATTERN = re.compile(r"\b(?:src/uiao|impl)/[\w./\-]+\.(?:py|md|yaml|yml|json|toml|lua|sh|ini|cfg)\b")
 
 # Files exempt from the dangling-code-ref scan because they narrate
@@ -82,6 +118,10 @@ class SubstrateReport:
     contract_present: bool
     modules_checked: int = 0
     documents_checked: int = 0
+    # Canon files carrying a UIAO_NNN `document_id`, counted by the reverse
+    # registry walk. Distinct from `documents_checked`, which counts registry
+    # rows — the gap between the two is the point of running both directions.
+    document_ids_checked: int = 0
     code_refs_checked: int = 0
     findings: list[DriftFinding] = field(default_factory=list)
 
@@ -110,6 +150,7 @@ class SubstrateReport:
             "contract_present": self.contract_present,
             "modules_checked": self.modules_checked,
             "documents_checked": self.documents_checked,
+            "document_ids_checked": self.document_ids_checked,
             "code_refs_checked": self.code_refs_checked,
             "ok": self.ok,
             "blocking": self.blocking,
@@ -231,6 +272,7 @@ def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:
                     )
                 )
 
+    _scan_canon_document_ids(root, report, registry)
     _scan_canon_code_refs(root, report)
     _scan_docs_code_refs(root, report)
     _scan_retired_slugs(root, report, manifest.get("retired_slugs") or [])
@@ -787,6 +829,122 @@ def _scan_consent_envelope(root: Path, report: SubstrateReport) -> None:
                         ),
                     )
                 )
+
+
+def _declared_document_id(path: Path) -> Optional[str]:
+    """Return the `document_id` a canon file declares, or None.
+
+    Documents carry it in YAML frontmatter; data files carry it at the top level
+    or under a `metadata:` mapping (the UIAO_200/201/202 convention). A file that
+    does not parse is not reported here — schema validation owns that failure,
+    and guessing at a broken file's identity would produce a worse finding than
+    the one the validator already gives.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+    if path.suffix in DOCUMENT_ID_DOC_SUFFIXES:
+        match = CANON_FRONTMATTER_RE.match(text)
+        if match is None:
+            return None
+        source = match.group("body")
+    else:
+        source = text
+
+    try:
+        data = yaml.safe_load(source)
+    except yaml.YAMLError:
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    metadata = data.get("metadata")
+    if isinstance(metadata, dict) and "document_id" in metadata:
+        data = metadata
+    value = data.get("document_id")
+    return str(value) if value is not None else None
+
+
+def _scan_canon_document_ids(root: Path, report: SubstrateReport, registry: Optional[dict]) -> None:
+    """Reverse registry walk: canon -> registry.
+
+    The forward walk asks "does every registered path exist?". This asks the
+    other half — "is every declared identity recorded, and recorded here?" — and
+    emits DRIFT-PROVENANCE for the two ways it can fail:
+
+    ``document-id-unallocated``
+        A document declares UIAO_NNN and the registry has no row for it. The
+        document is real and cited by ID in prose, but every registry-derived
+        surface omits it, so its identity resolves nowhere.
+
+    ``document-id-path-mismatch``
+        The registry allocates UIAO_NNN to a different path. Two documents claim
+        one ID; only one is reachable by it, and which one is decided by
+        whichever surface you happen to read.
+
+    Both are P1: an ID that resolves to the wrong document, or to nothing, is
+    exactly the broken provenance chain DRIFT-PROVENANCE names.
+    """
+    if registry is None:
+        return
+
+    allocated: dict[str, str] = {}
+    for doc in registry.get("documents", []):
+        doc_id = doc.get("id")
+        if doc_id is not None:
+            allocated[str(doc_id)] = str(doc.get("path", ""))
+
+    canon_root = root / CANON_ROOT
+    if not canon_root.is_dir():
+        return
+
+    suffixes = DOCUMENT_ID_DOC_SUFFIXES | DOCUMENT_ID_DATA_SUFFIXES
+    for path in sorted(canon_root.rglob("*")):
+        if not path.is_file() or path.suffix not in suffixes:
+            continue
+        declared = _declared_document_id(path)
+        if declared is None or not DOCUMENT_ID_NAMESPACE_RE.match(declared):
+            continue
+
+        rel = path.relative_to(root).as_posix()
+        report.document_ids_checked += 1
+
+        if declared not in allocated:
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-PROVENANCE",
+                    severity="P1",
+                    path=rel,
+                    detail=(
+                        f"declares document_id {declared}, which document-registry.yaml "
+                        f"does not allocate — the document is unreachable by ID from every "
+                        f"registry-derived surface"
+                    ),
+                    subkind="document-id-unallocated",
+                )
+            )
+            continue
+
+        # Back-references are allocation-checked only; see the constant block.
+        if path.suffix in DOCUMENT_ID_DATA_SUFFIXES:
+            continue
+
+        registered = allocated[declared]
+        if registered != rel:
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-PROVENANCE",
+                    severity="P1",
+                    path=rel,
+                    detail=(
+                        f"declares document_id {declared}, but document-registry.yaml "
+                        f"binds {declared} to {registered} — two documents claim one ID"
+                    ),
+                    subkind="document-id-path-mismatch",
+                )
+            )
 
 
 def _scan_prose_for_code_refs(

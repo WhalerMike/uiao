@@ -27,7 +27,7 @@ objects — MFA methods, Azure RBAC, guests, app consent, cloud-only groups — 
 had an on-prem master and stay on the Graph/ARM path. This edition adds the **AD
 leg** and a **router** that sends each task to the correct path.
 
-![Current-state hybrid path: AD is the master and Entra Connect syncs AD to Entra, so synced-object writes land in AD and flow to Entra while cloud-native objects stay on Graph/ARM.](servicenow-day2/figs/day2kit-current-fig-01-hybrid-path.png){fig-alt="Four-column current-state house-style diagram on white. Origin: Active Directory as today's identity master plus ServiceNow catalog and SAM; a note that OPM-HRIT is the 2027 target. Orchestrate: the five MACD-R clauses plus a router keyed on onPremisesSyncEnabled. Actuate splits into an AD leg (domain-joined MID to a writable DC, New-ADUser/Disable-ADAccount/Set-ADAccountPassword/Add-ADGroupMember, then Entra Connect sync) and a Graph/ARM leg (MFA, Azure RBAC, license, guest, consent). Emit: evidence to the same NIST controls and FedRAMP KSIs." width="100%"}
+![Current-state hybrid path: AD is the master and Entra Connect syncs AD to Entra, so synced-object writes land in AD and flow to Entra while cloud-native objects stay on Graph/ARM.](figs/day2kit-current-fig-01-hybrid-path.png){fig-alt="Four-column current-state house-style diagram on white. Origin: Active Directory as today's identity master plus ServiceNow catalog and SAM; a note that OPM-HRIT is the 2027 target. Orchestrate: the five MACD-R clauses plus a router keyed on onPremisesSyncEnabled. Actuate splits into an AD leg (domain-joined MID to a writable DC, New-ADUser/Disable-ADAccount/Set-ADAccountPassword/Add-ADGroupMember, then Entra Connect sync) and a Graph/ARM leg (MFA, Azure RBAC, license, guest, consent). Emit: evidence to the same NIST controls and FedRAMP KSIs." width="100%"}
 
 ## 1. The one rule is unchanged: sandbox first
 
@@ -81,7 +81,7 @@ documents unchanged; the **Current-State docs** cover only the delta.
 - A **preferred writable DC** (`x_fed_day2_ops.ad_dc`) so the write and the
   verify re-read hit the same DC (no replication-lag false reads), and a
   **disabled-accounts OU** (`x_fed_day2_ops.ad_disabled_ou`) for leavers.
-- A **managed-OU allowlist** (`x_fed_day2_ops.ad_managed_ous`) — the comma-separated
+- A **managed-OU allowlist** (`x_fed_day2_ops.ad_managed_ous`) — the semicolon-separated
   distinguished names `moveUserOuAd` is permitted to move an object into. Unset
   or empty means no OU moves are permitted at all (fail closed) — this keeps a
   Mover task from escaping the OUs your GPO/LAPS/delegation/audit scoping covers.

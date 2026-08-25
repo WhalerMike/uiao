@@ -302,7 +302,8 @@ concurrent governance streams without drift. The main branch of the
 canon/ directory represents the authoritative baseline at all times.
 When a baseline requires a major revision --- for example, to
 accommodate a new compliance regime or a structural refactoring driven
-by a new FedRAMP requirement --- a governance branch is created. Work on
+by a new FedRAMP requirement, such as a CR26 version advance --- a
+governance branch is created. Work on
 the governance branch proceeds under full CI enforcement, including
 schema validation, provenance tracking, and drift detection against the
 main branch. When the revised baseline is ready, it is merged into main
@@ -335,9 +336,13 @@ Evidence archival is a compliance-critical function that ensures
 attestation packages, assessment artifacts, and governance evidence
 remain retrievable and legally defensible across the full retention
 horizon mandated by the applicable compliance regime. Within the
-GCC-Moderate boundary, retention requirements are governed by FedRAMP
-continuous monitoring guidance and agency-specific records management
-policies.
+GCC-Moderate boundary, retention requirements are governed by the FedRAMP
+20x continuous-monitoring rules --- the FRR categories in CR26 that
+specify continuous monitoring and reporting obligations --- together with
+agency-specific records management policies. Retention must outlast the
+evidence-freshness window: a KSI payload is superseded continuously, but
+the superseded payloads remain the audit record of what was asserted
+when.
 
 The archival model operates on three principles. First, every piece of
 governance evidence is packaged as an attestation bundle --- a
@@ -387,11 +392,15 @@ M365 services or third-party services within the GCC-Moderate boundary
 can be onboarded by registering a service adapter that conforms to the
 UIAO Canonical API Specification and producing a service-specific
 baseline that is validated against the metadata schema and registered in
-the CII. At the **compliance layer**, new compliance regimes (such as
-updated FedRAMP requirements or agency-specific overlays) can be
-absorbed by creating a compliance mapping artifact that links the new
-requirements to existing canonical baselines and identifying any gaps
-that require new governance artifacts. At the **agent layer**, new
+the CII. At the **compliance layer**, new compliance regimes (a CR26
+version advance, a new FedRAMP rule category, or an agency-specific
+overlay) can be absorbed by creating a compliance mapping artifact that
+links the new requirements to existing canonical baselines and
+identifies any gaps that require new governance artifacts. The CR26
+catalog pin makes this mechanical rather than interpretive: when the
+pinned rules version advances, indicator IDs that no longer resolve are
+surfaced as `DRIFT-PROVENANCE` findings by the `fedramp-cr26-catalog`
+adapter, so the mapping artifact is written against a known delta. At the **agent layer**, new
 governance agents can be integrated by conforming to the multi-agent
 governance topology defined in Phase 4, registering their capabilities
 in the agent registry, and submitting to the cooperative governance
@@ -1036,7 +1045,12 @@ permitted on any UIAO artifact until adopted by agencies. Amazon Connect
 Contact Center is an explicit exception operating in Commercial Cloud.
 Phase 5 Canon Integration enforces Boundary Enforcement by verifying
 that all consolidated artifacts and all extensibility integrations
-operate within the GCC-Moderate boundary.
+operate within the GCC-Moderate deployment boundary --- and, separately,
+that each carries a Minimum Assessment Scope classification. Under
+FedRAMP 20x the two checks are distinct: deployment location is a
+placement fact, assessment scope is decided per information resource by
+the inclusion test. Verifying only the first would leave the assessed
+surface undeclared.
 
   ----------------------------------------------------------------------
   *Section Validation: Canonical Governance Constraints covers all seven
@@ -1120,7 +1134,10 @@ should be validated against the authoritative source before publication.
 
   DEF-A010   3PAO          Third-Party Assessment Organization --- an
                            external entity authorized to assess compliance
-                           posture against FedRAMP requirements.
+                           posture against FedRAMP requirements. Under
+                           20x, a 3PAO verifies and validates Key
+                           Security Indicator evidence rather than
+                           reviewing control narratives.
 
   DEF-A011   Continuous    An authorization posture sustained through
              ATO           ongoing monitoring, drift detection, and
@@ -1303,9 +1320,13 @@ may create governance ambiguity in derived artifacts.
                                                            proposed integration in
                                                            Section 3.4
 
-  REF-D011   FedRAMP Continuous       External             Published by FedRAMP PMO ---
-             Monitoring Strategy                           **MISSING:** current version
-             Guide                                         and URL
+  REF-D011   FedRAMP Consolidated     External             Official machine-readable
+             Rules for 2026 (CR26),                        rules file published by
+             version 2026.06.24.01                         FedRAMP; vendored in canon
+                                                           under ADR-126. Supersedes the
+                                                           prior MISSING placeholder for
+                                                           FedRAMP continuous-monitoring
+                                                           strategy guidance.
 
   REF-D012   NIST SP 800-137,         External             Published by NIST ---
              Information Security                          **MISSING:** current revision
@@ -1354,7 +1375,15 @@ may create governance ambiguity in derived artifacts.
 
   FedRAMP        Federal Risk and Authorization Management Program ---
                  standardized approach to security assessment and
-                 authorization for cloud services.
+                 authorization for cloud services. Current framework is
+                 FedRAMP 20x, expressed as the Consolidated Rules for
+                 2026 (CR26), mandatory for all stakeholders from
+                 2027-01-01.
+
+  KSI            Key Security Indicator --- a CR26 statement of security
+                 outcome evidenced by a continuously validated,
+                 machine-readable payload rather than a control
+                 narrative. 46 indicators across 10 themes.
 
   GCC-Moderate   Government Community Cloud at the Moderate impact level ---
                  the operational boundary for the UIAO Governance OS,

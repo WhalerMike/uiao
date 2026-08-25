@@ -36,9 +36,9 @@ Microsoft Entra ID (formerly Azure Active Directory) and on-premises
 Active Directory (AD), ensuring consistent Conditional Access evaluation
 and full Multi-Factor Authentication (MFA) enforcement across all access
 scenarios. Second, the program will restore network and telemetry
-visibility by eliminating signal gaps that result from authorization
-boundary constraints, enabling end-to-end correlation of identity,
-device, network, and application-layer events. Third, the program will
+visibility by closing the signal gaps enumerated in Section 4, enabling
+end-to-end correlation of identity, device, network, and
+application-layer events. Third, the program will
 enable Zero Trust Architecture (ZTA) alignment as defined by Office of
 Management and Budget (OMB) Memorandum M-22-09, establishing continuous
 verification of identity, device health, and session context at every
@@ -54,53 +54,84 @@ to Operate (ATO) capability, transitioning from the traditional periodic
 reauthorization cycle to an ongoing authorization posture supported by
 automated evidence streams and real-time risk assessment.
 
-A structural dependency underlies the entire modernization effort: the
-FedRAMP Boundary Gap. The current Federal Risk and Authorization
-Management Program (FedRAMP) authorization boundary was established to
-encompass legacy infrastructure and does not fully capture the
-cloud-native signal sources required for modern governance. Identity
+A structural dependency underlies the entire modernization effort, and
+FedRAMP 20x splits it cleanly in two. Historically it was stated as a
+single problem --- the **FedRAMP Boundary Gap**: the authorization
+boundary was drawn around legacy infrastructure and did not capture the
+cloud-native signal sources modern governance requires, so identity
 correlation, session telemetry, location awareness, and policy
-enforcement all depend on signals that originate from sources spanning
-multiple trust zones, some of which fall outside the defined boundary.
-This gap is not an operational deficiency; it is an architectural
-condition that reflects the natural progression from legacy to
-cloud-native service delivery. Until the boundary is modernized to
-encompass all required signal sources, the program cannot achieve its
-full objectives.
+enforcement all depended on signals that fell outside it. Under 20x the
+scope half of that problem dissolves. The authorization-boundary
+construct is rescinded; what is assessed is now decided per information
+resource by the Minimum Assessment Scope inclusion test, and a
+cloud-native signal source that handles federal information or impacts
+its confidentiality, integrity, or availability is in scope by
+definition --- no boundary redrawing required.
 
-As of Q1 2026, FedRAMP has begun this modernization formally. The
-**Minimum Assessment Scope Standard** (RFC-0005, comment period closed
-2025-05-25) replaces traditional boundary policy with a two-pronged
-inclusion test — handles federal information, and/or likely impacts its
-confidentiality, integrity, or availability — and explicitly excludes
-most metadata. The **FedRAMP 20x Phase Two Moderate Pilot** (active
-November 2025; public Moderate path Q2 2026) introduces approximately
-sixty-one Key Security Indicators (KSIs) at Moderate baseline as
-machine-readable, continuously-validated evidence sitting above NIST
-SP 800-53. Goal #2 of this Master Plan now operates against that
-federal mechanism: the boundary-modernization conversation shifts from
-*can the data leave?* to *is the receiving service in scope of the
-agency's authorization, and does the substrate emit the KSI evidence
-that demonstrates continuous compliance?* Operational substrate
-treatment of this framework movement is recorded in
-[FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../findings/fedramp-20x-moderate-pilot.html).
-Framework movement does not yet ship product features into
-GCC-Moderate; companion product action by cloud service providers is
-still required to close the operational telemetry inventory tracked in
+What survives is the **operational half**: several of those signals are
+still not emitted by the platforms that would have to produce them
+inside GCC-Moderate. That is a product-availability gap, not a
+scope-definition gap, and it is tracked as such in
+[FINDING-001](../../../findings/fedramp-gcc-moderate-informed-network-routing.html).
+This distinction runs through the whole Master Plan: where earlier
+revisions said *the boundary excludes this signal*, the accurate
+statement is now *this signal is in scope and unavailable*, which is a
+supplier conversation rather than an assessment one.
+
+FedRAMP has since modernized the construct formally, and the boundary gap
+is now a scope question rather than a perimeter question. The **Minimum
+Assessment Scope Standard** (RFC-0005) replaces traditional boundary
+policy with a two-pronged inclusion test --- handles federal information,
+and/or likely impacts its confidentiality, integrity, or availability ---
+and explicitly places information resources and most metadata that meet
+neither prong outside the assessed scope. On **2026-06-25** FedRAMP
+launched the **Consolidated Rules for 2026 (CR26)**, the machine-readable
+rules surface that carries that standard forward as rule category
+**FRR-MAS**. CR26 version `2026.06.24.01` defines **46 Key Security
+Indicators across 10 themes** (CED, CMT, CNA, IAM, INR, MLA, PIY, RPL,
+SCR, SVC), each anchored to NIST SP 800-53 controls, plus 75 defined
+terms (FRD), 17 rule categories (FRR), and 14 control families (CTL).
+
+Goal #2 of this Master Plan operates against that mechanism. The
+boundary-modernization conversation shifts from *can the data leave?* to
+*is the receiving information resource within the Minimum Assessment
+Scope, and does the substrate emit the KSI evidence that demonstrates
+continuous compliance?* Operational substrate treatment of the framework
+movement is recorded in
+[FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../findings/fedramp-20x-moderate-pilot.html);
+the authority pin for the official CR26 rules is
+[ADR-126](../../../adr/adr-126-fedramp-cr26-official-rules-adoption.html),
+and the substrate's emission contract is
+[ADR-106](../../../adr/adr-106-fedramp-20x-integration.html). Framework
+movement does not by itself ship product features into GCC-Moderate;
+companion product action by cloud service providers is still required to
+close the operational telemetry inventory tracked in
 [FINDING-001](../../../findings/fedramp-gcc-moderate-informed-network-routing.html).
 
-The UIAO Modernization Program operates within the FedRAMP Moderate
-boundary in Commercial Cloud. Government Community Cloud -- Moderate
+**The CR26 calendar is the program's compliance clock.** Optional
+adoption opened **2026-07-04**; the 20x Class B and Class C pipelines
+opened **2026-08-31**; CR26 becomes **mandatory for all FedRAMP
+stakeholders on 2027-01-01**; and **no new Rev5 certifications** are
+issued after **2027-06-11**. Phase sequencing in §3 is planned against
+these dates, not against a periodic reauthorization cycle.
+
+The UIAO Modernization Program is deployed in Commercial Cloud at the
+FedRAMP Moderate impact level. Government Community Cloud -- Moderate
 (GCC-Moderate) applies exclusively to Microsoft 365 Software as a
 Service (SaaS) services and does not encompass Azure services. Amazon
 Connect Contact Center operates as an explicit exception within
-Commercial Cloud. The program is aligned with federal mandates including
-Executive Order (EO) 14028 (Improving the Nation\'s Cybersecurity), CISA
-SCuBA, FedRAMP Revision 5 (Rev5), and OMB M-22-09. This document serves
-as the authoritative planning artifact for all stakeholders, including
-the Chief Information Officer (CIO), Chief Information Security Officer
-(CISO), Information System Security Officer (ISSO), Authorizing Official
-(AO), and Third-Party Assessment Organization (3PAO).
+Commercial Cloud. Those are deployment facts; what is *assessed* is
+determined by the Minimum Assessment Scope test above. The program is
+aligned with federal mandates including Executive Order (EO) 14028
+(Improving the Nation\'s Cybersecurity), CISA SCuBA, FedRAMP 20x / CR26,
+and OMB M-22-09. NIST SP 800-53 Rev 5 remains the control substrate
+beneath the KSIs --- CR26 anchors each indicator to Rev 5 controls --- but
+the artifact delivered to an assessor is the KSI evidence payload, not a
+Rev 5 control narrative. This document serves as the authoritative
+planning artifact for all stakeholders, including the Chief Information
+Officer (CIO), Chief Information Security Officer (CISO), Information
+System Security Officer (ISSO), Authorizing Official (AO), and
+Third-Party Assessment Organization (3PAO).
 
 2\. Modernization Scope
 
@@ -133,9 +164,8 @@ absence of synchronization.
 In the current state, identity *governance* signals are fragmented
 across on-premises Active Directory and the cloud directory. This
 fragmentation means that Conditional Access policies cannot evaluate
-signals that originate outside the authorization boundary, resulting in
-incomplete policy evaluation for users and devices that traverse trust
-zone boundaries. Federation metadata, token issuance events, and
+signals that are not surfaced to them, resulting in incomplete policy
+evaluation for users and devices that traverse trust zones. Federation metadata, token issuance events, and
 Conditional Access evaluation data are generated across multiple
 infrastructure components, and the lack of a unified identity
 *governance* model prevents consistent policy enforcement even when the
@@ -155,9 +185,8 @@ and Mobile Application Management (MAM), device compliance policy
 enforcement, and endpoint health attestation. Device compliance is a
 critical input to Conditional Access evaluation: a device that cannot
 demonstrate compliance should not be granted access to protected
-resources. In the current state, devices operating outside the managed
-boundary lack the compliance telemetry required for real-time health
-evaluation. Endpoint health signals, including operating system patch
+resources. In the current state, unmanaged devices lack the compliance
+telemetry required for real-time health evaluation. Endpoint health signals, including operating system patch
 level, antivirus status, disk encryption state, and firmware integrity,
 are not consistently collected for all device populations. This creates
 a condition where Conditional Access policies must either permit access
@@ -218,12 +247,11 @@ Security Orchestration, Automation, and Response (SOAR) platform.
 Together, these components provide threat detection, investigation, and
 response capabilities across the endpoint, email, identity, and cloud
 application layers. In the current state, these security tools generate
-rich signal streams that cannot be fully correlated when boundary
-constraints limit the scope of telemetry collection. Defender for
-Identity may detect suspicious authentication patterns, but if the
-corresponding network session telemetry or device compliance state is
-unavailable due to boundary constraints, the investigation context is
-incomplete. Sentinel correlation rules that depend on cross-layer signal
+rich signal streams that cannot be fully correlated when the platform
+does not emit every input those correlations need. Defender for Identity
+may detect suspicious authentication patterns, but if the corresponding
+network session telemetry or device compliance state is unavailable, the
+investigation context is incomplete. Sentinel correlation rules that depend on cross-layer signal
 joins produce partial results, reducing detection efficacy and
 increasing analyst workload. The modernization objective is to achieve
 unified security operations with full signal correlation across
@@ -247,16 +275,30 @@ snapshot rather than a continuous record. This approach introduces
 latency between operational changes and evidence capture, creating
 windows during which the documented compliance posture may not reflect
 actual system configuration. The modernization objective is to establish
-automated, continuous evidence generation mapped to FedRAMP Rev5 control
-families. Evidence streams will be produced as a byproduct of normal
-system operations, ensuring that compliance artifacts are always
-current, machine-readable, and traceable to their source telemetry.
+automated, continuous evidence generation tagged to the **CR26 Key
+Security Indicators** the emission backs, with the NIST SP 800-53 Rev 5
+control anchors CR26 assigns each indicator carried through as
+supporting metadata. Evidence streams will be produced as a byproduct of
+normal system operations, ensuring that compliance artifacts are always
+current, machine-readable, and traceable to their source telemetry. Each
+emission stamps four `fedramp:ksi-*` properties --- the themes it backs,
+the canon row authorizing the mapping, the freshness cadence required,
+and the emission timestamp --- so an assessor can verify not just that
+evidence exists but that it is current
+([ADR-106](../../../adr/adr-106-fedramp-20x-integration.html) D1).
+Evidence that ages past its cadence is surfaced as a first-class
+`DRIFT-EVIDENCE-STALE` finding rather than quietly presented as fresh.
 
 > 2.7 Compliance Plane
 
-The Compliance Plane manages FedRAMP authorization artifacts, including
-the System Security Plan (SSP), Plan of Action and Milestones (POA&M),
-and continuous monitoring deliverables. This plane is responsible for
+The Compliance Plane manages FedRAMP authorization artifacts. Under 20x
+these are machine-readable OSCAL packages --- `component-definition`,
+`assessment-results`, `poam-item`, `assessment-plan`, and an aggregated
+`system-security-plan` --- carrying KSI-tagged evidence, per RFC-0024;
+the traditional narrative System Security Plan (SSP) and spreadsheet
+Plan of Action and Milestones (POA&M) are the Rev5-era forms of the same
+obligations, retained only while a given package is still filed on the
+traditional pathway. This plane is responsible for
 maintaining the documentation and evidence chains that demonstrate the
 system\'s compliance with applicable federal security requirements. In
 the current state, compliance artifacts are static documents that drift
@@ -313,48 +355,62 @@ decision until the next assessment cycle. This creates a condition where
 the authorization decision is based on historical data that may no
 longer accurately represent the system\'s risk posture. The
 modernization objective is to establish continuous ATO capability with
-automated evidence streams, real-time control monitoring, and ongoing
-risk assessment. This capability will enable the AO to maintain
+automated evidence streams, real-time indicator monitoring, and ongoing
+risk assessment. FedRAMP 20x is what makes this a supported posture
+rather than a local invention: continuously validated KSI evidence is
+the artifact 20x expects, so the substrate's continuous emissions and
+the framework's assessment model are the same mechanism rather than two
+that must be reconciled. This capability will enable the AO to maintain
 continuous situational awareness of the system\'s security posture and
 make informed, timely authorization decisions supported by current
 evidence rather than periodic snapshots.
 
-> 2.10 Boundary Modernization
+> 2.10 Assessment-Scope Modernization
 
-Boundary Modernization addresses the structural evolution of the FedRAMP
-authorization boundary itself. The authorization boundary defines the
-scope of the system that is subject to FedRAMP assessment and continuous
-monitoring. All components, data flows, and interconnections within the
-boundary must be documented, assessed, and continuously monitored;
-components outside the boundary are excluded from this governance
-framework. In the current state, the authorization boundary was drawn
-around legacy infrastructure and does not encompass the cloud-native
-signal sources that modern governance requires. As cloud services were
-adopted incrementally, new signal sources, including identity federation
-endpoints, device compliance streams, session telemetry collectors, and
-policy decision points, were deployed in locations that fall outside the
-defined boundary. This creates a structural condition where the boundary
-no longer fully represents the system\'s operational footprint. The
-modernization objective is to propose boundary modifications that
-capture all signal sources required for modern cloud governance,
-including identity, location, session, telemetry, media, and policy
-signals. This boundary evolution will enable the UIAO Modernization
-Program to achieve its full scope of objectives within a coherent,
-assessable, and continuously monitored authorization perimeter.
+Assessment-Scope Modernization addresses the structural evolution of what
+FedRAMP assesses. Historically this was the **authorization boundary**: a
+drawn perimeter, inside which every component, data flow, and
+interconnection had to be documented, assessed, and continuously
+monitored, and outside which components were simply excluded from the
+governance framework. That construct is rescinded under FedRAMP 20x. The
+Minimum Assessment Scope Standard (RFC-0005, carried in CR26 as rule
+category **FRR-MAS**) replaces it with a per-resource inclusion test:
+an information resource is in the Minimum Assessment Scope if it handles
+federal information, and/or likely impacts the confidentiality,
+integrity, or availability of federal information. Information resources
+and most metadata that meet neither prong are outside it.
+
+The practical consequence for this program is that the signal sources
+added incrementally as cloud services were adopted --- identity
+federation endpoints, device compliance streams, session telemetry
+collectors, policy decision points --- are evaluated on their own merits
+rather than on where they happen to sit. Most meet prong (2) plainly, and
+are therefore in scope without any perimeter redrawing.
+
+The modernization objective is correspondingly reframed. Rather than
+proposing boundary modifications, the program **classifies every
+substrate component against the inclusion test** and records the
+classification as canon --- `in-scope`, `metadata-out-of-scope`, or
+`agency-side-out-of-scope`, per
+[ADR-106](../../../adr/adr-106-fedramp-20x-integration.html) D2. The
+classification is machine-readable, travels with the component, and is
+re-checkable on every emission; `uiao fedramp orgpath-scope` renders it
+for a given OrgPath subtree. This is what makes continuous assessment
+tractable: scope is a property each component asserts and the substrate
+verifies, not a diagram maintained by hand.
 
 3\. Problem Statement
 
 The organization operates a hybrid identity and infrastructure
 environment in which cloud services have been adopted incrementally over
-multiple years without a corresponding modernization of the
-authorization boundary, network architecture, or governance framework.
-This incremental adoption has produced an environment where cloud-native
-services coexist with legacy infrastructure, each operating under
-governance models that were designed independently and at different
-points in the organization\'s technology evolution. The result is an
-architectural condition in which the governance framework, the
-authorization boundary, and the operational environment are no longer
-fully aligned.
+multiple years without a corresponding modernization of the assessment
+posture, network architecture, or governance framework. This incremental
+adoption has produced an environment where cloud-native services coexist
+with legacy infrastructure, each operating under governance models that
+were designed independently and at different points in the
+organization\'s technology evolution. The result is an architectural
+condition in which the governance framework, the assessed scope, and the
+operational environment are no longer fully aligned.
 
 **Signal Loss.** The most consequential manifestation of this
 misalignment is signal loss. Modern cloud governance depends on the
@@ -365,23 +421,29 @@ behavioral context of the session), location signals (where is the
 request originating), and application signals (what resource is being
 accessed and what actions are being performed). In the current
 environment, these signals originate from sources that span multiple
-trust zones, some of which fall outside the current FedRAMP
-authorization boundary. When signals originate outside the boundary,
-they cannot be formally incorporated into governance decisions,
-compliance evidence, or security operations workflows. This signal loss
-is not a failure of any individual system or tool; it is a structural
-consequence of an authorization boundary that was defined before
-cloud-native signal sources existed.
+trust zones. Under the pre-20x construct, sources outside the drawn
+authorization boundary could not be formally incorporated into
+governance decisions, compliance evidence, or security operations
+workflows at all. The Minimum Assessment Scope test removes that
+prohibition --- a source that bears on federal information is in scope
+wherever it sits --- so what remains is the narrower and more tractable
+problem that several of these signals are **not emitted** by the
+platforms hosting them inside GCC-Moderate. This residual signal loss is
+not a failure of any individual system or tool, and it is no longer a
+consequence of how a boundary was drawn; it is a product-availability
+condition, enumerated in §4 and tracked in the GCC-Moderate gap
+findings.
 
 **Visibility Gaps.** Security operations require unified visibility
 across all layers of the technology stack to detect, investigate, and
 respond to threats effectively. In the current state, telemetry
-collection is constrained by boundary definitions that predate cloud
-adoption. Microsoft Sentinel, serving as the SIEM and SOAR platform, can
-only correlate signals that are available within its collection scope.
-When device compliance telemetry, network session metadata, geolocation
-data, or identity federation events fall outside the boundary, Sentinel
-correlation rules operate with incomplete data. Detection rules that
+collection is constrained by what the deployed platforms emit, not by
+what the assessment scope permits. Microsoft Sentinel, serving as the
+SIEM and SOAR platform, can only correlate signals that are available
+within its collection scope. When device compliance telemetry, network
+session metadata, geolocation data, or identity federation events are
+unavailable in the GCC-Moderate surface, Sentinel correlation rules
+operate with incomplete data. Detection rules that
 depend on cross-layer signal joins, such as correlating an anomalous
 sign-in event with an endpoint health degradation and a network location
 change, produce partial or absent results. This reduces detection
@@ -407,22 +469,22 @@ require architectural remediation. They are not the result of
 operational failures, misconfigurations, or resource constraints. They
 are the predictable consequences of an environment that has evolved from
 legacy to hybrid to cloud without a corresponding evolution of the
-governance and boundary architecture that governs it. The UIAO
-Modernization Program is designed to address these structural conditions
-through a unified architectural framework that aligns the authorization
-boundary, governance model, and operational environment into a coherent,
-assessable, and continuously monitored system.
+governance architecture that governs it. The UIAO Modernization Program
+is designed to address these structural conditions through a unified
+architectural framework that aligns the assessed scope, governance
+model, and operational environment into a coherent, assessable, and
+continuously monitored system.
 
-4\. FedRAMP Boundary Gap --- Architectural Dependency
+4\. Signal Availability Gap --- Architectural Dependency
 
 +---------------+
 | **Critical    |
 | Architectural |
 | Dependency**  |
 |               |
-| The FedRAMP   |
-| Boundary Gap  |
-| is a          |
+| The Signal    |
+| Availability  |
+| Gap is a      |
 | prerequisite  |
 | condition     |
 | that must be  |
@@ -442,26 +504,43 @@ assessable, and continuously monitored system.
 | review.       |
 +---------------+
 
-The current FedRAMP authorization boundary was established to encompass
-legacy infrastructure at a time when the organization\'s technology
-footprint was predominantly on-premises. The boundary definition
-captured the servers, network devices, databases, and application
-platforms that constituted the system, along with the interconnections
-and data flows between them. As cloud services were adopted, certain
-signal sources were deployed in environments that fall outside the
-originally defined boundary. These signal sources include identity
-federation endpoints, device compliance telemetry streams, session
-telemetry collectors, media relay infrastructure, geolocation services,
-and policy decision points. The deployment of these signal sources
-outside the boundary was not an error; it reflected the standard
-deployment architecture for cloud-native services that did not exist
-when the boundary was originally defined.
+This section was previously titled *FedRAMP Boundary Gap*, and the
+rename is substantive rather than cosmetic. The original analysis was
+correct about the symptom and, under FedRAMP 20x, wrong about the cause.
 
-> 4.1 Categories of Missing Signals
+The historical condition was real: the authorization boundary was
+established to encompass legacy infrastructure at a time when the
+organization\'s technology footprint was predominantly on-premises,
+capturing the servers, network devices, databases, and application
+platforms that constituted the system along with the interconnections
+and data flows between them. As cloud services were adopted, signal
+sources --- identity federation endpoints, device compliance telemetry
+streams, session telemetry collectors, media relay infrastructure,
+geolocation services, and policy decision points --- were deployed in
+environments outside that boundary. That was not an error; it reflected
+the standard deployment architecture for cloud-native services that did
+not exist when the boundary was drawn.
 
-The Boundary Gap can be characterized by six categories of signals that
-are generated outside the current authorization boundary but are
-required for modern cloud governance:
+Under 20x, **being outside a drawn boundary is no longer a reason a
+signal cannot be used.** The Minimum Assessment Scope test evaluates each
+information resource on what it does, and a telemetry stream that
+carries or bears on federal information is in scope wherever it runs.
+The six categories below are therefore *in scope and, in several cases,
+not emitted* --- an availability problem with the platform, tracked as
+[FINDING-001](../../../findings/fedramp-gcc-moderate-informed-network-routing.html)
+and its companion GCC-Moderate gap findings. Framing matters for who
+resolves it: a scope gap is settled with an Authorizing Official, an
+availability gap is settled with a cloud service provider. An AO or 3PAO
+reading this section should treat every category below as in-scope by
+the inclusion test, and treat each named gap as a supplier dependency
+rather than an unresolved scope question.
+
+> 4.1 Categories of Constrained Signals
+
+The gap can be characterized by six categories of signals that are
+within the Minimum Assessment Scope and required for modern cloud
+governance, but are not fully available in the deployed GCC-Moderate
+surface:
 
   --------------------------------
   **Signal     **Description**
@@ -542,9 +621,10 @@ required for modern cloud governance:
 
 > 4.2 Impact on Cloud Behavior
 
-Without these six signal categories within the authorization boundary,
-the organization\'s cloud governance capabilities operate with
-structural limitations. Conditional Access policies, which serve as the
+Without these six signal categories actually available to it, the
+organization\'s cloud governance capabilities operate with structural
+limitations --- and note that under 20x this is now purely a question of
+emission, since all six are within the Minimum Assessment Scope. Conditional Access policies, which serve as the
 primary policy enforcement mechanism for cloud service access, evaluate
 access requests using the signals available to them. When identity risk
 scores, device compliance state, network location context, or session
@@ -557,52 +637,63 @@ that would be denied if full signal context were available.
 
 Zero Trust evaluations, as defined by OMB M-22-09, require continuous
 verification of identity, device, and context at every access decision
-point. When the signals required for this continuous verification
-originate outside the boundary, the verification is inherently
-incomplete. Security operations teams, operating through Microsoft
-Sentinel, cannot achieve the signal correlation density required for
-modern threat detection when correlation rules span signal domains that
-cross the boundary. The result is an environment where the technical
+point. When the signals required for this continuous verification are
+not emitted, the verification is inherently incomplete. Security
+operations teams, operating through Microsoft Sentinel, cannot achieve
+the signal correlation density required for modern threat detection when
+correlation rules span signal domains the platform does not surface. The
+result is an environment where the technical
 capabilities of the security tooling exceed the governance framework\'s
 ability to consume and act on the signals those tools produce.
 
 > 4.3 Compliance Implications
 
-FedRAMP Rev5 control families impose requirements that depend on
-comprehensive signal availability. The Access Control (AC) family
-requires evidence of access enforcement at all system entry points. The
-Audit and Accountability (AU) family requires comprehensive audit
-logging of security-relevant events. The Identification and
-Authentication (IA) family requires evidence of identity verification
-and credential management. The System and Communications Protection (SC)
-family requires evidence of communication channel protection and session
-management. The System and Information Integrity (SI) family requires
-evidence of continuous monitoring and flaw remediation. When signal
-sources for any of these control families fall outside the authorization
-boundary, the evidence chain is incomplete. Assessment findings that
-result from this incompleteness are structural rather than operational:
-they reflect the boundary definition rather than a failure to implement
-or operate controls correctly.
+The CR26 Key Security Indicators impose requirements that depend on
+comprehensive signal availability, and because each indicator is
+continuously validated rather than narrated once, a missing signal shows
+up immediately as an indicator that cannot be evidenced. The
+**KSI-IAM** theme (6 indicators) requires evidence of identity
+verification, credential management, and least-privilege enforcement at
+every entry point. **KSI-MLA** (5) requires logging, monitoring, and
+auditing --- the emission side and the review side both. **KSI-SVC** (8)
+requires evidence of service configuration and communications
+protection. **KSI-CNA** (8) requires evidence of cloud-native
+architectural controls. **KSI-CMT** (4) requires change-management and
+continuous-monitoring evidence. Each of these CR26 indicators carries
+its NIST SP 800-53 Rev 5 control anchors --- AC, AU, IA, SC, SI --- so
+the Rev 5 obligations are unchanged underneath; what changed is that the
+deliverable is the indicator payload rather than a control narrative.
 
-> 4.4 Boundary Gap as Modernization Prerequisite
+When a signal source feeding any of these indicators is unavailable, the
+evidence chain is incomplete and the indicator reports as unevidenced.
+Assessment findings that result from this incompleteness are structural
+rather than operational: they reflect a platform's emission surface
+rather than a failure to implement or operate controls correctly. Under
+20x the corollary is sharper than it was under Rev5 --- an unevidenced
+indicator is visible continuously rather than at the next assessment
+cycle, so the gap is surfaced early and its remedy is attributable.
+
+> 4.4 The Signal Gap as Modernization Prerequisite
 
 The UIAO Modernization Program cannot achieve its stated objectives ---
 unified identity governance, continuous ATO, Zero Trust alignment, or
-SCuBA baseline compliance --- until the authorization boundary is
-modernized to encompass all required signal sources. Each program
-objective depends on the availability of signals from multiple
-categories outlined above. Unified identity governance requires identity
+SCuBA baseline compliance --- until the required signal sources are
+actually emitted and collectible. Each program objective depends on the
+availability of signals from multiple categories outlined above. Unified identity governance requires identity
 signals and policy signals. Continuous ATO requires evidence signals
 from all control families, which in turn depend on telemetry, session,
 and identity signals. Zero Trust alignment requires continuous
 verification using identity, device, location, and session signals.
 SCuBA baseline compliance requires policy signals, telemetry signals,
-and drift detection data. The Boundary Gap is therefore not a peripheral
-concern or a parallel workstream; it is the foundational architectural
-dependency upon which all other modernization objectives rest. Resolving
-it is not a deficiency remediation; it is an architectural evolution
-that reflects the natural and expected progression from legacy
-infrastructure governance to cloud-native governance.
+and drift detection data. The Signal Availability Gap is therefore not a
+peripheral concern or a parallel workstream; it is the foundational
+architectural dependency upon which all other modernization objectives
+rest. Resolving it is not a deficiency remediation; it is an
+architectural evolution that reflects the natural and expected
+progression from legacy infrastructure governance to cloud-native
+governance --- and, since 20x has already resolved the scope half, it is
+now a supplier-roadmap dependency with a named counterparty rather than
+an open architectural question.
 
 5\. Objectives and Outcomes
 
@@ -621,14 +712,15 @@ Active Directory with consistent Conditional Access evaluation and full
 MFA enforcement for all user populations, including privileged,
 standard, and external identities. Identity lifecycle events, including
 provisioning, role changes, and de-provisioning, will be managed through
-automated workflows with audit trails that satisfy FedRAMP Rev5 IA and
-AC control family requirements.
+automated workflows with audit trails that evidence the CR26 **KSI-IAM**
+indicators and their NIST SP 800-53 Rev 5 IA and AC control anchors.
 
 > 5b. Restore Visibility
 
 **Outcome:** End-to-end telemetry correlation across identity, device,
-network, and application layers with no signal gaps attributable to
-authorization boundary constraints. Microsoft Sentinel will ingest and
+network, and application layers with no signal gaps --- every source in
+the Minimum Assessment Scope either collected or its unavailability
+recorded as a named supplier dependency. Microsoft Sentinel will ingest and
 correlate signals from all six signal categories defined in Section 4,
 enabling detection rules, investigation workflows, and automated
 response playbooks to operate with complete contextual data.
@@ -640,8 +732,9 @@ continuous verification of identity, device health, and session context
 as defined by OMB M-22-09. Conditional Access policies will evaluate the
 full signal context, including identity risk, device compliance, network
 location, and session behavior, for every access request without
-exception. No access decision will be made with incomplete signal
-context due to boundary constraints.
+exception. Where a signal is not yet emitted by the platform, the
+resulting decision gap is recorded against the responsible supplier
+rather than absorbed silently.
 
 > 5d. Enable SCuBA Alignment
 
@@ -699,34 +792,42 @@ data flow descriptions, component inventories, and interface
 specifications for each plane. This document serves as the authoritative
 technical reference for the UIAO overlay architecture.
 
-> 6b. Boundary Modernization Plan
+> 6b. Minimum Assessment Scope Classification
 
-A detailed proposal for authorization boundary modification, including a
-complete signal source inventory identifying every signal source that
-requires boundary inclusion, a risk assessment evaluating the impact of
-boundary modification on the system\'s security posture, and a
-stakeholder approval pathway defining the review and approval process
-for boundary changes. This plan will address each of the six signal
-categories identified in Section 4 and provide a phased approach to
-boundary expansion that maintains authorization continuity throughout
-the transition.
+A per-component classification of the substrate against the Minimum
+Assessment Scope inclusion test, replacing what earlier revisions of
+this plan called a *Boundary Modernization Plan*. The deliverable is a
+complete information-resource inventory in which every component carries
+one of three machine-readable classifications --- `in-scope`,
+`metadata-out-of-scope`, or `agency-side-out-of-scope` --- together with
+the rationale that places it there, the signal sources it produces or
+consumes, and the KSI themes its emissions back. Where a classification
+is contested or an agency reads the inclusion test differently, the
+disagreement is recorded against the component rather than resolved by
+redrawing a diagram. This deliverable addresses each of the six signal
+categories identified in Section 4 and supersedes the boundary-expansion
+sequencing the earlier plan called for, which 20x makes unnecessary.
 
-> 6c. Compliance and ATO Plan
+> 6c. Compliance and Continuous-Authorization Plan
 
 A roadmap for transitioning from periodic reauthorization to continuous
-ATO, including the evidence automation strategy that defines how
-continuous evidence streams will be generated for each FedRAMP Rev5
-control family, a control mapping that aligns UIAO components to
-applicable controls, and a 3PAO engagement plan that defines how the
-assessment organization will participate in the continuous monitoring
-and ongoing authorization process.
+authorization, including the evidence automation strategy that defines
+how continuous evidence streams are generated and tagged for each CR26
+KSI theme, an indicator mapping that aligns UIAO components to the 46
+CR26 indicators (with their NIST SP 800-53 Rev 5 control anchors), the
+RFC-0024 machine-readable package format the streams are delivered in,
+and a 3PAO engagement plan that defines how the assessment organization
+consumes those streams during continuous monitoring. The plan is dated
+against the CR26 calendar in Section 1 --- mandatory adoption
+**2027-01-01**, no new Rev5 certifications after **2027-06-11** --- and
+names which artifacts must be machine-readable by each milestone.
 
 > 6d. Signal Restoration Framework
 
 A technical framework defining how each of the six missing signal
 categories (identity, location, session, telemetry, media, and policy)
 will be captured at their point of origin, routed through secure
-collection infrastructure, and integrated into the governance boundary.
+collection infrastructure, and integrated into the governance substrate.
 The framework will specify collection mechanisms, transport protocols,
 storage requirements, retention policies, and integration points with
 Microsoft Sentinel, Conditional Access, and the UIAO SCuBA governance
@@ -753,18 +854,22 @@ maintaining operational continuity and compliance posture.
   -------------------------------------------------------------------------------------------
   **ID**   **Risk**        **Likelihood**   **Impact**   **Description**    **Mitigation**
   -------- --------------- ---------------- ------------ ------------------ -----------------
-  R-01     **Boundary      High             High         The boundary       Parallel-path
-           Signal                                        modification       planning with
-           Constraints**                                 timeline may       interim
-                                                         exceed the         compensating
-                                                         modernization      controls that
-                                                         schedule, delaying provide partial
-                                                         signal restoration signal coverage
-                                                         and blocking       while boundary
-                                                         dependent          modification
-                                                         objectives.        proceeds through
-                                                                            the approval
-                                                                            process.
+  R-01     **Signal        High             High         Cloud service      Parallel-path
+           Emission Gaps**                               provider roadmaps  planning with
+                                                         may not deliver    interim
+                                                         the missing        compensating
+                                                         signals within the controls that
+                                                         modernization      provide partial
+                                                         schedule, delaying signal coverage,
+                                                         signal restoration and each
+                                                         and blocking       unemitted signal
+                                                         dependent          tracked as a
+                                                         objectives.        named supplier
+                                                                            finding with a
+                                                                            Minimum
+                                                                            Assessment Scope
+                                                                            classification
+                                                                            already recorded.
 
   R-02     **Legacy WAN    Medium           High         Legacy routing     Phased routing
            Routing**                                     architecture may   changes with
@@ -860,13 +965,16 @@ maintaining operational continuity and compliance posture.
 
 > 7.1 Risk Narrative
 
-The risks identified above are interdependent. The Boundary Signal
-Constraints risk (R-01) is the highest-impact item because it affects
-the timeline for nearly every other modernization objective. If the
-boundary modification process requires longer than anticipated, the
-program must operate with compensating controls that provide partial
-signal coverage, which in turn limits the effectiveness of the Restore
-Visibility (5b) and Enable Zero Trust Architecture (5c) objectives. The
+The risks identified above are interdependent. The Signal Emission Gaps
+risk (R-01) is the highest-impact item because it affects the timeline
+for nearly every other modernization objective. Note that 20x has
+already removed one leg of this risk: no AO approval is now required to
+bring an in-scope signal source into the assessment, so the residual
+exposure is entirely supplier-side. If cloud service provider roadmaps
+deliver the missing signals later than anticipated, the program must
+operate with compensating controls that provide partial signal coverage,
+which in turn limits the effectiveness of the Restore Visibility (5b)
+and Enable Zero Trust Architecture (5c) objectives. The
 Legacy WAN Routing risk (R-02) has a direct relationship with the
 Improve User Experience (5f) objective and an indirect relationship with
 signal restoration, as routing modernization is required to enable
@@ -885,13 +993,17 @@ existing authentication path remains available until the new path is
 fully validated.
 
 The Compliance Evidence Gaps risk (R-06) is expected to diminish over
-time as evidence automation matures. The mitigation strategy
-acknowledges that full automation of evidence generation across all
-FedRAMP Rev5 control families is a progressive capability that will be
-achieved through iterative development rather than a single deployment
-event. During the transition period, manual evidence collection will
-ensure that compliance obligations are met while automation is extended
-to additional control families.
+time as evidence automation matures, and the CR26 mandatory date of
+**2027-01-01** bounds how long that maturation can take. The mitigation
+strategy acknowledges that full automation of evidence generation across
+all 46 CR26 indicators is a progressive capability achieved through
+iterative development rather than a single deployment event --- current
+canonical coverage is 32 of 46 indicators across all 10 themes, with 14
+open in the infrastructure-configuration themes (KSI-CNA, KSI-SVC,
+KSI-MLA) and 4 KSI-CMT indicators mapped but not yet evaluable pending
+the CR26 VDR/VER evidence contract. During the transition period, manual
+evidence collection will ensure that compliance obligations are met
+while automation is extended to the remaining indicators.
 
 8\. Next Steps
 
@@ -899,9 +1011,9 @@ Upon acceptance of this Phase 0 Planning Document by the CIO, CISO,
 ISSO, and AO, the UIAO Modernization Program Office will initiate the
 following sequenced actions to prepare for Phase 1 execution. These
 actions are ordered to respect dependencies: architecture must be
-defined before boundary modifications can be proposed, and compliance
-mapping must be completed before the execution timeline can be
-finalized.
+defined before components can be classified against the Minimum
+Assessment Scope test, and indicator mapping must be completed before
+the execution timeline can be finalized.
 
 1.  **Prepare Phase 1 Architecture Document.** Expand the UIAO
     architecture from the conceptual framework described in this
@@ -913,21 +1025,26 @@ finalized.
     This deliverable is the prerequisite for all subsequent planning
     activities.
 
-2.  **Prepare Boundary Modernization Appendix.** Document all signal
-    sources that require inclusion within the FedRAMP authorization
-    boundary, organized by the six signal categories defined in
-    Section 4. Each signal source will include a risk assessment
-    evaluating the security implications of boundary inclusion, a
-    technical description of the signal\'s origin and transport path,
-    and a recommended approval pathway for AO review. This appendix will
-    be submitted to the AO as a formal boundary modification request.
+2.  **Prepare Minimum Assessment Scope Appendix.** Classify every signal
+    source against the two-pronged inclusion test, organized by the six
+    signal categories defined in Section 4. Each source records its
+    classification (`in-scope`, `metadata-out-of-scope`, or
+    `agency-side-out-of-scope`), the rationale placing it there, a
+    technical description of its origin and transport path, and the KSI
+    themes its emissions back. This appendix replaces the
+    boundary-modification request the pre-20x plan called for; it is
+    provided to the AO as a scope declaration for concurrence, not as a
+    change request awaiting approval.
 
-3.  **Prepare Compliance and ATO Alignment.** Map all UIAO components to
-    applicable FedRAMP Rev5 control families, identifying which controls
-    are satisfied by each component and which controls require
-    additional implementation. Develop the continuous monitoring
-    strategy that defines how evidence will be generated, collected,
-    validated, and presented to the AO and 3PAO on an ongoing basis.
+3.  **Prepare CR26 Indicator Alignment.** Map all UIAO components to the
+    46 CR26 Key Security Indicators, identifying which indicators each
+    component evidences, which are evidenced only partially, and which
+    have no coverage. Carry through the NIST SP 800-53 Rev 5 control
+    anchors CR26 assigns each indicator so the Rev5-era mapping remains
+    traceable during the transition. Develop the continuous monitoring
+    strategy that defines how evidence is generated, collected,
+    validated, tagged with its freshness cadence, and presented to the
+    AO and 3PAO on an ongoing basis in RFC-0024 machine-readable form.
     This mapping will inform the evidence automation development
     priorities for Phase 1.
 

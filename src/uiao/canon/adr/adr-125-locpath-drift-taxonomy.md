@@ -262,5 +262,5 @@ collisions with OrgPath, PAM, or KYC drift classes.
 - [ADR-102 — LocPath Location Addressing](./adr-102-locpath-location-addressing.md)
 - [ADR-108 — Addressing-Plane Drift Gate](./adr-108-addressing-plane-drift-gate.md)
 - [ADR-124 — LocPath HR Duty-Station Adapter](./adr-124-locpath-hr-duty-station-adapter.md)
-- [ADR-104 — E911 Location Services](./adr-104-e911-location-services.md)
+- [ADR-104 — E911 Compliance Layer](./adr-104-e911-compliance-layer.md)
 - [UIAO_194 — LocPath Codebook](../UIAO_194_LocPath_Codebook.md)

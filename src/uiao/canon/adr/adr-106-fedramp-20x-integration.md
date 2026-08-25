@@ -41,10 +41,10 @@ related_discussions:
   - https://github.com/FedRAMP/community/discussions/2
 publish_to_site: true
 publication_style: include
-published_at: docs/adr/adr-047-fedramp-20x-integration.html
+published_at: docs/adr/adr-106-fedramp-20x-integration.html
 ---
 
-# ADR-047: FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption
+# ADR-106: FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption
 
 ## Status
 
@@ -108,7 +108,7 @@ Authorization Act.
 
 ### Why this is an ADR and not just a finding
 
-[FINDING-PGM-001](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+[FINDING-PGM-001](../../../../docs/findings/fedramp-20x-moderate-pilot.qmd)
 records the framework movement as an environmental constraint. This
 ADR records the substrate-level *decision* about how UIAO responds:
 the substrate emits KSI-tagged OSCAL evidence, applies the Minimum
@@ -123,7 +123,7 @@ ADR-043 / UIAO_132 commit the substrate to dual-track Continuous
 Monitoring pathways (Pathway 1 modernized, Pathway 2 traditional) for
 RFC-0026. The 20x program is the umbrella under which that
 modernization rides — KSI-tagged OSCAL evidence is the artifact format
-the modernized pathway produces. ADR-047 / UIAO_133 are therefore the
+the modernized pathway produces. ADR-106 / UIAO_133 are therefore the
 *program-level* sibling of ADR-043's *requirement-level* commitment,
 and the two documents share the OSCAL machinery defined in Phase 2
 §13.2 / UIAO_022.
@@ -211,7 +211,7 @@ The substrate's KSI emission surface is well-defined and stable
 regardless of whether any specific CSP (Microsoft, AWS, Google) has
 filed a 20x-aligned package for its sovereign-cloud offering. CSP
 filings are tracked as external-remedy items in
-[FINDING-PGM-001](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+[FINDING-PGM-001](../../../../docs/findings/fedramp-20x-moderate-pilot.qmd)
 and propagate to UIAO only as inherited control evidence becomes
 available; they do not block substrate-side readiness.
 
@@ -262,11 +262,11 @@ KSI evidence opportunistically.
 
 ### Neutral / informational
 
-- ADR-047 does not change substrate code or emission contracts. It
+- ADR-106 does not change substrate code or emission contracts. It
   changes *labels* on existing emissions and adds a frontmatter field
   to canon components. The drift engine, evidence graph, provenance
   chain, OSCAL pipeline, and all adapters are unchanged.
-- ADR-047 does not assert that any specific CSP has filed a
+- ADR-106 does not assert that any specific CSP has filed a
   20x-aligned sovereign-cloud package. CSP filings are tracked
   externally in FINDING-PGM-001.
 
@@ -301,8 +301,8 @@ operational companion to this ADR.
 - [ADR-043 — FedRAMP RFC-0026 CA-7 Integration](./adr-043-fedramp-rfc-0026-ca7-integration.md)
 - UIAO_132 — FedRAMP RFC-0026 CA-7 Pathway Integration spec
 - UIAO_133 — FedRAMP 20x Integration spec (operational mechanics)
-- [FINDING-001 — FedRAMP GCC-Moderate INR unavailability](../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.md)
-- [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+- [FINDING-001 — FedRAMP GCC-Moderate INR unavailability](../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.qmd)
+- [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.qmd)
 - Phase 0 §1 — Master Plan, FedRAMP Boundary Gap paragraph (forward-looking note)
 - Phase 2 §13.3 — KSI Emission Surface (TBL-P2-011)
 - Phase 3 §4.1.1 — FedRAMP 20x KSI Crosswalk (P3-T-001a)

@@ -37,7 +37,14 @@
 ^#
 
 # Diagram pipeline patterns
-^file://
+# Local `.html` link targets. A `.qmd` cites its sibling as `foo.html` because
+# that is the path in the *rendered* site; the file only exists in `_site` after
+# a Quarto render, so a source-tree check always reports it missing. Suppressing
+# the rendered extension is not the same as suppressing local links: this used
+# to read `^file://`, which turned off local link checking for the entire
+# corpus — 4,656 links, every relative path in canon and docs, unchecked and
+# silently so. Narrowed 2026-08-25; do not widen it back.
+^file://.*\.html$
 \.mmd$
 UIAO-DIAGRAM
 UIAO-INJECT
@@ -521,3 +528,51 @@ orgcomp-series-bundle\.docx
 # page: it redirects fedramp.gov -> www.fedramp.gov -> 404. Same class as the
 # Microsoft Group Policy XML namespace URI exclusion above.
 ^https://fedramp\.gov/ns/oscal
+
+# ----------------------------------------------------------------------
+# Local targets that do not exist yet (surfaced when `^file://` was
+# narrowed to `^file://.*\.html$` on 2026-08-25)
+# ----------------------------------------------------------------------
+# The blanket `^file://` rule had been hiding every broken relative link in
+# the repo. Narrowing it surfaced 260; 217 were stale paths from the ADR-032
+# module consolidation and the ADR-083 docs reorganization and are fixed. The
+# rest — below — are links to content that was planned and never produced, so
+# there is no path to correct. Each entry names what has to be authored before
+# it can be removed. They are listed by exact target so a NEW broken link in
+# the same directory still fails the gate.
+
+# Word-conversion figures for the SSA Landing Zone IPAM/FedRAMP paper. The
+# .docx embedded eleven images; the conversion kept the references and dropped
+# the media/ directory. Remove once the figures are extracted or redrawn into
+# docs/customer-documents/orgcomp-series/media/.
+docs/customer-documents/orgcomp-series/media/image[0-9]+\.png$
+
+# Provisional patent application figures (inbox/drafts). The application text
+# calls out nine figures that have not been drawn. Remove once
+# inbox/drafts/patent-figures/ is populated.
+inbox/drafts/patent-figures/figure-[0-9]+\.png$
+
+# OrgPath-on-Azure service diagrams cited by two inbox drafts. The drafts were
+# written against a diagram set that was never rendered into inbox/images/.
+inbox/images/orgpath-azure-service-diagram-[0-9]+-[a-z-]+\.(png|svg)$
+
+# Vol 07a "UIAO Beneath the Azure SSOT Stack" — cited by the SQL Server adapter
+# interface and one inbox draft. Only the chapter's images/ exist; the .qmd
+# itself was never written. Remove once the chapter lands.
+docs/customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack\.qmd$
+
+# drift-engine-config.yaml — UIAO_009 and Spec2-D3.1 cite a canonical drift
+# engine config under canon/data/orgpath/. Only its JSON Schema exists
+# (src/uiao/schemas/orgpath/drift-engine-config.schema.json); the instance
+# document has not been authored.
+src/uiao/canon/data/orgpath/drift-engine-config\.yaml$
+
+# Single unwritten targets, each cited once:
+#   UIAO_205 §"Sponsor onboarding" cites an SSP spec that does not exist
+src/uiao/canon/specs/system-security-plan\.md$
+#   UIAO_207 cites a FedRAMP OSCAL package spec that does not exist
+src/uiao/canon/specs/fedramp-oscal-package-spec\.md$
+#   the AGD SailPoint connector guide cites a platform page that was never added
+docs/platform/active-governance-directory\.qmd$
+#   inbox/drafts/SUMMARY.md cites an onboarding guide that was never written
+docs/onboarding/adapter-developer-guide\.md$

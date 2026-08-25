@@ -127,7 +127,7 @@ The canonical question is **what signing layer the substrate adopts**, and **whe
 - [ADR-006](../../src/uiao/canon/adr/adr-006-evidence-determinism.md) — Evidence Determinism (hash-chain head is this ADR's input)
 - [ADR-016](../../src/uiao/canon/adr/adr-016-evidence-bundle-lifecycle.md) — Evidence Bundle Lifecycle (SEAL transition is the signing trigger)
 - [ADR-043](../../src/uiao/canon/adr/adr-043-fedramp-rfc-0026-ca7-integration.md) — FedRAMP RFC-0026 CA-7 Integration (continuous monitoring submission consumer)
-- [ADR-047](../../src/uiao/canon/adr/adr-047-fedramp-20x-integration.md) — FedRAMP 20x Integration (submission pathway)
+- [ADR-106](../../src/uiao/canon/adr/adr-106-fedramp-20x-integration.md) — FedRAMP 20x Integration (submission pathway)
 - [ADR-052](../../src/uiao/canon/adr/adr-052-piv-usaccess-adapter.md) — PIV/USAccess Adapter (Federal Common Policy CA G2 algorithm alignment)
 - [ADR-068](../../src/uiao/canon/adr/adr-068-kerberos-ntlm-elimination.md) — Kerberos/NTLM Elimination (CBA + FIPS posture)
 - [ADR-076](./adr-076-evidence-fabric-oscal-ar-projection.md) — companion: byte-stable AR projection (precondition for meaningful signing)

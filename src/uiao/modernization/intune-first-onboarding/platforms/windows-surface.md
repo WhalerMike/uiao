@@ -333,7 +333,7 @@ See §"Anti-patterns" above and
 
 - [ADR-071 — Intune-First Asset Onboarding](../../../canon/adr/adr-071-intune-first-asset-onboarding.md)
 - [ADR-075 — Surface Hub Reconciliation](../../../canon/adr/adr-075-surface-hub-reconciliation.md)
-- [ADR-001 — HAADJ deprecated, Entra-Join-only](../../../../docs/adr/adr-001-haadj-deprecated-entra-join-only.qmd)
+- [ADR-001 — HAADJ deprecated, Entra-Join-only](../../../../../docs/adr/adr-001-haadj-deprecated-entra-join-only.qmd)
 - [Parent annex — Windows Autopilot Device Preparation](windows-autopilot.md)
 - [Microsoft Learn — Surface Management Portal](https://learn.microsoft.com/en-us/surface/surface-management-portal)
 - [Microsoft Learn — DFCI profiles for Windows devices in Intune](https://learn.microsoft.com/en-us/mem/intune/configuration/device-firmware-configuration-interface-windows)

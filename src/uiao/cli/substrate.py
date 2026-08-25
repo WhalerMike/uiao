@@ -75,6 +75,7 @@ def walk(
     console.print(f"  workspace-contract: {'found' if report.contract_present else 'absent (optional)'}")
     console.print(f"  modules checked:    {report.modules_checked}")
     console.print(f"  documents checked:  {report.documents_checked}")
+    console.print(f"  document ids checked: {report.document_ids_checked}")
     console.print(f"  code refs checked:  {report.code_refs_checked}")
     if retired_slugs_only:
         console.print("  [dim](filtered to --retired-slugs-only)[/dim]")

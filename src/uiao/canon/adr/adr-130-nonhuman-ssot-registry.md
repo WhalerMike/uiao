@@ -6,8 +6,8 @@ decided: 2026-07-21
 deciders: Michael Stratton
 updated: 2026-07-21
 next_review: 2027-01-21
-review_trigger: the MACD-R Lifecycle Doctrine (OrgComp Vol 0 Book 00) is substantially revised; the sailpoint-machine-identity slot promotes from reserved to active; ADR-016 (human JML) or ADR-114 (AI JML) is substantially revised; a class SSOT designated here is re-platformed; a new non-human object class enters governance scope
-impact: "Designates, per object class, the single source of truth that originates every non-human Move, Add, Change, Deletion, and Reset — and states the Human-Anchor Rule: every non-human item's ownership chain terminates in a human resolvable in the HR SSOT, or the item is orphaned and unauthorized by construction. Extends ADR-016 (human JML) and ADR-114 (AI JML) into a complete origination map; makes directories, CMDBs, and consoles projections by definition; names orphan detection as a drift class."
+review_trigger: the MACD-R Lifecycle Doctrine (OrgComp Vol 0 Book 00) is substantially revised; the sailpoint-machine-identity slot promotes from reserved to active; ADR-003 (human JML) or ADR-114 (AI JML) is substantially revised; a class SSOT designated here is re-platformed; a new non-human object class enters governance scope
+impact: "Designates, per object class, the single source of truth that originates every non-human Move, Add, Change, Deletion, and Reset — and states the Human-Anchor Rule: every non-human item's ownership chain terminates in a human resolvable in the HR SSOT, or the item is orphaned and unauthorized by construction. Extends ADR-003 (human JML) and ADR-114 (AI JML) into a complete origination map; makes directories, CMDBs, and consoles projections by definition; names orphan detection as a drift class."
 supersedes: null
 superseded_by: null
 publish_to_site: true
@@ -29,9 +29,9 @@ Move, Add, Change, Deletion, and Reset — **originates with the SSOT**
 (clause 1) and **carries an authoritative authorization in the path**
 (clause 2, resolved from SSOT-derived owner/manager routing).
 
-For human identities both clauses are answered: ADR-016 designates the HR
-system of record as the SSOT and defines the joiner/mover/leaver events it
-fires. For non-human items the answers existed only in fragments:
+For human identities both clauses are answered: ADR-088 designates the HR
+system of record as the SSOT and ADR-003 defines the joiner/mover/leaver
+events it fires. For non-human items the answers existed only in fragments:
 
 - **IPAM/DDI** is designated authoritative for naming and addressing, and
   the naming-plane join key is designated authoritative asset identity
@@ -63,7 +63,7 @@ divergence from the SSOT is drift, never an alternative truth.
 
 | Object class | Designated SSOT | Projections (never truth) |
 |---|---|---|
-| Employees | HR system of record (ADR-016) | Directory accounts, mailboxes |
+| Employees | HR system of record (ADR-088) | Directory accounts, mailboxes |
 | Non-employee humans (contractors, vendors, partners) | Non-employee registry — NERM-class CIR (ADR-055 / ADR-059) | Guest accounts, sponsored credentials |
 | Network names, addresses, segments | IPAM/DDI | DNS zone dumps, spreadsheets, scanner output |
 | Assets / components (CM-8) | The authoritative inventory keyed on the naming-plane join key | CMDB (reconciled projection), per-stack consoles |
@@ -95,7 +95,7 @@ and unattestable. The HR SSOT is therefore not merely the human SSOT; it is
 the **root of the ownership chain for every governed object**. A leaver
 event against an owner triggers ownership transfer for everything anchored
 to them — the leaver's non-human estate is part of their offboarding
-surface (ADR-016 extended; ADR-114 §deprovisioning is the AI-class worked
+surface (ADR-003 extended; ADR-114 §deprovisioning is the AI-class worked
 example).
 
 ### D3 — One SSOT per class
@@ -142,7 +142,7 @@ UIAO_197 is the worked pattern (AI class); per-class specs generalize it.
 
 ## References
 
-- ADR-016 — human JML; ADR-055 / ADR-059 — non-employee registry and the
+- ADR-003 — human JML; ADR-055 / ADR-059 — non-employee registry and the
   machine-identity slot; ADR-012 — drift taxonomy; ADR-035..040 / ADR-102
   — OrgTree / LocPath; ADR-092 — actuation ladder; ADR-112 / ADR-114 /
   UIAO_197 — AI system identity and JML; Spec3-D1.1 —

@@ -46,7 +46,7 @@ A generated sequence that contradicts a recorded cross-domain dependency is a **
 ## Inputs and outputs
 
 - **Inputs:** normalized assessment artifacts emitted by UIAO_181 and UIAO_182.
-- **Outputs:** draft migration plans (per-device / GPO / identity / DNS / PKI) and an assembled master plan. Plans are draft-for-approval, never auto-applied. `New-UIAOIdentityMigrationPlan` and the POA&M-shaped outputs round-trip through the UIAO IR / OSCAL pipeline; FedRAMP-compliant POA&M output addresses `CA-5` per [`compliance-mapping.qmd §7.3`](../../../docs/customer-documents/uiao-aan-integration/09-compliance-mapping.qmd).
+- **Outputs:** draft migration plans (per-device / GPO / identity / DNS / PKI) and an assembled master plan. Plans are draft-for-approval, never auto-applied. `New-UIAOIdentityMigrationPlan` and the POA&M-shaped outputs round-trip through the UIAO IR / OSCAL pipeline; FedRAMP-compliant POA&M output addresses `CA-5` per [`compliance-mapping.qmd §7.3`](../../../docs/customer-documents/uiao-orgcomp-integration/09-compliance-mapping.qmd).
 
 ## Dependency position
 

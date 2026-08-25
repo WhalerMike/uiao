@@ -183,7 +183,7 @@ This ADR must be re-evaluated when any of the following occur:
 - [ADR-078 — OrgPath Attribute Schema — 15-Facet](adr-078-orgpath-attribute-schema-15-facet.md) — same pattern: doctrinal reconciliation surfaced by 2026-05-22 review
 - [ADR-079 — Governance Principle Reconciliation](adr-079-governance-principle-reconciliation.md) — same pattern: canon-vs-customer reconciliation
 - [ADR-080 — Intune-First Scope Disambiguation](adr-080-intune-first-scope-disambiguation.md) — same pattern: naming reconciliation
-- [`docs/modernization/directory-migration.qmd`](../../../../docs/modernization/directory-migration.qmd) — canon source; Phase 1 of implementation updates Phase table to 6 rows
-- [`docs/customer-documents/modernization/network-transformation/dns-modernization.qmd`](../../../../docs/customer-documents/modernization/network-transformation/dns-modernization.qmd) — Phase 3 of implementation adds Canon Phase Mapping table
-- [`docs/customer-documents/modernization/pki-modernization.qmd`](../../../../docs/customer-documents/modernization/pki-modernization.qmd) — Phase 4 of implementation adds Canon Phase Mapping table
+- [`docs/modernization/directory-migration.qmd`](../../../../docs/customer-documents/reference-architecture/directory-migration.qmd) — canon source; Phase 1 of implementation updates Phase table to 6 rows
+- [`docs/customer-documents/modernization/network-transformation/dns-modernization.qmd`](../../../../docs/customer-documents/operational-guides/network-transformation/dns-modernization.qmd) — Phase 3 of implementation adds Canon Phase Mapping table
+- [`docs/customer-documents/modernization/pki-modernization.qmd`](../../../../docs/customer-documents/operational-guides/pki-modernization.qmd) — Phase 4 of implementation adds Canon Phase Mapping table
 - [`src/uiao/modernization/directory-migration/migration-adapter-registry.yaml`](../../modernization/directory-migration/migration-adapter-registry.yaml) — Phase 2 of implementation updates phase enum

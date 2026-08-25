@@ -1,0 +1,112 @@
+name: ServiceNow kit checks
+
+# The ServiceNow kits are ~3,700 lines of security-critical Script Include
+# JavaScript whose only tests (ATF specs) can run nowhere except inside a
+# ServiceNow instance. Until this workflow existed, NO gate executed any of that
+# JavaScript: the Python gates in the kit read it as text, and the ATF suite's
+# passing status was asserted rather than observed. That is the same failure mode
+# the 2026-07-29 external review found, where `test_mode` short-circuited before
+# the vulnerable path and all 12 ATF specs passed while the injection path had
+# never once executed.
+#
+# Four gates, cheapest first:
+#   1. syntax     — every kit .js parses (catches a truncated or half-merged file)
+#   2. lint       — ESLint on an ES5/Rhino profile with the Glide globals declared
+#   3. harness    — the Script Includes actually RUN, and their refusal paths are
+#                   observed (scripts/servicenow-harness/)
+#   4. parity     — the JS and PowerShell AD allowlists still agree
+#
+# What this workflow does NOT replace: the ATF suite on a real instance. These
+# gates prove the refusal logic is sound; only an instance proves the update set
+# imports, the ACLs bind, and the MID dispatch round-trips.
+
+on:
+  pull_request:
+    paths:
+      - 'docs/customer-documents/orgcomp-series/servicenow-day2/**'
+      - 'docs/customer-documents/orgcomp-series/x_fed_compliance/**'
+      - 'infoblox-ddi-book/servicenow-app/**'
+      - 'scripts/servicenow-harness/**'
+      - 'eslint.config.mjs'
+      - '.github/workflows/servicenow-kit-checks.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/customer-documents/orgcomp-series/servicenow-day2/**'
+      - 'docs/customer-documents/orgcomp-series/x_fed_compliance/**'
+      - 'infoblox-ddi-book/servicenow-app/**'
+      - 'scripts/servicenow-harness/**'
+      - 'eslint.config.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  kit-checks:
+    name: Lint and execute the ServiceNow kit Script Includes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      # 1. Syntax. Runs before anything is installed: a parse failure should be
+      #    reported in seconds, not after an npm install.
+      - name: Syntax-check every kit JavaScript file
+        run: |
+          set -euo pipefail
+          fail=0
+          count=0
+          while IFS= read -r f; do
+            count=$((count + 1))
+            if ! node --check "$f" 2>/dev/null; then
+              echo "::error file=$f::JavaScript syntax error"
+              node --check "$f" 2>&1 | head -5
+              fail=1
+            fi
+          done < <(find \
+            docs/customer-documents/orgcomp-series/servicenow-day2 \
+            docs/customer-documents/orgcomp-series/x_fed_compliance \
+            infoblox-ddi-book/servicenow-app \
+            -name '*.js' -type f)
+          echo "checked $count file(s)"
+          exit $fail
+
+      - name: Install the harness toolchain
+        working-directory: scripts/servicenow-harness
+        run: npm ci || npm install
+
+      # 2. Lint. ES5 target with the Glide globals declared -- an undeclared
+      #    global or an ES6 construct is a runtime failure on the instance.
+      - name: ESLint (ServiceNow profile)
+        run: ./scripts/servicenow-harness/node_modules/.bin/eslint .
+
+      # 3. Execute. The refusal paths run for real, outside an instance.
+      - name: Run the Script Include harness
+        env:
+          HARNESS_JSON: harness-results.json
+        run: node scripts/servicenow-harness/run.js
+
+      # 4. Parity. Two allowlists that must agree, with something comparing them.
+      - name: AD allowlist parity (JS vs PowerShell)
+        working-directory: docs/customer-documents/orgcomp-series/servicenow-day2
+        run: python check_allowlist_parity.py
+
+      # The harness result file is the artifact a reviewer can point a
+      # ServiceNow developer at: named assertions, executed, with an outcome.
+      - name: Upload harness results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: servicenow-harness-results
+          path: harness-results.json
+          if-no-files-found: warn

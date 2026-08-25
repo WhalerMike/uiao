@@ -100,7 +100,7 @@ This library provides:
 
 - Integration with the UIAO OrgPath extension attribute schema for dynamic policy targeting
 
-- Compliance alignment to NIST 800-53 and FedRAMP Moderate requirements
+- Compliance alignment to NIST 800-53 and the FedRAMP 20x / CR26 Key Security Indicators anchored on those controls (Appendix D.2)
 
 1.2 GPO-to-Conditional Access Transformation
 
@@ -1821,12 +1821,38 @@ D.1 NIST 800-53 Control Mapping
   **IA-8**         Identification and Authentication (Non-Org Users)   Uniquely identify and authenticate non-organizational users                                                                                               CA-005 (guest terms of use + MFA)
   ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-D.2 FedRAMP Moderate Mapping
+D.2 FedRAMP 20x / CR26 Mapping
 
-All NIST 800-53 controls listed above are included in the FedRAMP Moderate baseline. The following additional FedRAMP considerations apply to this policy library within the GCC-Moderate boundary:
+FedRAMP 20x expresses assessment expectations as **Key Security Indicators** rather than control narratives. The NIST 800-53 controls listed in D.1 remain correct — CR26 anchors each indicator to a set of them — but the artifact an assessor consumes is indicator evidence. This policy library is almost entirely a **KSI-IAM** surface; the mapping below is the one to cite in a 20x package.
 
   --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  **FedRAMP Requirement**                                  **Implementation**                                                                                                   **CA Policy Reference**
+  **CR26 indicator**                                       **What the indicator asks**                                                                                          **CA Policy Reference**
+  -------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------- --------------------------------------
+  **KSI-IAM-APM** --- Adopting Passwordless Methods        Modern, phishing-resistant authentication in place of shared secrets                                                 CA-001, CA-004, CA-010
+
+  **KSI-IAM-ELP** --- Ensuring Least Privilege             Access granted no broader than the role requires                                                                     CA-023, CA-010 through CA-012, CA-043
+
+  **KSI-IAM-JIT** --- Authorizing Just-in-Time             Privilege held only for the window it is needed                                                                      CA-010, PIM (Section 11)
+
+  **KSI-IAM-SNU** --- Securing Non-User Authentication     Service and workload identities authenticate without interactive MFA, securely                                       CA-005, Appendix C
+
+  **KSI-IAM-SUS** --- Responding to Suspicious Activity    Detected risk drives an automated access response                                                                    CA-061 through CA-064
+
+  **KSI-IAM-AAM** --- Automating Account Management        Account lifecycle is automated rather than ticket-driven; dynamic group targeting throughout                         OrgPath-scoped assignment
+
+  **KSI-MLA-RVL** --- Reviewing Logs                       Logs are reviewed, not merely retained                                                                               CA-060, Section 12
+
+  **KSI-CMT-LMC** --- Logging Changes                      Configuration changes are logged and attributable; drift detection integration                                       Compliance Amendment (`CM-3`)
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Note what this library does **not** evidence. CR26 indicators outside KSI-IAM — recovery planning (KSI-RPL), supply chain risk (KSI-SCR), cybersecurity education (KSI-CED), incident response process (KSI-INR) — are not addressable by Conditional Access policy and are evidenced elsewhere. A package that cites this library against those indicators is overclaiming.
+
+D.2a Deployment and residency considerations
+
+The following considerations apply to this policy library within the GCC-Moderate deployment boundary. They are deployment facts; what is *assessed* is decided per information resource by the Minimum Assessment Scope inclusion test.
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Deployment requirement**                               **Implementation**                                                                                                   **CA Policy Reference**
   -------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------- --------------------------------------
   Data residency within US boundaries                      GCC-Moderate tenant enforces US data residency; CA-030 blocks access from non-approved countries                     CA-030, Named locations (Appendix B)
 

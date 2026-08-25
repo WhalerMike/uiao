@@ -161,7 +161,7 @@ Before this ADR can move from `PROPOSED` to `Accepted`:
 
 ## Related work
 
-- [ADR-025](adr-025-continuous-monitoring-program-and-customer-docs-platform.md) — Continuous Monitoring Program architecture.
+- [ADR-047](adr-047-continuous-monitoring-program.md) — Continuous Monitoring Program architecture.
 - [ADR-043](adr-043-fedramp-rfc-0026-ca7-integration.md) — RFC-0026 CA-7 integration + Pathway-2 posture (D1, D2).
 - `UIAO_132` — FedRAMP RFC-0026 CA-7 Pathway Integration (operational companion to ADR-043).
 - `docs/docs/uiao-rfc-0026-roadmap.md` — RFC-0026 enhancement roadmap § E7.
