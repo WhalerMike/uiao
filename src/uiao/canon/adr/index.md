@@ -129,10 +129,10 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-050](adr-050-reference-middleware-implementation-choices.md) | D3.1 Reference Middleware — Runtime, Language, Packaging, and Test Choices | ACCEPTED | 2026-04-30 |
 | [ADR-122](adr-122-gpo-modernization-parse-crosswalk-orgpath.md) | GPO Modernization — Own the Parse, Consume Microsoft's Crosswalk, Differentiate on the OrgPath Join | PROPOSED | 2026-06-21 |
 
-> **ADR-048 numbering note:** Two files share the ADR-048 slot on disk:
-> `adr-048-orgpath-attribute-selection.md` (canonical OrgPath attribute selection decision, ACCEPTED 2026-04-28)
-> and `adr-048-orgpath-attribute-storage-decision.md` (status: "Current", appears to be a UIAO-V0 Canonical Architecture Volume document mislabeled with an ADR filename).
-> Maintainer action required: assign a distinct ADR number or retire the second file.
+> **ADR-048 numbering note (resolved):** The ADR-048 slot was briefly shared by a
+> second file — a UIAO-V0 Canonical Architecture Volume document mislabeled with an
+> ADR filename. That file has been retired. ADR-048 now belongs solely to
+> `adr-048-orgpath-attribute-selection.md` (ACCEPTED 2026-04-28).
 
 ### Federal Federation Block
 
@@ -175,7 +175,7 @@ Three files previously shared the ADR-047 slot. Resolved by assigning the two la
 
 ### ADR-057 Numbering Collision (resolved 2026-05-12)
 
-The collision is resolved: `adr-057-application-aware-networking-and-token-bound-transport.md`
+The collision is resolved: `adr-057-application-aware-networking-and-token-bound-transport.md` <!-- adr-ref-allow -->
 has been renumbered to **ADR-066** (`adr-066-application-aware-networking-and-token-bound-transport.md`).
 ADR-057 now belongs solely to `adr-057-thousandeyes-networks-pillar-scope.md`.
 

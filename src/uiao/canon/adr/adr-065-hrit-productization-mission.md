@@ -47,8 +47,8 @@ work shipped in PR #422 ("Claude/v0.6.0 hrit integration") and the
 Batch A workstreams referenced in the verification list below.
 
 File history:
-- `adr-058-hrit-productization-mission.md` (deleted in the same PR that
-  introduced this file)
+- `adr-058-hrit-productization-mission.md` <!-- adr-ref-allow --> (deleted in
+  the same PR that introduced this file)
 - Original proposal text retained verbatim below; only frontmatter,
   numeric references (UIAO_143 → UIAO_144), and status changed.
 
@@ -169,7 +169,7 @@ activation work is independent.
 
 - The transferable-ATO framing used informally in earlier
   documentation now points to ADR-054 + UIAO_140 + UIAO_144.
-- The original `adr-058-hrit-productization-mission.md` file is deleted
+- The original `adr-058-hrit-productization-mission.md` file is deleted <!-- adr-ref-allow -->
   in the same PR that creates this file, to resolve the ADR-058 slot
   collision with `adr-058-microsoft-purview-conformance-adapter-coverage.md`.
 

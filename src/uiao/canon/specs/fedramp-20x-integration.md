@@ -16,7 +16,7 @@ Operational specification for how the UIAO substrate satisfies FedRAMP
 Standard (RFC-0005), the Phase One / Phase Two Key Security Indicators
 (RFC-0006 / RFC-0014), and the Rev5 Machine-Readable Packages standard
 (RFC-0024). This document is the operational companion to
-[ADR-047](../adr/adr-047-fedramp-20x-integration.md). ADR-047 records
+[ADR-106](../adr/adr-106-fedramp-20x-integration.md). ADR-106 records
 the decision and rationale; UIAO_133 records the mechanics — which
 adapter emits which KSI evidence, which workflow fans out which
 staleness alert, and which canon artifact answers which KSI theme.
@@ -34,15 +34,15 @@ the modernized RFC-0026 pathway rides on.
 UIAO_133 covers four operational concerns:
 
 1. **KSI emission tagging** — how substrate-emitted OSCAL artifacts
-   carry KSI-theme metadata (ADR-047 D1).
+   carry KSI-theme metadata (ADR-106 D1).
 2. **Minimum Assessment Scope classification** — how each canon
    component is tagged `in-scope`, `metadata-out-of-scope`, or
-   `agency-side-out-of-scope` per RFC-0005 (ADR-047 D2).
+   `agency-side-out-of-scope` per RFC-0005 (ADR-106 D2).
 3. **KSI staleness drift** — how the drift engine treats stale KSI
-   evidence as a `DRIFT-EVIDENCE-STALE` class (ADR-047 D3).
+   evidence as a `DRIFT-EVIDENCE-STALE` class (ADR-106 D3).
 4. **Pathway posture** — how the substrate runs the traditional
    pathway at 20x adoption start and pre-wires the modernized pathway
-   (ADR-047 D4).
+   (ADR-106 D4).
 
 Out of scope for this document:
 
@@ -53,7 +53,7 @@ Out of scope for this document:
   are agency-program decisions; UIAO_133 covers only the substrate's
   emission-side surface that an authorization sponsor consumes.
 - The full enumeration of every KSI in the Moderate catalog. UIAO_133
-  references KSI **themes** (KSI-CNA, KSI-MLA, etc.) per ADR-047 D2's
+  references KSI **themes** (KSI-CNA, KSI-MLA, etc.) per ADR-106 D2's
   rationale; individual KSI IDs are catalog-version-dependent and
   tracked in companion mappings as the catalog stabilizes.
 
@@ -243,7 +243,7 @@ Workflow SLAs are inherited from the existing UIAO_111 SLA framework.
   injection per §2.3 above.
 - Staleness drift is detected per §4 and routed to remediation.
 - KSI completeness is presented to AOs as a quarterly cATO Acceptance
-  Package element (Phase 3 §4.1.1, fifth element added by ADR-047).
+  Package element (Phase 3 §4.1.1, fifth element added by ADR-106).
 - AO/3PAO review is **manual**: a human reads the KSI completeness
   certification and the underlying OSCAL artifacts.
 
@@ -260,7 +260,7 @@ Workflow SLAs are inherited from the existing UIAO_111 SLA framework.
 
 ### 5.3 Migration gate
 
-The substrate moves from §5.1 to §5.2 when the ADR-047 ratification
+The substrate moves from §5.1 to §5.2 when the ADR-106 ratification
 gate fires (RFC-0010 publication + stable Moderate KSI catalog +
 clean dry-run + steward signoff). The migration is implemented as a
 new adapter (`fedramp-20x-sponsor-feed`) that reads from the existing
@@ -315,7 +315,7 @@ OSCAL artifact store; no upstream substrate code changes.
 
 UIAO_133 acceptance requires:
 
-1. ADR-047 ratification (the four conditions in ADR-047 §"Ratification
+1. ADR-106 ratification (the four conditions in ADR-106 §"Ratification
    gate").
 2. §2.2 emission map dry-run produces zero schema-check failures and
    zero mapping-source-check failures across at least 30 days of
@@ -349,7 +349,7 @@ Until all five conditions are met, this spec stays at status `Draft`.
 
 ### UIAO related canon
 
-- [ADR-047 — FedRAMP 20x Integration decision](../adr/adr-047-fedramp-20x-integration.md)
+- [ADR-106 — FedRAMP 20x Integration decision](../adr/adr-106-fedramp-20x-integration.md)
 - [ADR-043 — FedRAMP RFC-0026 CA-7 Integration decision](../adr/adr-043-fedramp-rfc-0026-ca7-integration.md)
 - [UIAO_132 — FedRAMP RFC-0026 CA-7 Pathway Integration spec](./fedramp-rfc-0026-ca7-integration.md)
 - [Phase 2 §13.3 KSI Emission Surface (UIAO_022)](../../../../docs/customer-documents/operational-guides/uiao-modernization-program/03-phase2-governance-os.qmd)

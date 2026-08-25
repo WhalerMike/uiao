@@ -348,8 +348,8 @@ here; flagged for review when the third overlap case arrives.
 
 - [ADR-012](adr-012-canonical-drift-taxonomy.md) — Canonical Drift
   Taxonomy (the extension protocol this ADR follows).
-- [ADR-054](adr-054-reciprocity-evidence-anchor.md) — Reciprocity
-  Evidence Anchor (the audit-trail citation in §6.3).
+- [ADR-054](adr-054-single-ato-reciprocity.md) — Single-ATO
+  Reciprocity Model (the audit-trail citation in §6.3).
 - [ADR-063](adr-063-orgpath-storage-slot-binding.md) — OrgPath
   Storage Slot (the cascade that this class's `claim_id`
   references inherit).

@@ -32,7 +32,7 @@ At the time, `/findings/` as a top-level URL sibling of `/customer-documents/` a
 Three subsequent decisions changed the surrounding context:
 
 1. **[ADR-076](adr-076-tier-conformance-model.md) (Tier Conformance Model)** clarified that the canon-vs-customer-doc distinction is carried by **frontmatter lifecycle**, not URL path.
-2. **[ADR-072](adr-072-canon-publication-policy.md) / [ADR-068](adr-068-canon-publication-policy.qmd) (Canon Publication Policy)** established that whether and how a canon page renders to the published site is a **frontmatter decision** (`publish_to_site`, `publication_style`), not a URL placement decision.
+2. **[ADR-072](adr-072-canon-publication-policy.md) (Canon Publication Policy)** established that whether and how a canon page renders to the published site is a **frontmatter decision** (`publish_to_site`, `publication_style`), not a URL placement decision.
 3. **[ADR-083](adr-083-docs-architecture-reorganization.md) (Documentation Architecture Reorganization)** collapsed the dual `/modernization/` + `/customer-documents/` URL surface into a single `/customer-documents/` umbrella with Divio-aligned subsections, on the principle that **one URL umbrella per program is the industry norm** (AWS, Microsoft Learn, Google Cloud, VMware, HashiCorp, Stripe, Anthropic, Red Hat — all single-umbrella).
 
 After ADR-083, `/customer-documents/` is no longer "the customer-facing surface as distinct from canon" — it is **the documentation surface**, with frontmatter carrying lifecycle and authority. Top-level `/findings/` is now the only remaining top-level documentation subsection outside that umbrella. It is the same "sibling-of-umbrella" navigation pattern ADR-083 explicitly removed for `/modernization/`.
@@ -208,7 +208,7 @@ Can ship independently any time after Phase 2 lands.
 - **[ADR-030 §5.2](adr-030-pre-uiao-terminology-reconciliation.md)** — Revised in-place by Phase 2. The §5.2 artifact-class semantics are preserved; only the path is updated. ADR-030 is not superseded.
 - **[ADR-083](adr-083-docs-architecture-reorganization.md)** — Direct precedent. ADR-083 collapsed `/modernization/` and `/customer-documents/modernization/` into `/customer-documents/reference-architecture/` and `/customer-documents/operational-guides/` on the same single-umbrella principle. This ADR extends that principle to the last remaining top-level documentation surface.
 - **[ADR-076](adr-076-tier-conformance-model.md)** — The frontmatter-carries-authority principle that makes URL co-location safe. Findings retain their distinct artifact class via `artifact_class: governance-finding`, not via URL path.
-- **[ADR-072 / ADR-068](adr-068-canon-publication-policy.qmd)** — Publication mechanism (publish_to_site / publication_style) is unchanged; this ADR is a path move, not a publication-policy change.
+- **[ADR-072](adr-072-canon-publication-policy.md)** — Publication mechanism (publish_to_site / publication_style) is unchanged; this ADR is a path move, not a publication-policy change.
 
 ## Provenance
 

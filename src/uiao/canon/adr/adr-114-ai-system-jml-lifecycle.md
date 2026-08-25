@@ -235,7 +235,7 @@ No changes to `schema.py` or `scanner.py`.
 ## References
 
 - [ADR-012](adr-012-canonical-drift-taxonomy.md) — canonical drift taxonomy; `DRIFT-COMPLIANCE::ai-staleness` extends it
-- [ADR-016](adr-016-jml-lifecycle.md) — human JML; structural model this ADR extends to AI system identities
+- [ADR-016](adr-016-evidence-bundle-lifecycle.md) — human JML; structural model this ADR extends to AI system identities
 - [ADR-040](adr-040-drift-engine.md) — drift engine; P3 findings routing
 - [ADR-059](adr-059-sailpoint-adapter-family.md) — sailpoint adapter family; continuous telemetry between vintages
 - [ADR-088](adr-088-hr-as-orgtree-truth-source.md) — HR as OrgTree source; contrasted with OMB inventory as AI identity source
