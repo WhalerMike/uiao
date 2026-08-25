@@ -57,39 +57,78 @@ to the broader federal governance ecosystem while maintaining its
 canonical architecture.
 
 Phase 2 delivers machine-readable, OSCAL-aligned artifacts for
-Continuous ATO (cATO) alignment. Per OMB Memorandum M-24-15 and FedRAMP
-RFC-0024, machine-readable authorization packages will be required by
-September 30, 2026, with non-compliant services facing separate,
-lower-priority processing and eventual revocation by September 2027.
-UIAO positions organizations ahead of this mandate by generating OSCAL
+Continuous ATO (cATO) alignment under **FedRAMP 20x**. Per OMB
+Memorandum M-24-15 and FedRAMP RFC-0024, machine-readable authorization
+packages are required for new submissions after **September 30, 2026**,
+with non-compliant services facing separate, lower-priority processing
+and eventual revocation by September 2027. The **Consolidated Rules for
+2026 (CR26)** set the surrounding calendar: optional adoption from
+2026-07-04, 20x Class B/C pipelines open from 2026-08-31, **mandatory
+for all FedRAMP stakeholders from 2027-01-01**, and no new Rev5
+certifications after 2027-06-11.
+
+UIAO positions organizations ahead of these dates by generating OSCAL
 component-definitions, assessment-results, and POA&M items directly from
 governance data --- not as a separate documentation exercise, but as an
-inherent output of governance operations. This design ensures that
-compliance evidence is generated as a natural byproduct of governance
-enforcement, eliminating the documentation lag that characterizes
-traditional ATO processes.
+inherent output of governance operations --- and by tagging each emission
+with the CR26 Key Security Indicators it backs (§13.3). This design
+ensures that compliance evidence is generated as a natural byproduct of
+governance enforcement, eliminating the documentation lag that
+characterizes traditional ATO processes.
 
 # 2. Scope and Boundaries
 
-## 2.1 Operational Boundary
+Two distinct questions are answered here, and FedRAMP 20x makes the
+distinction load-bearing. **§2.1** states the *deployment boundary* ---
+where services run. **§2.1a** states the *Minimum Assessment Scope* ---
+what is assessed. Under 20x the second is not derived from the first.
 
-The Phase 2 operational boundary encompasses Microsoft 365 SaaS services
-within the GCC-Moderate authorization boundary. GCC-Moderate applies to
-Microsoft 365 SaaS services only and does not include Azure services.
-This distinction is canonical to the UIAO program. All governance
-baselines, drift detection policies, remediation workflows, and
-provenance records within Phase 2 are scoped exclusively to the M365
-SaaS control plane within GCC-Moderate.
+## 2.1 Operational Deployment Boundary
+
+The Phase 2 operational deployment boundary encompasses Microsoft 365
+SaaS services in GCC-Moderate. GCC-Moderate applies to Microsoft 365
+SaaS services only and does not include Azure services. This distinction
+is canonical to the UIAO program. All governance baselines, drift
+detection policies, remediation workflows, and provenance records within
+Phase 2 are scoped exclusively to the M365 SaaS control plane within
+GCC-Moderate.
 
 UIAO operates in Commercial Cloud as governed by FedRAMP unless
 specifically noted. The sole explicit exception is Amazon Connect
 Contact Center, which operates in Commercial Cloud. Azure services ---
-including Azure IaaS, PaaS, and platform-level services --- are out of
-scope for the GCC-Moderate boundary under UIAO, although Azure Arc is
+including Azure IaaS, PaaS, and platform-level services --- sit outside
+the GCC-Moderate deployment boundary under UIAO, although Azure Arc is
 used for telemetry projection from hybrid resources into the Governance
-OS. This boundary definition aligns with FedRAMP Moderate overlay
-requirements and ensures clean separation between the M365 SaaS
-governance surface and the broader Azure platform.
+OS. This deployment definition ensures clean separation between the M365
+SaaS governance surface and the broader Azure platform.
+
+## 2.1a Minimum Assessment Scope
+
+What Phase 2 *assesses* is determined by the FedRAMP 20x Minimum
+Assessment Scope inclusion test, carried in CR26 as rule category
+**FRR-MAS**. An information resource is in scope if it handles federal
+information, and/or likely impacts the confidentiality, integrity, or
+availability of federal information; resources and most metadata meeting
+neither prong are outside it.
+
+Every Governance OS component therefore carries a machine-readable
+classification --- `in-scope`, `metadata-out-of-scope`, or
+`agency-side-out-of-scope` --- per
+[ADR-106](../../../adr/adr-106-fedramp-20x-integration.html) D2. Three
+consequences follow that the pre-20x reading of §2.1 would get wrong:
+
+1. **Arc-projected telemetry is in scope.** It originates on Commercial
+   infrastructure outside GCC-Moderate, and it plainly bears on the
+   integrity and availability of federal information. Deployment
+   location does not exclude it.
+2. **Not everything inside GCC-Moderate is in scope.** Operational
+   metadata that neither handles federal information nor bears on its
+   confidentiality, integrity, or availability is classified
+   `metadata-out-of-scope` and is not assessed, even though it lives in
+   the boundary.
+3. **The classification is evidence, not commentary.** It travels with
+   the component, is re-checked on every emission, and is renderable
+   for an OrgPath subtree with `uiao fedramp orgpath-scope`.
 
 ## 2.2 In-Scope Workloads
 
@@ -456,11 +495,11 @@ control families. This mapping is the structural link between
 organizational configuration governance and federal compliance
 requirements. The control-to-baseline mapping enables three critical
 capabilities: automated compliance evidence generation (OSCAL
-assessment-results derived from drift detection output), FedRAMP
-Moderate overlay requirement traceability (each configuration setting
-traces through baselines to control families to FedRAMP overlay
-requirements), and end-to-end auditability from individual configuration
-items through baselines to control families.
+assessment-results derived from drift detection output), CR26 KSI
+traceability (each configuration setting traces through baselines to
+control families to the CR26 indicators anchored on those families ---
+the crosswalk in §5.2), and end-to-end auditability from individual
+configuration items through baselines to control families.
 
 Table TBL-P2-003 provides the complete control family to baseline
 mapping matrix, showing which UIAO baselines address each NIST SP 800-53
@@ -532,26 +571,109 @@ reference where applicable.
               Integrity                            Purview
   -------------------------------------------------------------------------------------------------
 
-## 5.2 FedRAMP Moderate Overlay Alignment
+## 5.2 FedRAMP 20x / CR26 KSI Alignment
 
-The UIAO baseline mapping aligns directly with FedRAMP Moderate overlay
-requirements. Each canonical baseline produces OSCAL-formatted SSP
-components that document control implementation details for the
-authorization package. The mapping from configuration settings through
-baselines to NIST control families to FedRAMP overlay requirements
-creates a traceable chain that auditors and assessors can follow without
-manual interpretation.
+TBL-P2-003 above maps baselines to NIST SP 800-53 Rev 5 control
+families. Under FedRAMP 20x that mapping remains correct but is no
+longer the *terminal* artifact: what an assessor consumes is the **Key
+Security Indicator** evidence payload, and CR26 anchors each of its 46
+indicators to a set of Rev 5 controls. The chain therefore runs
+configuration setting → baseline → Rev 5 control family → CR26 KSI
+theme → machine-readable evidence, and only the last link is new.
 
-The OSCAL mandate timeline is critical to Phase 2 planning. FedRAMP
-publishes supporting materials and tooling by April 15, 2026. New
-authorization packages submitted to FedRAMP must be machine-readable
-(OSCAL-formatted) by September 30, 2026. After September 30, 2027,
-non-compliant services --- those that have not submitted
-machine-readable authorization packages --- face separate,
-lower-priority processing and eventual revocation. UIAO Phase 2 is
-designed to generate compliant OSCAL artifacts as an inherent output of
-governance operations, positioning organizations to meet the September
-2026 deadline without a separate documentation sprint.
+TBL-P2-003a resolves the added link. It is derived directly from the
+vendored official CR26 rules file (`2026.06.24.01`) --- for each Rev 5
+control family in TBL-P2-003, the CR26 KSI themes that anchor at least
+one indicator to that family. Reading the two tables together gives the
+full traversal from a ScubaGear policy reference to the indicator its
+result evidences.
+
+**TBL-P2-003a: NIST SP 800-53 Rev 5 Family to CR26 KSI Theme Crosswalk**
+
+  ---------- ------------------------ --------------------------------------------
+  **Family** **Family Name**          **CR26 KSI themes anchored to
+                                      this family**
+  ---------- ------------------------ --------------------------------------------
+  AC         Access Control           KSI-CNA · KSI-IAM · KSI-MLA · KSI-PIY ·
+                                      KSI-SCR · KSI-SVC
+
+  AT         Awareness and Training   KSI-CED
+
+  AU         Audit and Accountability KSI-CMT · KSI-IAM · KSI-MLA · KSI-PIY
+
+  CM         Configuration Management KSI-CMT · KSI-CNA · KSI-IAM · KSI-MLA ·
+                                      KSI-PIY · KSI-RPL · KSI-SVC
+
+  CP         Contingency Planning     KSI-CED · KSI-PIY · KSI-RPL · KSI-SVC
+
+  IA         Identification and       KSI-IAM · KSI-SVC
+             Authentication
+
+  IR         Incident Response        KSI-CED · KSI-INR · KSI-MLA · KSI-PIY ·
+                                      KSI-RPL · KSI-SCR
+
+  MA         Maintenance              KSI-CMT · KSI-SVC
+
+  MP         Media Protection         --- (no CR26 KSI anchor)
+
+  PE         Physical and             --- (no CR26 KSI anchor)
+             Environmental Protection
+
+  PL         Planning                 KSI-CNA · KSI-PIY · KSI-SVC
+
+  PS         Personnel Security       KSI-CED · KSI-IAM · KSI-SCR
+
+  RA         Risk Assessment          KSI-IAM · KSI-PIY · KSI-SCR
+
+  SA         System and Services      KSI-PIY · KSI-SCR · KSI-SVC
+             Acquisition
+
+  SC         System and               KSI-CNA · KSI-IAM · KSI-PIY · KSI-SCR ·
+             Communications           KSI-SVC
+             Protection
+
+  SI         System and Information   KSI-CMT · KSI-CNA · KSI-IAM · KSI-INR ·
+             Integrity                KSI-MLA · KSI-PIY · KSI-RPL · KSI-SCR ·
+                                      KSI-SVC
+  ---------- ------------------------ --------------------------------------------
+
+Two properties of this crosswalk matter operationally:
+
+- **Coverage is uneven by design.** The System and Information Integrity
+  (SI) family anchors indicators in nine of the ten themes, while
+  Media Protection (MP) and Physical and
+  Environmental Protection (PE) carry no CR26 KSI anchor at all. Those
+  families are addressed through the FRR rule categories and inherited
+  cloud-provider controls, not through indicator evidence. A Phase 2
+  dashboard that reports "MP has no KSI coverage" is reporting the
+  catalog's shape, not a gap in the estate.
+- **It is a many-to-many map, not a rename.** A single baseline can
+  evidence indicators across several themes, and a single indicator
+  draws on controls from several families. This is why emissions carry a
+  `fedramp:ksi-themes` list rather than a single theme value (§13.3).
+
+### 5.2.1 The CR26 calendar
+
+The mandate timeline is critical to Phase 2 planning:
+
+| Milestone | Date |
+|---|---|
+| FedRAMP publishes supporting materials and tooling | 2026-04-15 |
+| CR26 launched (official machine-readable rules, `2026.06.24.01`) | 2026-06-25 |
+| CR26 optional adoption opens | 2026-07-04 |
+| 20x Class B / Class C pipelines open | 2026-08-31 |
+| New authorization packages must be machine-readable (OSCAL) | 2026-09-30 |
+| **CR26 mandatory for all FedRAMP stakeholders** | **2027-01-01** |
+| No new Rev5 certifications issued | 2027-06-11 |
+| Non-compliant services face lower-priority processing and eventual revocation | 2027-09-30 |
+
+UIAO Phase 2 is designed to generate compliant, KSI-tagged OSCAL
+artifacts as an inherent output of governance operations, positioning
+organizations to meet these dates without a separate documentation
+sprint. Authority for the CR26 pin is
+[ADR-126](../../../adr/adr-126-fedramp-cr26-official-rules-adoption.html);
+the emission contract is
+[ADR-106](../../../adr/adr-106-fedramp-20x-integration.html).
 
 # 6. Governance OS APIs and Data Model
 
@@ -918,15 +1040,21 @@ results into TelemetryPayload format with source annotations indicating
 the hybrid origin.
 
 An important boundary note applies: Azure Arc is used for telemetry
-projection and policy enforcement only. The GCC-Moderate boundary
-governs M365 SaaS services exclusively. Azure services are out of scope
-for FedRAMP Moderate coverage under UIAO but contribute telemetry to the
-Governance OS. Arc-projected telemetry is tagged with a boundary
-annotation (boundary: hybrid-projection) to distinguish it from
-GCC-Moderate-scoped telemetry in dashboards, reports, and OSCAL
-artifacts. This distinction ensures that FedRAMP authorization packages
-accurately reflect the M365 SaaS boundary without conflating hybrid
-telemetry with in-scope governance data.
+projection and policy enforcement only. The GCC-Moderate **deployment**
+boundary governs M365 SaaS services exclusively; Azure services sit
+outside it. Arc-projected telemetry is tagged with a deployment
+annotation (`boundary: hybrid-projection`) to distinguish it from
+GCC-Moderate-hosted telemetry in dashboards, reports, and OSCAL
+artifacts.
+
+That annotation records **where the telemetry came from, not whether it
+is assessed.** Per §2.1a, Arc-projected telemetry that bears on the
+confidentiality, integrity, or availability of federal information is
+within the Minimum Assessment Scope and carries `in-scope`
+classification despite its Commercial origin. The two tags are
+orthogonal and both are emitted; conflating them --- reading
+`hybrid-projection` as "excluded" --- would understate the assessed
+surface, which is precisely the error FedRAMP 20x set out to remove.
 
 +----------------------------------------------------------------------+
 | **DIAG-P2-003**                                                      |
@@ -1062,7 +1190,9 @@ stricter canonical baseline.
 
 ScubaGear controls are mapped to both NIST SP 800-53 Rev 5 control
 families and MITRE ATT&CK framework techniques. UIAO preserves and
-extends these mappings, adding organizational context (which business
+extends these mappings, resolving the Rev 5 families forward to their
+CR26 KSI themes via the §5.2 crosswalk, and adding organizational
+context (which business
 unit is affected, which mission capability depends on the control),
 remediation metadata (pre-approved remediation patterns, estimated
 remediation effort), and provenance references (which baseline version
@@ -1606,13 +1736,15 @@ current governance state.
 Canonical baselines generate OSCAL component-definitions. Each canonical
 baseline maps to one or more OSCAL component-definition elements with
 control implementation descriptions that specify how the baseline\'s
-configuration settings satisfy NIST SP 800-53 Rev 5 controls. The
-component-definition includes: the component type (software, service, or
-policy), the control implementations with implementation descriptions,
-the responsible roles, and the implementation status (implemented,
-partially implemented, planned, alternative, or not applicable).
-Component-definitions are regenerated on every baseline version
-increment and stored in canon/oscal/component-definitions/.
+configuration settings satisfy NIST SP 800-53 Rev 5 controls, and with
+`fedramp:ksi-themes` props naming the CR26 indicators those controls
+anchor (§13.3). The component-definition includes: the component type
+(software, service, or policy), the control implementations with
+implementation descriptions, the responsible roles, the implementation
+status (implemented, partially implemented, planned, alternative, or not
+applicable), and the component\'s Minimum Assessment Scope
+classification per §2.1a. Component-definitions are regenerated on every
+baseline version increment and stored in canon/oscal/component-definitions/.
 
 Drift detection results generate OSCAL assessment-results. Each
 DriftEvent produces an OSCAL finding with a pass or fail status,
@@ -1684,43 +1816,91 @@ evidence generation pipeline.
 
 ## 13.3 KSI Emission Surface (FedRAMP 20x)
 
-FedRAMP 20x Phase Two introduces Key Security Indicators (KSIs) — a
-small set of machine-readable, continuously-validated evidence themes
-that sit above NIST SP 800-53 controls. At the Moderate baseline,
-approximately sixty-one KSIs are organized into themes including
-**KSI-CNA** (cloud-native architecture), **KSI-SVC** (service
-configuration / encryption / integrity), **KSI-IAM** (identity, access,
-zero trust), **KSI-MLA** (monitoring, logging, audit), **KSI-CMT**
-(change management / continuous monitoring), and **KSI-AFR**
-(FedRAMP-specific reporting). KSIs are the federal-side artifact format
-for continuous-validation evidence; they consume the same governance
-data §13.1 and §13.2 already produce, expressed in a vocabulary the
-FedRAMP authorization framework accepts natively rather than via SSP
-narrative translation.
+FedRAMP 20x expresses continuous-validation evidence as **Key Security
+Indicators (KSIs)** — machine-readable, continuously validated
+statements of security outcome that sit above NIST SP 800-53 controls.
+The catalog is settled: the official CR26 rules file
+(`2026.06.24.01`, launched 2026-06-25) defines **46 indicators across 10
+themes**:
+
+| Theme | Name | Indicators |
+|---|---|---:|
+| **KSI-CNA** | Cloud Native Architecture | 8 |
+| **KSI-SVC** | Service Configuration | 8 |
+| **KSI-IAM** | Identity and Access Management | 6 |
+| **KSI-MLA** | Monitoring, Logging, and Auditing | 5 |
+| **KSI-PIY** | Policy and Inventory | 5 |
+| **KSI-CMT** | Change Management | 4 |
+| **KSI-RPL** | Recovery Planning | 4 |
+| **KSI-INR** | Incident Response | 3 |
+| **KSI-SCR** | Supply Chain Risk | 2 |
+| **KSI-CED** | Cybersecurity Education | 1 |
+
+Each indicator carries a theme-prefixed ID (`KSI-IAM-ELP`,
+`KSI-MLA-LET`, …) and a list of NIST SP 800-53 control anchors. Two
+corrections against earlier drafts of this chapter are worth stating
+plainly, because both appeared in pre-CR26 planning material: the
+Moderate catalog is **46 indicators, not ~61**, and there is **no
+`KSI-AFR` theme** — the FedRAMP-reporting obligations that name once
+carried are distributed across `KSI-PIY` (inventory and policy
+evidence), `KSI-CMT` (change and continuous-monitoring evidence), and
+the FRR rule categories, which are requirements rather than indicators.
+
+KSIs are the federal-side artifact format for continuous-validation
+evidence; they consume the same governance data §13.1 and §13.2 already
+produce, expressed in a vocabulary the FedRAMP authorization framework
+accepts natively rather than via SSP narrative translation.
 
 The Governance OS substrate emits evidence that maps directly onto the
 KSI catalog. Table TBL-P2-011 records that mapping. Each row identifies
-a substrate output, the KSI theme it satisfies, the OSCAL artifact
-type from §13.2 that carries the evidence, and the cadence at which the
-KSI evidence is continuously validated. The mapping is not exhaustive
-of the full Moderate KSI catalog — it covers only the KSIs whose
-evidence is materially produced by the Governance OS substrate; KSIs
-satisfied entirely by underlying CSP attestations or by agency-side
-controls outside the substrate are out of scope for this table.
+a substrate output, the CR26 themes and representative indicator IDs it
+evidences, the OSCAL artifact type from §13.2 that carries the evidence,
+and the cadence at which the evidence is continuously validated. The
+mapping is not exhaustive of the 46-indicator catalog — it covers only
+the indicators whose evidence is materially produced by the Governance
+OS substrate. Indicators satisfied entirely by underlying CSP
+attestations, or by agency-side controls outside the substrate, are out
+of scope for this table and are classified `agency-side-out-of-scope`
+per §2.1a.
 
-**TBL-P2-011: KSI Emission Surface (Substrate Output → KSI Theme)**
+**TBL-P2-011: KSI Emission Surface (Substrate Output → CR26 Indicator)**
 
-| Substrate output | KSI theme | OSCAL artifact (per §13.2) | Continuous-validation cadence |
-|---|---|---|---|
-| Canonical baseline (published, version-incremented) | KSI-CNA, KSI-SVC | component-definition | On baseline publish |
-| DriftEvent (real-time and scheduled drift detection) | KSI-MLA, KSI-CMT | assessment-results / finding | Real-time for critical; daily for routine |
-| RemediationWorkflow (open / in-progress / resolved) | KSI-CMT, KSI-AFR | poam-item | On workflow state transition |
-| ProvenanceRecord (every governance action) | KSI-MLA, KSI-AFR | assessment-plan / activity / evidence | Continuous (append-only) |
-| Conditional Access policy evaluation evidence | KSI-IAM | assessment-results / observation | Continuous |
-| Sentinel ingestion completeness and freshness signals | KSI-MLA | assessment-results / observation | Continuous |
-| Cross-plane telemetry adapter health (per §12.2) | KSI-MLA, KSI-CMT | assessment-results / observation | Continuous |
-| SCuBA baseline conformance reports (per §8) | KSI-CNA, KSI-SVC, KSI-IAM | component-definition + assessment-results | On ScubaGear cycle |
-| OSCAL package aggregate (component-definition, assessment-results, POA&M, assessment-plan) | KSI-AFR | system-security-plan (aggregated) | Quarterly cATO package; on-demand for ad-hoc requests |
+| Substrate output | CR26 themes | Representative indicators | OSCAL artifact (per §13.2) | Continuous-validation cadence |
+|---|---|---|---|---|
+| Canonical baseline (published, version-incremented) | KSI-CNA, KSI-SVC | KSI-CNA-EIS, KSI-SVC-ACM | component-definition | On baseline publish |
+| DriftEvent (real-time and scheduled drift detection) | KSI-MLA, KSI-CMT | KSI-MLA-EVC, KSI-CMT-LMC | assessment-results / finding | Real-time for critical; daily for routine |
+| RemediationWorkflow (open / in-progress / resolved) | KSI-CMT, KSI-PIY | KSI-CMT-VTD, KSI-PIY-RVD | poam-item | On workflow state transition |
+| ProvenanceRecord (every governance action) | KSI-MLA, KSI-CMT | KSI-MLA-LET, KSI-CMT-LMC | assessment-plan / activity / evidence | Continuous (append-only) |
+| Conditional Access policy evaluation evidence | KSI-IAM | KSI-IAM-ELP, KSI-IAM-JIT, KSI-IAM-SUS | assessment-results / observation | Continuous |
+| Sentinel ingestion completeness and freshness signals | KSI-MLA | KSI-MLA-OSM, KSI-MLA-RVL | assessment-results / observation | Continuous |
+| Cross-plane telemetry adapter health (per §12.2) | KSI-MLA, KSI-CMT | KSI-MLA-OSM, KSI-CMT-RVP | assessment-results / observation | Continuous |
+| SCuBA baseline conformance reports (per §8) | KSI-CNA, KSI-SVC, KSI-IAM | KSI-CNA-IBP, KSI-SVC-EIS, KSI-IAM-APM | component-definition + assessment-results | On ScubaGear cycle |
+| Component and configuration inventory (per §2.1a classification) | KSI-PIY | KSI-PIY-GIV | component-definition | On inventory change |
+| OSCAL package aggregate (component-definition, assessment-results, POA&M, assessment-plan) | KSI-PIY, KSI-CMT | KSI-PIY-GIV, KSI-CMT-RVP | system-security-plan (aggregated) | Quarterly cATO package; on-demand for ad-hoc requests |
+
+TBL-P2-011 covers the *governance-operations* emissions. Read alongside
+the canonical KSI rule corpus, the current coverage position is:
+
+- **32 of the 46 CR26 indicators** are covered by at least one local KSI
+  rule (29 rules, `KSI-001` … `KSI-029`). **No theme is at zero
+  coverage** — all 10 have at least one contributing rule.
+- **14 indicators remain open**, concentrated in three
+  infrastructure-configuration themes: **KSI-CNA** (6 of 8 open),
+  **KSI-SVC** (5 of 8 open), and **KSI-MLA** (3 of 5 open).
+- A further **4 KSI-CMT indicators are mapped but not yet evaluable** —
+  `KSI-011` … `KSI-014` are scaffolds per ADR-111, pending the CR26
+  VDR/VER evidence contract. A coverage dashboard must show these as
+  *mapped, not evaluable* rather than folding them into either the
+  covered or the open count.
+
+The process and lifecycle themes — training (KSI-CED), incident response
+(KSI-INR), recovery planning (KSI-RPL), supply chain (KSI-SCR), and
+policy/inventory (KSI-PIY) — are covered, but each binds to a
+**non-SCuBA evidence source**: SOAR playbooks, BIA and contingency-plan
+review records, SBOM/VDR tooling, Defender vulnerability-management
+scans. They are not produced by the M365 configuration surface that
+feeds most rows of TBL-P2-011, so an operator should expect their
+evidence to arrive on a different cadence and from a different owner.
 
 The KSI emission surface is **not** a re-engineering of the substrate;
 it is a relabeling of evidence already produced by §§13.1–13.2 against
@@ -1735,18 +1915,44 @@ Two operational consequences flow from this mapping. First, the
 quality bar for substrate evidence freshness rises: KSI continuous
 validation is meaningless if the underlying telemetry is stale, so the
 Sentinel ingestion completeness and adapter health observations
-(rows 6–7) become first-class substrate health signals, not just
-internal operations metrics. Second, KSI mapping confirmation becomes
-an explicit substrate health check: a KSI claimed but not backed by a
-freshly-generated OSCAL artifact is itself a drift class that the
-DriftEvent engine should surface.
+become first-class substrate health signals, not just internal
+operations metrics. Every emission therefore carries a
+`fedramp:ksi-freshness-cadence` property alongside its
+`fedramp:ksi-emitted-at` timestamp, and evidence that ages past its
+declared cadence is raised as a `DRIFT-EVIDENCE-STALE` finding rather
+than presented as current. `uiao fedramp staleness` reports the
+current state of that check.
 
-The framework movement that introduces KSIs — the FedRAMP 20x Phase
-Two Moderate Pilot active as of November 2025, with public Moderate
-path arriving Q2 2026 — is recorded operationally in
+Second, KSI mapping confirmation becomes an explicit substrate health
+check: an indicator claimed but not backed by a freshly generated OSCAL
+artifact is itself a drift class the DriftEvent engine surfaces. Running
+`uiao fedramp ksi-run --ir <ir.json> --out <dir>` produces the evidence
+records, the staleness report, and the KSI-tagged OSCAL in one pass;
+`uiao fedramp dryrun` validates the resulting evidence directory against
+the pinned CR26 catalog before a package is filed, and
+`uiao fedramp 3pao-package` assembles the assessor-facing bundle.
+
+### 13.3.1 Provenance of the catalog pin
+
+The indicator IDs and counts in this section resolve against a **pinned**
+CR26 rules file vendored into canon, not against a live fetch. The
+official FedRAMP JSON (`2026.06.24.01`, SHA-256 `48d1fb4c…`) is the
+primary authority for rules text, indicator definitions, and FRR
+requirements per
+[ADR-126](../../../adr/adr-126-fedramp-cr26-official-rules-adoption.html);
+an OSCAL conversion of the earlier CR26 Public Preview is retained
+alongside it for OSCAL catalog and profile shape per ADR-061. Where the
+two disagree, the official JSON wins. If a CR26 ID cited in this chapter
+stops resolving in the pinned file, the `fedramp-cr26-catalog`
+conformance adapter emits `DRIFT-PROVENANCE` — the mapping cannot rot
+silently.
+
+The framework movement that introduced KSIs is recorded operationally in
 [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../findings/fedramp-20x-moderate-pilot.html).
 The KSI Emission Surface in this section is the Phase 2 substrate
-response to that finding's §4 internal-remedy item.
+response to that finding's §4 internal-remedy item; the substrate-level
+decision it implements is
+[ADR-106](../../../adr/adr-106-fedramp-20x-integration.html).
 
 # 14. Operational Governance Model
 
@@ -2081,12 +2287,40 @@ effectiveness.
 government-wide program that provides a standardized approach to
 security assessment, authorization, and continuous monitoring for cloud
 products and services. Reconstituted under OMB M-24-15 with enhanced
-automation requirements.
+automation requirements, and now operating the FedRAMP 20x framework.
+
+**FedRAMP 20x:** The automation-first FedRAMP framework in which
+authorization evidence is machine-readable and continuously validated
+rather than narrative and periodic. Its scoping rule is the Minimum
+Assessment Scope; its evidence vocabulary is the Key Security Indicator
+catalog; its consolidated rules surface is CR26.
+
+**CR26 (Consolidated Rules for 2026):** FedRAMP's official
+machine-readable rules file, launched 2026-06-25 at version
+`2026.06.24.01`. Contains 75 definitions (FRD), 17 rule categories
+(FRR), 46 Key Security Indicators across 10 themes (KSI), and 14 NIST
+control families (CTL). Mandatory for all FedRAMP stakeholders from
+2027-01-01.
+
+**KSI (Key Security Indicator):** A CR26 statement of security outcome,
+evidenced by a continuously validated machine-readable payload rather
+than a control narrative. Each indicator carries a theme-prefixed ID
+(e.g. `KSI-IAM-ELP`) and a set of NIST SP 800-53 Rev 5 control anchors.
+
+**Minimum Assessment Scope:** The FedRAMP 20x replacement for the
+authorization boundary. An information resource is in scope if it
+handles federal information, and/or likely impacts the confidentiality,
+integrity, or availability of federal information. Resources and most
+metadata meeting neither prong are outside it. Distinct from the
+deployment boundary (§2.1).
 
 **SSP (System Security Plan):** A formal document that describes how an
 organization implements security controls for a system. Under OSCAL, the
 SSP is a machine-readable artifact that maps implemented requirements to
-control catalogs and baselines.
+control catalogs and baselines. Under FedRAMP 20x the narrative SSP is
+no longer the primary assessed artifact; the aggregated OSCAL
+`system-security-plan` persists as a package container for KSI-tagged
+evidence.
 
 **POA&M (Plan of Action and Milestones):** A document that identifies
 security weaknesses, planned remediation actions, and milestone dates
@@ -2122,7 +2356,9 @@ packages.
 1.  NIST SP 800-53 Rev 5 --- Security and Privacy Controls for
     Information Systems and Organizations
 
-2.  FedRAMP Moderate Baseline
+2.  FedRAMP Consolidated Rules for 2026 (CR26), version
+    `2026.06.24.01` --- definitions (FRD), rules (FRR), Key Security
+    Indicators (KSI), and control families (CTL)
 
 3.  OMB Memorandum M-24-15 --- Modernizing the Federal Risk and
     Authorization Management Program (July 25, 2024)
