@@ -34,6 +34,19 @@ env:
   # To restore normal publishing of the real docs site: set this to "false".
   MAINTENANCE_MODE: "false"
 
+  # QUARTO VERSION PIN — this workflow used to resolve "latest" at run time.
+  # That made the published site a function of whatever upstream released that
+  # morning: a Quarto change could alter the render, or break the deploy,
+  # with no commit in this repo and nothing to bisect. The render runs only on
+  # push to main (see `on:` above) and is not a pull-request gate, so such a
+  # break lands unattended — which is exactly how the 2026-08-21 outage went
+  # five days unnoticed.
+  #
+  # 1.10.18 is the version this corpus is known to render green.
+  # To upgrade: bump this, run the workflow via workflow_dispatch on a branch,
+  # and merge only once that render is green.
+  QUARTO_VERSION: "1.10.18"
+
 # Pipeline shape:
 #   render_html  ─┐
 #                 ├─► assemble ─► deploy (main only)
@@ -58,28 +71,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Quarto (resilient install)
-        # Replaces quarto-dev/quarto-actions/setup@v2 with a download that
-        # survives transient GitHub release-CDN 502s — the failure that skipped
-        # a DOCX shard and the Pages deploy (run 27093643913). Resolves the
-        # latest quarto-cli release, then installs the .deb with retries
-        # (curl --retry-all-errors covers HTTP 5xx) plus an outer backoff loop.
+      - name: Set up Quarto (pinned, resilient install)
+        # Version is pinned via QUARTO_VERSION at the top of this file — see the
+        # rationale there. Downloads with retries so a transient release-CDN 502
+        # does not skip a shard and the deploy (the failure in run 27093643913).
         run: |
           set -euo pipefail
-          resolve_latest() {
-            curl -fsSLI -o /dev/null -w '%{url_effective}' \
-              https://github.com/quarto-dev/quarto-cli/releases/latest \
-              | sed 's#.*/tag/v##'
-          }
-          ver=""; for n in 1 2 3 4 5; do ver="$(resolve_latest || true)"; [ -n "$ver" ] && break; sleep $((n * 5)); done
-          [ -n "$ver" ] || { echo "::error::could not resolve latest Quarto version"; exit 1; }
-          echo "Quarto $ver"
-          deb="quarto-${ver}-linux-amd64.deb"
+          deb="quarto-${QUARTO_VERSION}-linux-amd64.deb"
           curl -fSL --retry 6 --retry-all-errors --retry-delay 5 \
             -o "/tmp/${deb}" \
-            "https://github.com/quarto-dev/quarto-cli/releases/download/v${ver}/${deb}"
+            "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/${deb}"
           sudo dpkg -i "/tmp/${deb}"
-          quarto --version
+          installed="$(quarto --version)"
+          echo "Quarto ${installed}"
+          [ "${installed}" = "${QUARTO_VERSION}" ] || {
+            echo "::error::Quarto version mismatch — pinned ${QUARTO_VERSION}, got ${installed}"
+            exit 1
+          }
 
       - name: Set up Python (SVG rasterizer)
         uses: actions/setup-python@v7
@@ -149,25 +157,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Quarto (resilient install)
-        # See the HTML job for rationale: retry the release download so a
-        # transient CDN 502 on one shard no longer skips the whole deploy.
+      - name: Set up Quarto (pinned, resilient install)
+        # Version is pinned via QUARTO_VERSION at the top of this file — see the
+        # rationale there. Downloads with retries so a transient release-CDN 502
+        # does not skip a shard and the deploy (the failure in run 27093643913).
         run: |
           set -euo pipefail
-          resolve_latest() {
-            curl -fsSLI -o /dev/null -w '%{url_effective}' \
-              https://github.com/quarto-dev/quarto-cli/releases/latest \
-              | sed 's#.*/tag/v##'
-          }
-          ver=""; for n in 1 2 3 4 5; do ver="$(resolve_latest || true)"; [ -n "$ver" ] && break; sleep $((n * 5)); done
-          [ -n "$ver" ] || { echo "::error::could not resolve latest Quarto version"; exit 1; }
-          echo "Quarto $ver"
-          deb="quarto-${ver}-linux-amd64.deb"
+          deb="quarto-${QUARTO_VERSION}-linux-amd64.deb"
           curl -fSL --retry 6 --retry-all-errors --retry-delay 5 \
             -o "/tmp/${deb}" \
-            "https://github.com/quarto-dev/quarto-cli/releases/download/v${ver}/${deb}"
+            "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/${deb}"
           sudo dpkg -i "/tmp/${deb}"
-          quarto --version
+          installed="$(quarto --version)"
+          echo "Quarto ${installed}"
+          [ "${installed}" = "${QUARTO_VERSION}" ] || {
+            echo "::error::Quarto version mismatch — pinned ${QUARTO_VERSION}, got ${installed}"
+            exit 1
+          }
 
       - name: Set up Python (SVG rasterizer)
         uses: actions/setup-python@v7
@@ -258,24 +264,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Quarto (resilient install)
-        # Same resilient install as the HTML / DOCX-shard jobs.
+      - name: Set up Quarto (pinned, resilient install)
+        # Version is pinned via QUARTO_VERSION at the top of this file — see the
+        # rationale there. Downloads with retries so a transient release-CDN 502
+        # does not skip a shard and the deploy (the failure in run 27093643913).
         run: |
           set -euo pipefail
-          resolve_latest() {
-            curl -fsSLI -o /dev/null -w '%{url_effective}' \
-              https://github.com/quarto-dev/quarto-cli/releases/latest \
-              | sed 's#.*/tag/v##'
-          }
-          ver=""; for n in 1 2 3 4 5; do ver="$(resolve_latest || true)"; [ -n "$ver" ] && break; sleep $((n * 5)); done
-          [ -n "$ver" ] || { echo "::error::could not resolve latest Quarto version"; exit 1; }
-          echo "Quarto $ver"
-          deb="quarto-${ver}-linux-amd64.deb"
+          deb="quarto-${QUARTO_VERSION}-linux-amd64.deb"
           curl -fSL --retry 6 --retry-all-errors --retry-delay 5 \
             -o "/tmp/${deb}" \
-            "https://github.com/quarto-dev/quarto-cli/releases/download/v${ver}/${deb}"
+            "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/${deb}"
           sudo dpkg -i "/tmp/${deb}"
-          quarto --version
+          installed="$(quarto --version)"
+          echo "Quarto ${installed}"
+          [ "${installed}" = "${QUARTO_VERSION}" ] || {
+            echo "::error::Quarto version mismatch — pinned ${QUARTO_VERSION}, got ${installed}"
+            exit 1
+          }
 
       - name: Set up Python (SVG rasterizer)
         uses: actions/setup-python@v7
@@ -324,24 +329,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Quarto (resilient install)
-        # Same resilient install as the HTML / DOCX-shard jobs.
+      - name: Set up Quarto (pinned, resilient install)
+        # Version is pinned via QUARTO_VERSION at the top of this file — see the
+        # rationale there. Downloads with retries so a transient release-CDN 502
+        # does not skip a shard and the deploy (the failure in run 27093643913).
         run: |
           set -euo pipefail
-          resolve_latest() {
-            curl -fsSLI -o /dev/null -w '%{url_effective}' \
-              https://github.com/quarto-dev/quarto-cli/releases/latest \
-              | sed 's#.*/tag/v##'
-          }
-          ver=""; for n in 1 2 3 4 5; do ver="$(resolve_latest || true)"; [ -n "$ver" ] && break; sleep $((n * 5)); done
-          [ -n "$ver" ] || { echo "::error::could not resolve latest Quarto version"; exit 1; }
-          echo "Quarto $ver"
-          deb="quarto-${ver}-linux-amd64.deb"
+          deb="quarto-${QUARTO_VERSION}-linux-amd64.deb"
           curl -fSL --retry 6 --retry-all-errors --retry-delay 5 \
             -o "/tmp/${deb}" \
-            "https://github.com/quarto-dev/quarto-cli/releases/download/v${ver}/${deb}"
+            "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/${deb}"
           sudo dpkg -i "/tmp/${deb}"
-          quarto --version
+          installed="$(quarto --version)"
+          echo "Quarto ${installed}"
+          [ "${installed}" = "${QUARTO_VERSION}" ] || {
+            echo "::error::Quarto version mismatch — pinned ${QUARTO_VERSION}, got ${installed}"
+            exit 1
+          }
 
       - name: Set up Python (SVG rasterizer)
         uses: actions/setup-python@v7
@@ -390,24 +394,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Quarto (resilient install)
-        # Same resilient install as the HTML / DOCX-shard jobs.
+      - name: Set up Quarto (pinned, resilient install)
+        # Version is pinned via QUARTO_VERSION at the top of this file — see the
+        # rationale there. Downloads with retries so a transient release-CDN 502
+        # does not skip a shard and the deploy (the failure in run 27093643913).
         run: |
           set -euo pipefail
-          resolve_latest() {
-            curl -fsSLI -o /dev/null -w '%{url_effective}' \
-              https://github.com/quarto-dev/quarto-cli/releases/latest \
-              | sed 's#.*/tag/v##'
-          }
-          ver=""; for n in 1 2 3 4 5; do ver="$(resolve_latest || true)"; [ -n "$ver" ] && break; sleep $((n * 5)); done
-          [ -n "$ver" ] || { echo "::error::could not resolve latest Quarto version"; exit 1; }
-          echo "Quarto $ver"
-          deb="quarto-${ver}-linux-amd64.deb"
+          deb="quarto-${QUARTO_VERSION}-linux-amd64.deb"
           curl -fSL --retry 6 --retry-all-errors --retry-delay 5 \
             -o "/tmp/${deb}" \
-            "https://github.com/quarto-dev/quarto-cli/releases/download/v${ver}/${deb}"
+            "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/${deb}"
           sudo dpkg -i "/tmp/${deb}"
-          quarto --version
+          installed="$(quarto --version)"
+          echo "Quarto ${installed}"
+          [ "${installed}" = "${QUARTO_VERSION}" ] || {
+            echo "::error::Quarto version mismatch — pinned ${QUARTO_VERSION}, got ${installed}"
+            exit 1
+          }
 
       - name: Set up Python (SVG rasterizer)
         uses: actions/setup-python@v7
@@ -455,24 +458,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Quarto (resilient install)
-        # Same resilient install as the HTML / DOCX-shard jobs.
+      - name: Set up Quarto (pinned, resilient install)
+        # Version is pinned via QUARTO_VERSION at the top of this file — see the
+        # rationale there. Downloads with retries so a transient release-CDN 502
+        # does not skip a shard and the deploy (the failure in run 27093643913).
         run: |
           set -euo pipefail
-          resolve_latest() {
-            curl -fsSLI -o /dev/null -w '%{url_effective}' \
-              https://github.com/quarto-dev/quarto-cli/releases/latest \
-              | sed 's#.*/tag/v##'
-          }
-          ver=""; for n in 1 2 3 4 5; do ver="$(resolve_latest || true)"; [ -n "$ver" ] && break; sleep $((n * 5)); done
-          [ -n "$ver" ] || { echo "::error::could not resolve latest Quarto version"; exit 1; }
-          echo "Quarto $ver"
-          deb="quarto-${ver}-linux-amd64.deb"
+          deb="quarto-${QUARTO_VERSION}-linux-amd64.deb"
           curl -fSL --retry 6 --retry-all-errors --retry-delay 5 \
             -o "/tmp/${deb}" \
-            "https://github.com/quarto-dev/quarto-cli/releases/download/v${ver}/${deb}"
+            "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/${deb}"
           sudo dpkg -i "/tmp/${deb}"
-          quarto --version
+          installed="$(quarto --version)"
+          echo "Quarto ${installed}"
+          [ "${installed}" = "${QUARTO_VERSION}" ] || {
+            echo "::error::Quarto version mismatch — pinned ${QUARTO_VERSION}, got ${installed}"
+            exit 1
+          }
 
       - name: Set up Python (SVG rasterizer)
         uses: actions/setup-python@v7
@@ -520,24 +522,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Quarto (resilient install)
-        # Same resilient install as the HTML / DOCX-shard jobs.
+      - name: Set up Quarto (pinned, resilient install)
+        # Version is pinned via QUARTO_VERSION at the top of this file — see the
+        # rationale there. Downloads with retries so a transient release-CDN 502
+        # does not skip a shard and the deploy (the failure in run 27093643913).
         run: |
           set -euo pipefail
-          resolve_latest() {
-            curl -fsSLI -o /dev/null -w '%{url_effective}' \
-              https://github.com/quarto-dev/quarto-cli/releases/latest \
-              | sed 's#.*/tag/v##'
-          }
-          ver=""; for n in 1 2 3 4 5; do ver="$(resolve_latest || true)"; [ -n "$ver" ] && break; sleep $((n * 5)); done
-          [ -n "$ver" ] || { echo "::error::could not resolve latest Quarto version"; exit 1; }
-          echo "Quarto $ver"
-          deb="quarto-${ver}-linux-amd64.deb"
+          deb="quarto-${QUARTO_VERSION}-linux-amd64.deb"
           curl -fSL --retry 6 --retry-all-errors --retry-delay 5 \
             -o "/tmp/${deb}" \
-            "https://github.com/quarto-dev/quarto-cli/releases/download/v${ver}/${deb}"
+            "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/${deb}"
           sudo dpkg -i "/tmp/${deb}"
-          quarto --version
+          installed="$(quarto --version)"
+          echo "Quarto ${installed}"
+          [ "${installed}" = "${QUARTO_VERSION}" ] || {
+            echo "::error::Quarto version mismatch — pinned ${QUARTO_VERSION}, got ${installed}"
+            exit 1
+          }
 
       - name: Set up Python (SVG rasterizer)
         uses: actions/setup-python@v7
@@ -592,24 +593,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Quarto (resilient install)
-        # Same resilient install as the HTML / DOCX-shard jobs.
+      - name: Set up Quarto (pinned, resilient install)
+        # Version is pinned via QUARTO_VERSION at the top of this file — see the
+        # rationale there. Downloads with retries so a transient release-CDN 502
+        # does not skip a shard and the deploy (the failure in run 27093643913).
         run: |
           set -euo pipefail
-          resolve_latest() {
-            curl -fsSLI -o /dev/null -w '%{url_effective}' \
-              https://github.com/quarto-dev/quarto-cli/releases/latest \
-              | sed 's#.*/tag/v##'
-          }
-          ver=""; for n in 1 2 3 4 5; do ver="$(resolve_latest || true)"; [ -n "$ver" ] && break; sleep $((n * 5)); done
-          [ -n "$ver" ] || { echo "::error::could not resolve latest Quarto version"; exit 1; }
-          echo "Quarto $ver"
-          deb="quarto-${ver}-linux-amd64.deb"
+          deb="quarto-${QUARTO_VERSION}-linux-amd64.deb"
           curl -fSL --retry 6 --retry-all-errors --retry-delay 5 \
             -o "/tmp/${deb}" \
-            "https://github.com/quarto-dev/quarto-cli/releases/download/v${ver}/${deb}"
+            "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/${deb}"
           sudo dpkg -i "/tmp/${deb}"
-          quarto --version
+          installed="$(quarto --version)"
+          echo "Quarto ${installed}"
+          [ "${installed}" = "${QUARTO_VERSION}" ] || {
+            echo "::error::Quarto version mismatch — pinned ${QUARTO_VERSION}, got ${installed}"
+            exit 1
+          }
 
       - name: Set up Python (SVG rasterizer)
         uses: actions/setup-python@v7

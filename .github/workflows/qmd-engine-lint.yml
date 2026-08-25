@@ -1,0 +1,55 @@
+name: QMD Engine Lint
+
+# Fails when a published .qmd would bind to a computational execution engine
+# without saying so. Quarto's cell-detection regex allows the opening fence and
+# the `{...}` to sit on separate lines, so an ordinary prose block whose first
+# content line is a brace expression —
+#
+#     ```
+#     {region: NCR, department: IT, division: CyberOps}
+#     ```
+#
+# — is read as a cell in a language called "region", which binds the file to the
+# Jupyter engine and kills the render on a runner with no Jupyter.
+#
+# This is a pull-request gate specifically because the Quarto render is NOT one:
+# per quarto.yml the render runs only on push to main, so this class of defect
+# lands green and then breaks the deploy. It did exactly that on 2026-08-21 —
+# the site stopped publishing for five days.
+#
+# Fix: add `engine: markdown` to the page's front matter (the honest declaration
+# for a prose page), or break the `{...}` line so it is not the first line of the
+# block. A page that genuinely wants execution declares `engine:` explicitly,
+# which satisfies the guard. Run locally:
+#     python scripts/check_qmd_engine.py
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**/*.qmd'
+      - 'scripts/check_qmd_engine.py'
+      - '.github/workflows/qmd-engine-lint.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**/*.qmd'
+      - 'scripts/check_qmd_engine.py'
+
+permissions:
+  contents: read
+
+jobs:
+  qmd-engine-lint:
+    name: Check .qmd pages do not bind an execution engine
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Run the qmd engine guard
+        run: python scripts/check_qmd_engine.py
