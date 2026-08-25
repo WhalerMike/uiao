@@ -9,7 +9,7 @@ updated_at: "2026-06-19"
 canon_adrs:
   - ADR-114   # AI System JML Lifecycle — governing ADR
   - ADR-112   # Federal AI Use Case Governance — source of lifecycle triggers
-  - ADR-016   # Human JML — structural model this spec extends
+  - ADR-003   # Human JML — structural model this spec extends
   - ADR-092   # Active Governance — actuation ladder
   - ADR-059   # SailPoint adapter family — sailpoint-machine-identity slot
   - ADR-040   # Drift engine — finding routing
@@ -24,7 +24,7 @@ publish_to_site: true
 Every human identity governed by UIAO passes through three lifecycle events:
 joiner (hire), mover (role or bureau change), leaver (separation). Those events
 are the spine of every provisioning workflow, access review cycle, and
-deprovisioning automation in ADR-016.
+deprovisioning automation in ADR-003.
 
 Federal AI systems deployed under OMB M-25-21 are identity subjects in UIAO's
 machine-identity surface (UIAO_196). They need the same lifecycle model. The
@@ -267,9 +267,9 @@ contact for disposition.
 
 ---
 
-## 5. Relationship to Human JML (ADR-016)
+## 5. Relationship to Human JML (ADR-003)
 
-| Dimension | Human JML (ADR-016) | AI System JML (UIAO_197) |
+| Dimension | Human JML (ADR-003) | AI System JML (UIAO_197) |
 |---|---|---|
 | Event source | HR system of record (ADR-088) | OMB Annual AI Use Case Inventory |
 | Joiner trigger | Hire record | `development_stage` first enters `pilot` or `deployed` |

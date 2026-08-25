@@ -9,7 +9,7 @@ updated_at: "2026-07-21"
 canon_adrs:
   - ADR-130   # Non-Human SSOT Registry — the designation this spec implements
   - ADR-059   # SailPoint adapter family — sailpoint-machine-identity conformance slot
-  - ADR-016   # Human JML — the lifecycle model extended here
+  - ADR-003   # Human JML — the lifecycle model extended here
   - ADR-114   # AI System JML — the worked non-human JML pattern (AI class)
   - ADR-012   # Canonical drift taxonomy — home of the finding types bound here
   - ADR-092   # Active Governance — actuation ladder for registry-driven remediation
@@ -61,7 +61,7 @@ this schema conforms equally.
 
 ## Lifecycle — non-human JML
 
-Extends ADR-016 exactly as ADR-114 did for the AI class:
+Extends ADR-003 exactly as ADR-114 did for the AI class:
 
 | Event | Trigger | Required chain |
 |---|---|---|

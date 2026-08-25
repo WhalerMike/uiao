@@ -6,8 +6,8 @@ decided: 2026-06-19
 deciders: Michael Stratton
 updated: 2026-06-19
 next_review: 2026-12-19
-review_trigger: M-25-21 is superseded or amended; OMB publishes a 2026 inventory with changed schema; SailPoint machine-identity adapter promotes from reserved to active; ADR-016 (human JML) is substantially revised; a new federal mandate imposes AI credential lifecycle obligations; UIAO_197 version increments
-impact: "Extends UIAO's human JML model (ADR-016) to federal AI system identities, using the OMB Annual AI Use Case Inventory as the source of lifecycle events. Defines three event types — ai-system.joiner (pilot/deployed first appearance), ai-system.mover (governance-relevant field change), ai-system.leaver (retirement or inventory removal). Defines an 8-step deprovisioning sequence that closes the ghost-credential gap. Adds DRIFT-COMPLIANCE::ai-staleness (P3) for records with no mover event in 365+ days. Doctrine plus implementation — lands jml.py and test_jml.py."
+review_trigger: M-25-21 is superseded or amended; OMB publishes a 2026 inventory with changed schema; SailPoint machine-identity adapter promotes from reserved to active; ADR-003 (human JML) is substantially revised; a new federal mandate imposes AI credential lifecycle obligations; UIAO_197 version increments
+impact: "Extends UIAO's human JML model (ADR-003) to federal AI system identities, using the OMB Annual AI Use Case Inventory as the source of lifecycle events. Defines three event types — ai-system.joiner (pilot/deployed first appearance), ai-system.mover (governance-relevant field change), ai-system.leaver (retirement or inventory removal). Defines an 8-step deprovisioning sequence that closes the ghost-credential gap. Adds DRIFT-COMPLIANCE::ai-staleness (P3) for records with no mover event in 365+ days. Doctrine plus implementation — lands jml.py and test_jml.py."
 supersedes: null
 superseded_by: null
 publish_to_site: true
@@ -41,7 +41,7 @@ eventually exits. Without lifecycle events, governance of AI system identities
 is a point-in-time scan — useful for finding gaps, but blind to the transitions
 that create gaps in the first place.
 
-ADR-016 solved this for human identities: joiner, mover, leaver. The HR system
+ADR-003 solved this for human identities: joiner, mover, leaver. The HR system
 is the source of truth; it fires events; UIAO acts on them. The model is well
 understood and has been operational for years.
 
@@ -176,7 +176,7 @@ continuation (close the candidate-leaver finding and re-onboard if needed).
   retired` in any OMB vintage triggers L-1 (alert) at T+0, making the
   deprovisioning sequence deterministic rather than dependent on institutional
   memory.
-- The lifecycle model is structurally identical to ADR-016 (human JML), which
+- The lifecycle model is structurally identical to ADR-003 (human JML), which
   means governance teams already familiar with human identity lifecycle
   management can apply the same mental model to AI system identities.
 - `DRIFT-COMPLIANCE::ai-staleness` provides a proactive signal for records that
@@ -208,7 +208,7 @@ continuation (close the candidate-leaver finding and re-onboard if needed).
 
 - Does not change UIAO_196's `AISystemRecord` schema.
 - Does not change ADR-112's six drift finding types; adds one new type.
-- Does not change ADR-016 (human JML); the two models are parallel, not merged.
+- Does not change ADR-003 (human JML); the two models are parallel, not merged.
 - Adds `jml.py` to `uiao.governance.ai_inventory`; no existing modules change.
 
 ## Implementation
@@ -234,8 +234,8 @@ No changes to `schema.py` or `scanner.py`.
 
 ## References
 
+- [ADR-003](adr-003-api-driven-inbound-provisioning.md) — human JML; structural model this ADR extends to AI system identities
 - [ADR-012](adr-012-canonical-drift-taxonomy.md) — canonical drift taxonomy; `DRIFT-COMPLIANCE::ai-staleness` extends it
-- [ADR-016](adr-016-evidence-bundle-lifecycle.md) — human JML; structural model this ADR extends to AI system identities
 - [ADR-040](adr-040-drift-engine.md) — drift engine; P3 findings routing
 - [ADR-059](adr-059-sailpoint-adapter-family.md) — sailpoint adapter family; continuous telemetry between vintages
 - [ADR-088](adr-088-hr-as-orgtree-truth-source.md) — HR as OrgTree source; contrasted with OMB inventory as AI identity source
