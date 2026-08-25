@@ -96,7 +96,7 @@ report) operating on a SCuBA → IR → evidence flow.
 - If the operation runs a stage of the SCuBA → IR → evidence → OSCAL
   pipeline, it belongs under `ir`.
 
-This division was ratified by the [M5 public-surface audit](../../../docs/reports/public-surface-audit-v0.5.0.md)
+This division was ratified by the [M5 public-surface audit](../../../docs/reports/public-surface-audit-v0.5.0.qmd)
 F4/D4a; rejected alternatives were flattening (drop `evidence`,
 everything routes through `ir`) and expansion (move `linker`,
 `collector`, `poam` builders to `evidence`).

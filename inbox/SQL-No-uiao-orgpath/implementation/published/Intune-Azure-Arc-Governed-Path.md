@@ -2,10 +2,10 @@
 # Intune + Azure Arc — Governed Path (UIAO / OrgPath) {.unnumbered}
 
 The governed path reaches the **same end state** as the
-[manual path](manual-path.qmd) — Arc-onboarded servers, Intune-enrolled
+[manual path](../../../../docs/customer-documents/operational-guides/ai-identity-governance/manual-path.qmd) — Arc-onboarded servers, Intune-enrolled
 endpoints, NTLM eliminated, SPNs clean, SQL hardened, Conditional Access
 enforced — but binds every change to organizational intent. The
-[same scripts](manual-path.qmd) run; you add an OrgPath, an actuation rung, and a
+[same scripts](../../../../docs/customer-documents/operational-guides/ai-identity-governance/manual-path.qmd) run; you add an OrgPath, an actuation rung, and a
 recorded approval.
 
 ::: {.callout-important title="What UIAO is (and what these docs do not invent)"}
@@ -35,7 +35,7 @@ Every script in this kit obeys that line: `Invoke-ArcOnboarding` calls the Azure
 management plane; `Deploy-ConditionalAccessBaseline` calls the Graph policy API;
 none of them sit in a runtime auth path.
 
-![UIAO holds desired state and reconciles; Entra, Intune, Azure Policy, and AD remain the data planes that authenticate, enroll, enforce, and store at runtime. Change-making adapters call provider management surfaces only.](images/intune-arc-diagram-02-control-data-plane.png){#fig-planes fig-alt="Control plane (UIAO desired state + reconciliation) governing provider data planes via management-surface adapters"}
+![UIAO holds desired state and reconciles; Entra, Intune, Azure Policy, and AD remain the data planes that authenticate, enroll, enforce, and store at runtime. Change-making adapters call provider management surfaces only.](../../../../docs/customer-documents/operational-guides/intune-arc-modernization/images/intune-arc-diagram-02-control-data-plane.png){#fig-planes fig-alt="Control plane (UIAO desired state + reconciliation) governing provider data planes via management-surface adapters"}
 
 ## 2. Providers are incorporated, not replaced
 
@@ -74,7 +74,7 @@ technical scope line up.
 If you do not yet know each object's OrgPath — e.g. you are adopting an estate
 built the manual way — `Get-OrgPathSurvey.ps1` *proposes* one per object from the
 structure that already exists (Arc tags, AD OUs), advisory and read-only. See
-[Add OrgPath later (retrofit)](retrofit-path.qmd#step-2--derive-orgpath-from-existing-structure).
+[Add OrgPath later (retrofit)](../../../../docs/customer-documents/operational-guides/intune-arc-modernization/retrofit-path.qmd#step-2--derive-orgpath-from-existing-structure).
 
 ## 4. The actuation maturity ladder
 
@@ -94,7 +94,7 @@ autonomous (L4) actuation is refused in-boundary.
 ceiling, refuses a gated write with no approval reference, and logs every
 decision.
 
-![The L0–L4 actuation ladder: record, observe, advise, gated actuation, autonomous. The federal default ceiling sits at L3; the kit's writes are gated actuation requiring an approval reference.](images/intune-arc-diagram-03-actuation-ladder.png){#fig-ladder fig-alt="Five-rung actuation ladder L0 to L4 with a federal ceiling marked at L3"}
+![The L0–L4 actuation ladder: record, observe, advise, gated actuation, autonomous. The federal default ceiling sits at L3; the kit's writes are gated actuation requiring an approval reference.](../../../../docs/customer-documents/operational-guides/intune-arc-modernization/images/intune-arc-diagram-03-actuation-ladder.png){#fig-ladder fig-alt="Five-rung actuation ladder L0 to L4 with a federal ceiling marked at L3"}
 
 ## 5. The reconciliation loop
 
@@ -132,7 +132,7 @@ acronym were not.
 
 ## 7. Running the governed path
 
-Identical run order to the [manual path](manual-path.qmd#0-phases-and-run-order),
+Identical run order to the [manual path](../../../../docs/customer-documents/operational-guides/ai-identity-governance/manual-path.qmd#0-phases-and-run-order),
 with two additions on every state-changing call:
 
 ```powershell
@@ -163,5 +163,5 @@ Over the manual end state, the governed path delivers:
 - continuous, exportable **evidence** (provenance-anchored, not assembled at audit time);
 - drift caught and classified by the loop rather than discovered by incident.
 
-If you have not yet stood up a control plane, build the [manual path](manual-path.qmd)
-now and [retrofit OrgPath later](retrofit-path.qmd) — the work you do now carries forward.
+If you have not yet stood up a control plane, build the [manual path](../../../../docs/customer-documents/operational-guides/ai-identity-governance/manual-path.qmd)
+now and [retrofit OrgPath later](../../../../docs/customer-documents/operational-guides/intune-arc-modernization/retrofit-path.qmd) — the work you do now carries forward.

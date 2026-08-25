@@ -24,7 +24,7 @@ publication_style: include
 
 ## Context
 
-[ADR-001](adr-001-haadj-deprecated-entra-join-only.md) declares Microsoft Entra Join as the **sole** device join target for all new and migrated endpoints. The decision is categorical and admits no device-class exceptions. The Computer Object Transformation specification (UIAO_136) operationalizes ADR-001 across the endpoint fleet.
+[ADR-001](../../src/uiao/canon/adr/adr-001-haadj-deprecated-entra-join-only.md) declares Microsoft Entra Join as the **sole** device join target for all new and migrated endpoints. The decision is categorical and admits no device-class exceptions. The Computer Object Transformation specification (UIAO_136) operationalizes ADR-001 across the endpoint fleet.
 
 Microsoft Surface Hub is a meeting-room class device family (Surface Hub 1 — retired; Surface Hub 2S — current; Surface Hub 3 — in market). Surface Hub-class hardware has historically used join paths that do not align with the categorical ADR-001 doctrine:
 
@@ -68,7 +68,7 @@ Leave Surface Hub status undeclared. Treat the question as open until a customer
 
 - **Pro:** No commitment until evidence is in hand.
 - **Con:** Leaves a known gap in the Computer Object Transformation specification. The IFO_014 platform annex would have to handle Surface Hub by silence, which is worse than handling it by named exclusion.
-- **Con:** Memory note ([project_uiao_regulatory_forcing_functions](../../C:\Users\whale\.claude\projects\C--Users-whale-git-uiao\memory\project_uiao_regulatory_forcing_functions.md)) reminds that compliance/transformation work is forced by external regime — open questions on device classes invite vendor pressure to resolve them in the vendor's favor.
+- **Con:** Memory note (`project_uiao_regulatory_forcing_functions`, local agent memory — not a repo path) reminds that compliance/transformation work is forced by external regime — open questions on device classes invite vendor pressure to resolve them in the vendor's favor.
 
 ## Decision
 
@@ -116,8 +116,8 @@ Specifically:
 | Microsoft Learn — Surface Hub 3 overview | https://learn.microsoft.com/en-us/surface-hub/surface-hub-3-overview | 2026-05-18 (pending verification) |
 | Microsoft Learn — Migrate Surface Hub 2S to Windows 10 Pro/Enterprise (image replacement to Windows 11 IoT Enterprise / MTR) | https://learn.microsoft.com/en-us/surface-hub/surface-hub-2s-migrate-to-windows-10-pro-enterprise | 2026-05-18 (pending verification) |
 | Microsoft Learn — Microsoft Teams Rooms Pro Management | https://learn.microsoft.com/en-us/microsoftteams/rooms/microsoft-teams-rooms-pro-management | 2026-05-18 (pending verification) |
-| ADR-001 — HAADJ Deprecated | [adr-001-haadj-deprecated-entra-join-only.md](adr-001-haadj-deprecated-entra-join-only.md) | 2026-05-18 |
-| ADR-071 — Intune-First Asset Onboarding | [adr-071-intune-first-asset-onboarding.md](adr-071-intune-first-asset-onboarding.md) | 2026-05-18 |
+| ADR-001 — HAADJ Deprecated | [adr-001-haadj-deprecated-entra-join-only.md](../../src/uiao/canon/adr/adr-001-haadj-deprecated-entra-join-only.md) | 2026-05-18 |
+| ADR-071 — Intune-First Asset Onboarding | [adr-071-intune-first-asset-onboarding.md](../../src/uiao/canon/adr/adr-071-intune-first-asset-onboarding.md) | 2026-05-18 |
 
 > Sources marked "pending verification" need an authoritative pass before this ADR moves from DRAFT to ACCEPTED — the URLs are the canonical Microsoft Learn locations as of authoring but the page content / titles must be confirmed at the time of acceptance.
 
@@ -133,8 +133,8 @@ This ADR must be re-evaluated when any of the following occur:
 
 ## Related Documents
 
-- ADR-001 — HAADJ Deprecated, Entra-Join-Only ([adr-001-haadj-deprecated-entra-join-only.md](adr-001-haadj-deprecated-entra-join-only.md))
-- ADR-071 — Intune-First Asset Onboarding ([adr-071-intune-first-asset-onboarding.md](adr-071-intune-first-asset-onboarding.md))
+- ADR-001 — HAADJ Deprecated, Entra-Join-Only ([adr-001-haadj-deprecated-entra-join-only.md](../../src/uiao/canon/adr/adr-001-haadj-deprecated-entra-join-only.md))
+- ADR-071 — Intune-First Asset Onboarding ([adr-071-intune-first-asset-onboarding.md](../../src/uiao/canon/adr/adr-071-intune-first-asset-onboarding.md))
 - IFO_014 — Platform Annex for Microsoft Surface Endpoints ([../intune-first-asset-onboarding/platforms/windows-surface.md](intune-first-asset-onboarding/platforms/windows-surface.md))
 - Surface integration plan (umbrella draft) ([../surface-integration-plan.md](surface-integration-plan.md))
 - UIAO_136 — Computer Object Transformation specification

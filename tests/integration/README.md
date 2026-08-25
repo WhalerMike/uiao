@@ -144,7 +144,7 @@ and promoted to tier-2 fixtures. The recorder is *opt-in* via
 
 - [UIAO_131 §3.1 Tier-1 definition](../../src/uiao/canon/specs/adapter-test-strategy.md)
 - [UIAO_131 §5.1 Tier-1 exclusion criteria](../../src/uiao/canon/specs/adapter-test-strategy.md)
-- [Roadmap §2.1–2.3](../../docs/docs/uiao-substrate-roadmap.md)
+- [Roadmap §2.1–2.3](../../docs/docs/uiao-substrate-roadmap.qmd)
 - [Tier-2 contract fixtures README](../fixtures/contract/README.md)
 - [Adapter conformance template UIAO_121](../../src/uiao/canon/specs/adapter-conformance-test-plan-template.md)
 - [Adapter integration template UIAO_123](../../src/uiao/canon/specs/adapter-integration-test-plan.md)

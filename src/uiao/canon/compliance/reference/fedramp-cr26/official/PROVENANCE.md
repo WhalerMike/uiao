@@ -95,7 +95,7 @@ official OSCAL publication from FedRAMP (see ADR-126 §D2).
 ## ADR governance
 
 Authority posture, update discipline, and uiao consumption pattern are governed by
-[ADR-126](../../../../../adr/adr-126-fedramp-cr26-official-rules-adoption.md),
+[ADR-126](../../../../adr/adr-126-fedramp-cr26-official-rules-adoption.md),
 which fires ADR-061 re-evaluation trigger #1.
 
 ## How to refresh

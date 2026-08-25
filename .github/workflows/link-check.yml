@@ -31,6 +31,15 @@ jobs:
     # in-PR or, if the URL is a CI-side false positive (e.g. cloud-IP
     # geo-gating), added to `.lycheeignore` in the same PR with an
     # explanatory comment.
+    #
+    # `--base` is deliberately NOT passed. lychee resolves a relative
+    # markdown link against the input file's own directory, which is what a
+    # source-tree check needs; `--base` resolves every relative link against
+    # the workspace root instead, so `[x](adr-043-….md)` cited from inside
+    # src/uiao/canon/adr/ looks for /adr-043-….md and fails. With the old
+    # blanket `^file://` ignore that mis-resolution was invisible — it
+    # produced 2,942 phantom errors that were all suppressed before anyone
+    # saw them. Do not re-add it.
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -63,7 +72,6 @@ jobs:
           args: >-
             --verbose
             --no-progress
-            --base ${{ github.workspace }}
             --max-retries 3
             --retry-wait-time 5
             --timeout 20

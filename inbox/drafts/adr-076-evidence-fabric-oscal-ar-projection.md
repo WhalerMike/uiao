@@ -25,7 +25,7 @@ published_at: TBD
 
 ## Context
 
-UIAO's Evidence Fabric ([ADR-006](../../src/uiao/canon/adr/adr-006-evidence-determinism.md)) and Evidence Bundle lifecycle ([ADR-016](../../src/uiao/canon/adr/adr-016-evidence-bundle-lifecycle.md)) establish the substrate-internal shape of governance evidence: deterministic, write-once, hash-chained, idempotently keyed. [ADR-043](../../src/uiao/canon/adr/adr-043-fedramp-rfc-0026-ca7-integration.md) (FedRAMP RFC-0026 CA-7), [ADR-047](../../src/uiao/canon/adr/adr-047-fedramp-20x-integration.md) (FedRAMP 20x), and [ADR-061](../../src/uiao/canon/adr/adr-061-fedramp-cr26-catalog-vendoring.md) (CR26 catalog vendoring) establish that the substrate emits its output to the FedRAMP submission pathway, which is OSCAL-native.
+UIAO's Evidence Fabric ([ADR-006](../../src/uiao/canon/adr/adr-006-evidence-determinism.md)) and Evidence Bundle lifecycle ([ADR-016](../../src/uiao/canon/adr/adr-016-evidence-bundle-lifecycle.md)) establish the substrate-internal shape of governance evidence: deterministic, write-once, hash-chained, idempotently keyed. [ADR-043](../../src/uiao/canon/adr/adr-043-fedramp-rfc-0026-ca7-integration.md) (FedRAMP RFC-0026 CA-7), [ADR-106](../../src/uiao/canon/adr/adr-106-fedramp-20x-integration.md) (FedRAMP 20x), and [ADR-061](../../src/uiao/canon/adr/adr-061-fedramp-cr26-catalog-vendoring.md) (CR26 catalog vendoring) establish that the substrate emits its output to the FedRAMP submission pathway, which is OSCAL-native.
 
 What no ADR locks today is the **projection**: the field-level mapping from a SEALED Evidence Bundle to an OSCAL Assessment Results (AR) document. Without a locked projection:
 
@@ -119,7 +119,7 @@ The projection has been implicit in the substrate since ADR-043 was accepted. Th
 - [ADR-006](../../src/uiao/canon/adr/adr-006-evidence-determinism.md) — Evidence Determinism (record-level guarantees this projection rests on)
 - [ADR-016](../../src/uiao/canon/adr/adr-016-evidence-bundle-lifecycle.md) — Evidence Bundle Lifecycle (SEALED is the projection input state)
 - [ADR-043](../../src/uiao/canon/adr/adr-043-fedramp-rfc-0026-ca7-integration.md) — FedRAMP RFC-0026 CA-7 Integration (continuous monitoring consumer)
-- [ADR-047](../../src/uiao/canon/adr/adr-047-fedramp-20x-integration.md) — FedRAMP 20x Integration (submission pathway)
+- [ADR-106](../../src/uiao/canon/adr/adr-106-fedramp-20x-integration.md) — FedRAMP 20x Integration (submission pathway)
 - [ADR-061](../../src/uiao/canon/adr/adr-061-fedramp-cr26-catalog-vendoring.md) — FedRAMP CR26 Catalog Vendoring (source of control IDs referenced in projection)
 - [ADR-077](./adr-077-detached-signatures-evidence-bundles-and-ar.md) — companion: detached signatures over bundles and AR
 - NIST OSCAL 1.1.2 specification — https://pages.nist.gov/OSCAL/

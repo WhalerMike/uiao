@@ -20,7 +20,7 @@ this file carries the per-capability narrative the data file does not.
 - **Telemetry lost:** Real-time path-aware metrics — latency, jitter, packet loss between user locations and Microsoft front doors; per-ISP and per-peering path performance; continuous-feedback dynamic routing optimization.
 - **Fallback:** Static or policy-based egress; third-party SD-WAN or SASE telemetry; local NetFlow / SNMP / synthetic-probe monitoring.
 - **Gap matrix row:** `inr-realtime-path-metrics`.
-- **Existing finding:** [`docs/findings/fedramp-gcc-moderate-informed-network-routing.md`](../../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.md).
+- **Existing finding:** [`docs/findings/fedramp-gcc-moderate-informed-network-routing.md`](../../../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.qmd).
 
 ## Documentation-limited (sovereign-cloud statement excludes GCC-Moderate)
 

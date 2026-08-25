@@ -190,4 +190,4 @@ load-bearing.
 - [ADR-100 — AGD LDAPv3 read projection](../../../adr/adr-100-active-governance-directory-ldap.html)
 - [ADR-092 — Active Governance](../../../adr/adr-092-active-governance.html)
 - [OrgPath codebook (UIAO_151)](../../../specs/OrgPath-Codebook.html)
-- [Baseline skeptical evaluation](../../../../inbox/startup-assessment/uiao-startup-assessment-2026-06-09.md)
+- [Baseline skeptical evaluation](../../../inbox/startup-assessment/uiao-startup-assessment-2026-06-09.md)

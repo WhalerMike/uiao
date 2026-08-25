@@ -1,12 +1,17 @@
 name: ADR Reference Integrity
 
-# Two guards, one script.
+# Three guards, one script.
 #
 # 1. Fails when any ADR-NNN reference in canon, docs, or the root agent files has
 #    no matching src/uiao/canon/adr/adr-NNN-*.md — a typo or a hallucinated
 #    decision record. Tests don't cover prose, so this is the gate that keeps a
 #    confident-but-wrong canon citation from merging silently.
-# 2. Fails when the ADR relationship graph (supersedes / superseded_by / amends
+# 2. Fails when a full adr-NNN-slug.ext filename cited anywhere in those files
+#    does not match a real ADR filename. Guard 1 only asserts the number, which
+#    survives a renumbering while the slug does not — so a citation left pointing
+#    at adr-047-fedramp-20x-integration.md passed guard 1 for months even though
+#    that decision is ADR-106 and ADR-047 is Continuous Monitoring Program.
+# 3. Fails when the ADR relationship graph (supersedes / superseded_by / amends
 #    frontmatter) has an edge that doesn't resolve, names itself, or is recorded
 #    from one end only. Presence gaps are advisory until the backfill completes
 #    (issue #1427).
@@ -33,6 +38,9 @@ on:
       - 'AGENTS-public-surface.md'
       - 'README.md'
       - 'CONTRIBUTING.md'
+      # CHANGELOG.md was outside this filter until the filename guard landed,
+      # which is exactly why its v0.6.0 entry cited a deleted ADR-058 file.
+      - 'CHANGELOG.md'
       - 'scripts/check_adr_references.py'
       - 'tests/test_adr_relationship_graph.py'
 
@@ -49,5 +57,5 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Run ADR-reference guard
+      - name: Run ADR-reference + filename + relationship guards
         run: python scripts/check_adr_references.py

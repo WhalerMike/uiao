@@ -31,7 +31,7 @@ Each of the four gaps named in Chapter 23 maps to a **workstream** (A–D). For 
 
 ## Workstream A — Compliance documentation (Gaps 1 & 2)
 
-The roadmap already exists in [`compliance-mapping.qmd §7`](../../../docs/customer-documents/uiao-aan-integration/09-compliance-mapping.qmd); this workstream **executes and formalizes** it rather than designing anew.
+The roadmap already exists in [`compliance-mapping.qmd §7`](../../../docs/customer-documents/uiao-orgcomp-integration/09-compliance-mapping.qmd); this workstream **executes and formalizes** it rather than designing anew.
 
 | Item | Closure criterion | Status |
 |---|---|---|

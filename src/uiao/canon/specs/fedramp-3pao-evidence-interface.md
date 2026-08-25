@@ -331,7 +331,7 @@ UIAO_138 moves from Draft to Current when:
   and the ratification gate this document helps satisfy
 - [`ADR-061`](../adr/adr-061-fedramp-cr26-catalog-vendoring.md) — CR26
   catalog vendoring policy
-- [`ADR-043`](../adr/adr-043-fedramp-rfc-0026-ca7-integration.qmd) — CA-7
+- [`ADR-043`](../../../../docs/adr/adr-043-fedramp-rfc-0026-ca7-integration.qmd) — CA-7
   continuous monitoring integration
 - [`UIAO_133`](./fedramp-20x-integration.md) — substrate-internal KSI
   emission mechanics (operational companion)
@@ -339,7 +339,7 @@ UIAO_138 moves from Draft to Current when:
   control mapping
 - [`UIAO_132`](./fedramp-rfc-0026-ca7-integration.md) — RFC-0026 CA-7
   pathway integration
-- [`FINDING-PGM-001`](../../../../docs/findings/fedramp-20x-moderate-pilot.md) — FedRAMP 20x Moderate Pilot active; CSP external-remedy tracker
+- [`FINDING-PGM-001`](../../../../docs/findings/fedramp-20x-moderate-pilot.qmd) — FedRAMP 20x Moderate Pilot active; CSP external-remedy tracker
 
 ### FedRAMP primary sources
 

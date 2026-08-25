@@ -498,18 +498,18 @@ re-deriving:
   telemetry the agency already holds; it neither regenerates the
   boundary-blocked Microsoft signals (§2) nor returns analytics to the agency.
   It restores CISA's visibility, not the agency's. See
-  [`B1-1` §2.4](../../../../docs/customer-documents/federal-aan-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd).
+  [`B1-1` §2.4](../../../../docs/customer-documents/orgcomp-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd).
 - **EO 14117 location overlay.** Precise-geolocation and government-related
   location telemetry carry a regulatory handling ceiling (DOJ rule, effective
   April 8 2025) independent of the boundary — re-routing or exporting it does
   not change who may access it. See
-  [`B1-1` §2.5](../../../../docs/customer-documents/federal-aan-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd).
+  [`B1-1` §2.5](../../../../docs/customer-documents/orgcomp-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd).
 - **The compensation ceiling.** Agency-side rebuild reaches functional coverage
   and ZTMM Advanced, but **full compensation is not achievable**: cross-tenant
   global threat intelligence and suppressed-at-source telemetry are irreducible,
   and Optimal / commercial fidelity stays a MAS 2026 dependency. The detailed
   per-signal fix-coverage and ceiling analysis is
-  [`B1-3` §6.1 and §11](../../../../docs/customer-documents/federal-aan-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd).
+  [`B1-3` §6.1 and §11](../../../../docs/customer-documents/orgcomp-series/boundary/B1-3-rebuilding-boundary-blocked-analytics.qmd).
 
 ---
 
@@ -581,8 +581,8 @@ POA&M purposes.  Full evidence bundle finding shape in §3.5.
 ## 9. References
 
 ### Governance findings
-- [FINDING-001 — FedRAMP GCC-Moderate INR unavailability](../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.md)
-- [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+- [FINDING-001 — FedRAMP GCC-Moderate INR unavailability](../../../../docs/findings/fedramp-gcc-moderate-informed-network-routing.qmd)
+- [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.qmd)
 
 ### UIAO canon
 - [ADR-033 — GCC Boundary Drift Class and Compensating Controls Architecture](../adr/adr-033-gcc-boundary-drift-class.md)

@@ -18,7 +18,7 @@ canon_refs:
   - UIAO_158_OrgPath_JSON_Schema
   - UIAO_007_OrgTree_Modernization_AD_to_EntraID
 provenance:
-  prior_filename: "adr-045-orgpath-depth-extension.md"
+  prior_filename: "adr-045-orgpath-depth-extension.md"  # adr-ref-allow
   renumbered_from: "ADR-045"
   renumbered_at: "2026-05-11"
   reason: "ADR-045 number was claimed concurrently by adr-045-scan-redaction-policy.md on main; this ADR was renumbered to the next free slot. The ADR-060 namespace flatten also renamed MOD_A → UIAO_151 and MOD_H → UIAO_158 after this ADR was authored — canon_refs updated to match."

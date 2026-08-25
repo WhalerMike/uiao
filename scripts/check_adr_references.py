@@ -12,12 +12,38 @@ chain the substrate depends on.
 The whole corpus resolves cleanly today (4,900+ references, 0 dangling), so this
 gate is green from day one and purely guards against regressions.
 
+The guard also validates the **full ADR filename**, not just the number.
+``ADR-NNN`` resolving to *some* ``adr-NNN-*.md`` is a weak assertion: it passes
+for ``[ADR-047](adr-047-fedramp-20x-integration.md)`` even though ADR-047 is the
+Continuous Monitoring Program and the FedRAMP 20x decision was renumbered to
+ADR-106. That is the renumbering failure mode — the number survives a
+renumbering, the slug does not, and a number-only gate never notices. So every
+``adr-NNN-slug.ext`` spelled out anywhere in a scanned file (link target, inline
+code, bare path) must match a real ADR filename stem exactly.
+
+Two details make this check match how the corpus actually cites ADRs:
+
+- **Both ADR directories count.** ``src/uiao/canon/adr/`` holds the canonical
+  ``.md`` sources; ``docs/adr/`` holds the rendered ``.qmd`` mirror. A stem valid
+  in either is valid, because docs legitimately cite the mirror.
+- **The extension is not constrained.** ``.md``, ``.qmd``, and ``.html`` all
+  address the same ADR — ``.html`` being the Quarto render-time target of a
+  ``.qmd``. The stem carries the identity; the extension is a surface.
+
 Scope notes:
 - Only the canonical 3-digit form ``ADR-NNN`` is validated. Placeholders like
   ``ADR-NNN`` in templates don't match and are ignored by design.
 - Non-canon scratch surfaces (``inbox/``, ``models/``) are excluded — drafts may
   legitimately reference proposed-but-unallocated ADR numbers.
+- ``CHANGELOG.md`` is in scope. It was outside the original path filter, which
+  is exactly why the v0.6.0 entry citing the deleted
+  ``adr-058-hrit-productization-mission.md`` (renumbered to ADR-065 to clear an
+  ADR-058 slot collision) survived every prior run of this gate.
 - To exempt a single line, append the inline marker ``adr-ref-allow`` to it.
+  Deliberate historical filename mentions — a renumbering note, a
+  ``prior_filename:`` provenance field, a collision post-mortem — are the
+  intended users of this marker: they cite a filename precisely *because* it no
+  longer exists.
 
 The guard also validates the **ADR relationship graph** in frontmatter
 (``supersedes`` / ``superseded_by`` / ``amends``). Prose asserts these
@@ -59,11 +85,24 @@ SCAN_GLOBS: list[str] = [
     "AGENTS-public-surface.md",
     "README.md",
     "CONTRIBUTING.md",
+    "CHANGELOG.md",
 ]
 
 ADR_DIR = Path("src/uiao/canon/adr")
+
+# Both directories that hold real ADR files. canon/adr is the canonical `.md`
+# source; docs/adr is the rendered `.qmd` mirror the published site links to.
+# Filename validation accepts a stem present in either.
+ADR_DIRS: tuple[Path, ...] = (ADR_DIR, Path("docs/adr"))
+
 ADR_FILE_RE = re.compile(r"adr-(\d{3})-")
 ADR_REF_RE = re.compile(r"\bADR-(\d{3})\b")
+
+# An ADR filename spelled out anywhere in a line — inside a link target, inline
+# code, or bare prose. `.html` is the Quarto render target of a `.qmd` and
+# addresses the same ADR, so all three extensions are accepted and the stem
+# alone is matched against the corpus.
+ADR_FILENAME_RE = re.compile(r"\badr-(?P<num>\d{3})-(?P<slug>[A-Za-z0-9][A-Za-z0-9._-]*?)\.(?P<ext>md|qmd|html)\b")
 
 
 def repo_root() -> Path:
@@ -88,16 +127,49 @@ def iter_scan_files(root: Path) -> list[Path]:
     return sorted(seen)
 
 
-def scan_file(path: Path, root: Path, valid: set[str]) -> list[str]:
-    findings: list[str] = []
+def valid_adr_stems(root: Path) -> dict[str, set[str]]:
+    """Map each allocated ADR number to the filename stems that really exist.
+
+    A number maps to more than one stem only while a slot collision is
+    unresolved, so the set is normally a singleton. Both ADR directories are
+    read: canon holds `.md`, docs holds the `.qmd` mirror, and the stem is the
+    same on both sides.
+    """
+    stems: dict[str, set[str]] = {}
+    for adr_dir in ADR_DIRS:
+        resolved = root / adr_dir
+        if not resolved.is_dir():
+            continue
+        for path in resolved.iterdir():
+            match = re.fullmatch(r"(adr-(\d{3})-.*?)\.(?:md|qmd)", path.name)
+            if match:
+                stems.setdefault(match.group(2), set()).add(match.group(1))
+    return stems
+
+
+def scan_file(path: Path, root: Path, valid: set[str], stems: dict[str, set[str]]) -> tuple[list[str], list[str]]:
+    """Scan one file. Returns (dangling-number findings, wrong-filename findings)."""
+    dangling: list[str] = []
+    misnamed: list[str] = []
     rel = path.relative_to(root)
     for lineno, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), start=1):
         if ALLOW_MARKER in line:
             continue
         for match in ADR_REF_RE.finditer(line):
             if match.group(1) not in valid:
-                findings.append(f"{rel}:{lineno}: dangling ADR-{match.group(1)} — {line.strip()}")
-    return findings
+                dangling.append(f"{rel}:{lineno}: dangling ADR-{match.group(1)} — {line.strip()}")
+        for match in ADR_FILENAME_RE.finditer(line):
+            num = match.group("num")
+            cited = f"adr-{num}-{match.group('slug')}"
+            if num not in stems:
+                # The number itself is unallocated. ADR_REF_RE already reports
+                # that when the line also spells `ADR-NNN`; report it here too
+                # so a bare filename citation is never silently accepted.
+                misnamed.append(f"{rel}:{lineno}: {match.group(0)} — no ADR {num} exists")
+            elif cited not in stems[num]:
+                real = ", ".join(f"{s}.md" for s in sorted(stems[num]))
+                misnamed.append(f"{rel}:{lineno}: {match.group(0)} — ADR-{num} is {real}")
+    return dangling, misnamed
 
 
 # ---------------------------------------------------------------------------
@@ -214,10 +286,14 @@ def main() -> int:
         print(f"error: no ADR files found under {ADR_DIR} — wrong working directory?")
         return 2
 
+    stems = valid_adr_stems(root)
     files = iter_scan_files(root)
     findings: list[str] = []
+    misnamed: list[str] = []
     for path in files:
-        findings.extend(scan_file(path, root, valid))
+        file_dangling, file_misnamed = scan_file(path, root, valid, stems)
+        findings.extend(file_dangling)
+        misnamed.extend(file_misnamed)
 
     rel_errors, rel_warnings = scan_relationships(root, valid)
 
@@ -232,6 +308,19 @@ def main() -> int:
             f"genuinely-intended placeholder, append '{ALLOW_MARKER}' to the line."
         )
 
+    if misnamed:
+        print("\nWrong ADR filenames — the number is real, the filename is not:\n")
+        for finding in misnamed:
+            print(f"  {finding}")
+        print(
+            "\nThis is the renumbering failure mode: an ADR moved to a new number or\n"
+            "slug and the citation kept the old filename. The number-only check above\n"
+            "cannot see it. Point the citation at the real filename, or — if the line\n"
+            "deliberately names a file that no longer exists (a renumbering note, a\n"
+            f"'prior_filename:' field, a collision post-mortem) — append '{ALLOW_MARKER}'\n"
+            "to it."
+        )
+
     if rel_errors:
         print("\nADR relationship-graph errors — frontmatter edges that don't resolve or don't pair:\n")
         for finding in rel_errors:
@@ -241,10 +330,14 @@ def main() -> int:
             "'superseded_by: adr-B-slug.md' and B carries 'supersedes: adr-A-slug.md'."
         )
 
-    if findings or rel_errors:
+    if findings or misnamed or rel_errors:
         return 1
 
     print(f"ADR-reference guard OK — scanned {len(files)} files, all ADR-NNN references resolve.")
+    print(
+        f"ADR-filename guard OK — every adr-NNN-slug.ext citation matches a real "
+        f"filename across {len(ADR_DIRS)} ADR directories."
+    )
     print(f"ADR relationship graph OK — {len(valid)} ADRs, all frontmatter edges resolve and pair.")
     if rel_warnings:
         print(f"\nAdvisory — {len(rel_warnings)} relationship-metadata gaps (non-blocking):")

@@ -314,7 +314,7 @@ Each federal-HRIT engagement produces:
 
 - [`docs/customer-documents/whitepapers/federal-hrit-productization.qmd`](../../../../docs/customer-documents/whitepapers/federal-hrit-productization.qmd) — customer-facing whitepaper covering the federal HRIT mandate landscape, the 9-system federal HR ecosystem, the three integration patterns, and federal mandate alignment
 - [`docs/customer-documents/case-studies/reference-deployment-opm-hrit-to-entra.qmd`](../../../../docs/customer-documents/case-studies/reference-deployment-opm-hrit-to-entra.qmd) — synthetic end-to-end case study exercising this runbook against a federal civilian agency archetype (companion to the AD reference deployment)
-- [`docs/customer-documents/uiao-aan-integration/12-nist-icam-crosswalk.qmd`](../../../../docs/customer-documents/uiao-aan-integration/12-nist-icam-crosswalk.qmd) §4.1 — A.9 NIST + FICAM Cross-Walk extension covering NIST SP 800-63A (enrollment + identity proofing) and how this runbook consumes the proofing event
+- [`docs/customer-documents/uiao-aan-integration/12-nist-icam-crosswalk.qmd`](../../../../docs/customer-documents/uiao-orgcomp-integration/12-nist-icam-crosswalk.qmd) §4.1 — A.9 NIST + FICAM Cross-Walk extension covering NIST SP 800-63A (enrollment + identity proofing) and how this runbook consumes the proofing event
 - [`src/uiao/adapters/modernization/hrit/inventory.py`](../../adapters/modernization/hrit/inventory.py) — phase-tagged HRRecordInventory interface stub (`extract_hrit_record_inventory`) consuming Spec2-D1.1 canonical-schema records; emits `DRIFT-IDENTITY` for OrgPath-unresolvable records; live federal-HR-system adapter implementations deferred
 
 ## 12. Revision history

@@ -284,7 +284,7 @@ may be updated as the FedRAMP 20x pilot program publishes additional guidance
 - [UIAO_137 — FedRAMP CR26 KSI Mapping](./fedramp-cr26-ksi-mapping.md)
 - [UIAO_185 — System Security Plan Template](./system-security-plan.md)
 - [UIAO_139 — FedRAMP GCC-Moderate Realtime Boundary Impact](./fedramp-gcc-moderate-realtime-boundary-impact.md)
-- [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.md)
+- [FINDING-PGM-001 — FedRAMP 20x Moderate Pilot active](../../../../docs/findings/fedramp-20x-moderate-pilot.qmd)
 
 ### FedRAMP primary sources
 

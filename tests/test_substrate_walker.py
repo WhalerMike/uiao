@@ -92,6 +92,21 @@ def _make_workspace(tmp_path: Path, *, with_contract: bool = True, doc_exists: b
             }
         ],
     }
+    # The contract file declares document_id UIAO_201, so it needs a registry
+    # row whenever it is written: the reverse registry walk reads canon ->
+    # registry and reports a declared-but-unallocated id as DRIFT-PROVENANCE.
+    # Registering it unconditionally would instead trip the forward walk when
+    # the fixture omits the file. In the real workspace both are registered.
+    if with_contract:
+        registry["documents"].append(
+            {
+                "id": "UIAO_201",
+                "path": "src/uiao/canon/workspace-contract.yaml",
+                "title": "UIAO Workspace Contract",
+                "status": "Current",
+                "classification": "OPERATIONAL",
+            }
+        )
     if not doc_exists:
         registry["documents"].append(
             {
@@ -106,6 +121,34 @@ def _make_workspace(tmp_path: Path, *, with_contract: bool = True, doc_exists: b
     return tmp_path
 
 
+def _write_canon_doc(root: Path, rel_path: str, doc_id: str, body: str) -> Path:
+    """Write a canon document and register its `document_id`.
+
+    Every canon document that declares an id must have a registry row — that is
+    the invariant the reverse registry walk enforces. Fixtures that write a doc
+    without registering it would trip DRIFT-PROVENANCE on an id that is
+    incidental to what the test is actually asserting, so the two writes are
+    kept together here.
+    """
+    path = root / rel_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"---\ndocument_id: {doc_id}\n---\n{body}")
+
+    registry_path = root / "src/uiao/canon/document-registry.yaml"
+    registry = yaml.safe_load(registry_path.read_text())
+    registry["documents"].append(
+        {
+            "id": doc_id,
+            "path": rel_path,
+            "title": f"Fixture {doc_id}",
+            "status": "Current",
+            "classification": "CANONICAL",
+        }
+    )
+    _write_yaml(registry_path, registry)
+    return path
+
+
 def test_walker_happy_path(tmp_path: Path) -> None:
     root = _make_workspace(tmp_path)
     report = walk_substrate(workspace_root=root)
@@ -113,7 +156,10 @@ def test_walker_happy_path(tmp_path: Path) -> None:
     assert report.manifest_present
     assert report.contract_present
     assert report.modules_checked == 3
-    assert report.documents_checked == 1
+    # Two registry rows walked forward (manifest + contract), and the same two
+    # files walked back from canon to the registry.
+    assert report.documents_checked == 2
+    assert report.document_ids_checked == 2
 
 
 def test_walker_detects_missing_module(tmp_path: Path) -> None:
@@ -194,12 +240,11 @@ def test_walker_detects_missing_code_reference(tmp_path: Path) -> None:
     """Canon document cites a code path (src/uiao/ or retired impl/) that
     does not exist on disk."""
     root = _make_workspace(tmp_path)
-    canon_spec = root / "src/uiao/canon/specs/fake-spec.md"
-    canon_spec.parent.mkdir(parents=True, exist_ok=True)
-    canon_spec.write_text(
-        "---\ndocument_id: UIAO_999\n---\n"
-        "# Fake spec\n\n"
-        "The implementation lives at `src/uiao/nonexistent/module.py`.\n"
+    _write_canon_doc(
+        root,
+        "src/uiao/canon/specs/fake-spec.md",
+        "UIAO_999",
+        "# Fake spec\n\nThe implementation lives at `src/uiao/nonexistent/module.py`.\n",
     )
     report = walk_substrate(workspace_root=root)
     assert not report.ok
@@ -213,10 +258,11 @@ def test_walker_detects_legacy_impl_reference(tmp_path: Path) -> None:
     """Any surviving `impl/...` citation in canon is dangling by definition
     post-ADR-032 and should be flagged."""
     root = _make_workspace(tmp_path)
-    canon_spec = root / "src/uiao/canon/specs/legacy-spec.md"
-    canon_spec.parent.mkdir(parents=True, exist_ok=True)
-    canon_spec.write_text(
-        "---\ndocument_id: UIAO_999\n---\n# Legacy spec\n\nHistorical reference: `impl/src/uiao/impl/retired.py`.\n"
+    _write_canon_doc(
+        root,
+        "src/uiao/canon/specs/legacy-spec.md",
+        "UIAO_999",
+        "# Legacy spec\n\nHistorical reference: `impl/src/uiao/impl/retired.py`.\n",
     )
     report = walk_substrate(workspace_root=root)
     prov = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "impl/" in f.path]
@@ -230,10 +276,11 @@ def test_walker_accepts_valid_code_reference(tmp_path: Path) -> None:
     real = root / "src/uiao/real_module.py"
     real.parent.mkdir(parents=True, exist_ok=True)
     real.write_text("# real module\n")
-    canon_spec = root / "src/uiao/canon/specs/real-spec.md"
-    canon_spec.parent.mkdir(parents=True, exist_ok=True)
-    canon_spec.write_text(
-        "---\ndocument_id: UIAO_998\n---\n# Real spec\n\nSee `src/uiao/real_module.py` for the implementation.\n"
+    _write_canon_doc(
+        root,
+        "src/uiao/canon/specs/real-spec.md",
+        "UIAO_998",
+        "# Real spec\n\nSee `src/uiao/real_module.py` for the implementation.\n",
     )
     report = walk_substrate(workspace_root=root)
     prov = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "real_module" in f.path]
@@ -245,13 +292,11 @@ def test_walker_dedupes_same_code_ref_within_file(tmp_path: Path) -> None:
     """Multiple mentions of the same missing code path in one canon doc
     report once, not N times."""
     root = _make_workspace(tmp_path)
-    canon_spec = root / "src/uiao/canon/specs/dupe-spec.md"
-    canon_spec.parent.mkdir(parents=True, exist_ok=True)
-    canon_spec.write_text(
-        "---\ndocument_id: UIAO_997\n---\n"
-        "First mention: `src/uiao/dupe.py`\n"
-        "Second mention: `src/uiao/dupe.py`\n"
-        "Third mention: `src/uiao/dupe.py`\n"
+    _write_canon_doc(
+        root,
+        "src/uiao/canon/specs/dupe-spec.md",
+        "UIAO_997",
+        "First mention: `src/uiao/dupe.py`\nSecond mention: `src/uiao/dupe.py`\nThird mention: `src/uiao/dupe.py`\n",
     )
     report = walk_substrate(workspace_root=root)
     prov = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "dupe.py" in f.path]
@@ -261,9 +306,12 @@ def test_walker_dedupes_same_code_ref_within_file(tmp_path: Path) -> None:
 def test_walker_scans_markdown_links_in_canon(tmp_path: Path) -> None:
     """Markdown link syntax like [label](src/uiao/foo.py) is also scanned."""
     root = _make_workspace(tmp_path)
-    canon_spec = root / "src/uiao/canon/specs/link-spec.md"
-    canon_spec.parent.mkdir(parents=True, exist_ok=True)
-    canon_spec.write_text("---\ndocument_id: UIAO_996\n---\nSee [the module](src/uiao/missing_link.py) for details.\n")
+    _write_canon_doc(
+        root,
+        "src/uiao/canon/specs/link-spec.md",
+        "UIAO_996",
+        "See [the module](src/uiao/missing_link.py) for details.\n",
+    )
     report = walk_substrate(workspace_root=root)
     prov = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "missing_link" in f.path]
     assert prov, report.findings
@@ -321,9 +369,12 @@ def test_walker_report_includes_code_refs_counter(tmp_path: Path) -> None:
 def test_cli_drift_passes_on_p2_only(tmp_path: Path) -> None:
     """P2-only findings (canon→code drift) do not block the drift CLI."""
     root = _make_workspace(tmp_path)
-    canon_spec = root / "src/uiao/canon/specs/warn-only.md"
-    canon_spec.parent.mkdir(parents=True, exist_ok=True)
-    canon_spec.write_text("---\ndocument_id: UIAO_995\n---\nSee `src/uiao/ghost.py`.\n")
+    _write_canon_doc(
+        root,
+        "src/uiao/canon/specs/warn-only.md",
+        "UIAO_995",
+        "See `src/uiao/ghost.py`.\n",
+    )
     result = runner.invoke(app, ["drift", "--workspace-root", str(root)])
     assert result.exit_code == 0, result.stdout
     assert "PASS" in result.stdout
@@ -342,9 +393,12 @@ def test_cli_drift_fails_on_p1(tmp_path: Path) -> None:
 def test_cli_walk_shows_warnings_separately(tmp_path: Path) -> None:
     """Walk CLI displays WARN section for P2 findings, exit 0 if only P2."""
     root = _make_workspace(tmp_path)
-    canon_spec = root / "src/uiao/canon/specs/warn-display.md"
-    canon_spec.parent.mkdir(parents=True, exist_ok=True)
-    canon_spec.write_text("---\ndocument_id: UIAO_994\n---\nSee `src/uiao/phantom.py`.\n")
+    _write_canon_doc(
+        root,
+        "src/uiao/canon/specs/warn-display.md",
+        "UIAO_994",
+        "See `src/uiao/phantom.py`.\n",
+    )
     result = runner.invoke(app, ["walk", "--workspace-root", str(root)])
     assert result.exit_code == 0, result.stdout
     assert "WARN" in result.stdout
@@ -372,9 +426,12 @@ def test_walker_retired_slug_in_canon_doc_fires_p2(tmp_path: Path) -> None:
     """Canon doc body containing a retired slug raises a P2 advisory
     naming the replacement and the rationale."""
     root = _make_workspace_with_retired_slugs(tmp_path)
-    spec = root / "src/uiao/canon/specs/uses-retired.md"
-    spec.parent.mkdir(parents=True, exist_ok=True)
-    spec.write_text("---\ndocument_id: UIAO_993\n---\n# Uses retired\nSee MOD_X for governance telemetry.\n")
+    _write_canon_doc(
+        root,
+        "src/uiao/canon/specs/uses-retired.md",
+        "UIAO_993",
+        "# Uses retired\nSee MOD_X for governance telemetry.\n",
+    )
     report = walk_substrate(workspace_root=root)
     matches = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "retired slug MOD_X" in f.detail]
     assert matches, report.findings
@@ -399,9 +456,12 @@ def test_walker_retired_slug_no_op_when_block_absent(tmp_path: Path) -> None:
     """No retired_slugs in manifest => scan is a no-op even if a doc
     contains what looks like a retired-slug-shaped string."""
     root = _make_workspace(tmp_path)  # no retired_slugs
-    spec = root / "src/uiao/canon/specs/looks-retired.md"
-    spec.parent.mkdir(parents=True, exist_ok=True)
-    spec.write_text("---\ndocument_id: UIAO_992\n---\nSee MOD_X.\n")
+    _write_canon_doc(
+        root,
+        "src/uiao/canon/specs/looks-retired.md",
+        "UIAO_992",
+        "See MOD_X.\n",
+    )
     report = walk_substrate(workspace_root=root)
     assert not any("retired slug" in f.detail for f in report.findings), report.findings
 
@@ -428,9 +488,12 @@ def test_walker_retired_slug_skips_adr_060(tmp_path: Path) -> None:
     """ADR-060 references retired slugs by construction (it's the
     source-of-truth artifact about the rename); the scan must skip it."""
     root = _make_workspace_with_retired_slugs(tmp_path)
-    adr = root / "src/uiao/canon/adr/adr-060-mod-namespace-flatten-into-uiao-canon.md"
-    adr.parent.mkdir(parents=True, exist_ok=True)
-    adr.write_text("---\ndocument_id: UIAO_999\n---\n# ADR-060\nThis ADR retires MOD_X; the replacement is UIAO_174.\n")
+    _write_canon_doc(
+        root,
+        "src/uiao/canon/adr/adr-060-mod-namespace-flatten-into-uiao-canon.md",
+        "UIAO_999",
+        "# ADR-060\nThis ADR retires MOD_X; the replacement is UIAO_174.\n",
+    )
     report = walk_substrate(workspace_root=root)
     assert not any("retired slug" in f.detail for f in report.findings), report.findings
 
@@ -439,9 +502,12 @@ def test_walker_retired_slug_dedupes_per_file(tmp_path: Path) -> None:
     """Multiple occurrences of the same retired slug in one file produce
     exactly one finding."""
     root = _make_workspace_with_retired_slugs(tmp_path)
-    spec = root / "src/uiao/canon/specs/triple-mention.md"
-    spec.parent.mkdir(parents=True, exist_ok=True)
-    spec.write_text("---\ndocument_id: UIAO_991\n---\n# Triple\nMOD_X here. MOD_X again. And once more: MOD_X.\n")
+    _write_canon_doc(
+        root,
+        "src/uiao/canon/specs/triple-mention.md",
+        "UIAO_991",
+        "# Triple\nMOD_X here. MOD_X again. And once more: MOD_X.\n",
+    )
     report = walk_substrate(workspace_root=root)
     matches = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "retired slug MOD_X" in f.detail]
     assert len(matches) == 1, report.findings
@@ -462,12 +528,19 @@ def test_cli_walk_retired_slugs_only_filters_out_other_findings(tmp_path: Path) 
     """
     root = _make_workspace_with_retired_slugs(tmp_path)
     # Finding 1: dangling code reference (DRIFT-PROVENANCE, generic).
-    canon1 = root / "src/uiao/canon/specs/dangling.md"
-    canon1.parent.mkdir(parents=True, exist_ok=True)
-    canon1.write_text("---\ndocument_id: UIAO_990\n---\nSee `src/uiao/nonexistent/module.py`.\n")
+    _write_canon_doc(
+        root,
+        "src/uiao/canon/specs/dangling.md",
+        "UIAO_990",
+        "See `src/uiao/nonexistent/module.py`.\n",
+    )
     # Finding 2: retired slug.
-    canon2 = root / "src/uiao/canon/specs/uses-retired.md"
-    canon2.write_text("---\ndocument_id: UIAO_989\n---\nLegacy reference: MOD_X.\n")
+    _write_canon_doc(
+        root,
+        "src/uiao/canon/specs/uses-retired.md",
+        "UIAO_989",
+        "Legacy reference: MOD_X.\n",
+    )
 
     # Without the filter, both findings appear.
     result_unfiltered = runner.invoke(app, ["walk", "--workspace-root", str(root), "--json"])
@@ -497,9 +570,12 @@ def test_cli_walk_retired_slugs_only_clean_when_no_retired_refs(tmp_path: Path) 
     (but other drift) reports PASS with the retired-slug-specific message."""
     root = _make_workspace_with_retired_slugs(tmp_path)
     # Plant only a non-retired-slug finding.
-    canon = root / "src/uiao/canon/specs/dangling.md"
-    canon.parent.mkdir(parents=True, exist_ok=True)
-    canon.write_text("---\ndocument_id: UIAO_988\n---\nSee `src/uiao/nonexistent/module.py`.\n")
+    _write_canon_doc(
+        root,
+        "src/uiao/canon/specs/dangling.md",
+        "UIAO_988",
+        "See `src/uiao/nonexistent/module.py`.\n",
+    )
 
     result = runner.invoke(app, ["walk", "--workspace-root", str(root), "--retired-slugs-only"])
     assert result.exit_code == 0, result.stdout
@@ -549,3 +625,135 @@ def test_retired_slug_scan_exempts_adr062(tmp_path: Path) -> None:
     paths = {f.path for f in report.findings}
     assert not any("adr-062" in p for p in paths)
     assert any("adr-777-fresh.md" in p for p in paths)
+
+
+# ---------------------------------------------------------------------------
+# Reverse registry walk: canon -> registry
+# ---------------------------------------------------------------------------
+#
+# The forward walk asks "does every registered path exist?". These cover the
+# other half — "is every declared identity recorded, and recorded here?" — which
+# the forward walk structurally cannot see, because an unregistered document has
+# no registry row to walk from.
+
+
+def test_unallocated_document_id_fires_p1(tmp_path: Path) -> None:
+    """A document declaring an id the registry does not carry is invisible to
+    every registry-derived surface."""
+    root = _make_workspace(tmp_path)
+    spec = root / "src/uiao/canon/specs/unregistered.md"
+    spec.parent.mkdir(parents=True, exist_ok=True)
+    spec.write_text("---\ndocument_id: UIAO_987\n---\n# Unregistered\n")
+
+    report = walk_substrate(workspace_root=root)
+    matches = [f for f in report.findings if f.subkind == "document-id-unallocated"]
+    assert len(matches) == 1, report.findings
+    assert matches[0].drift_class == "DRIFT-PROVENANCE"
+    assert matches[0].severity == "P1"
+    assert matches[0].path == "src/uiao/canon/specs/unregistered.md"
+    assert "UIAO_987" in matches[0].detail
+
+
+def test_document_id_bound_to_another_path_fires_p1(tmp_path: Path) -> None:
+    """Two documents claiming one id: only one is reachable by that id."""
+    root = _make_workspace(tmp_path)
+    _write_canon_doc(root, "src/uiao/canon/specs/first.md", "UIAO_986", "# First\n")
+    impostor = root / "src/uiao/canon/specs/second.md"
+    impostor.write_text("---\ndocument_id: UIAO_986\n---\n# Second\n")
+
+    report = walk_substrate(workspace_root=root)
+    matches = [f for f in report.findings if f.subkind == "document-id-path-mismatch"]
+    assert len(matches) == 1, report.findings
+    assert matches[0].severity == "P1"
+    assert matches[0].path == "src/uiao/canon/specs/second.md"
+    # The message names the path the id actually resolves to.
+    assert "src/uiao/canon/specs/first.md" in matches[0].detail
+
+
+def test_correctly_registered_document_is_clean(tmp_path: Path) -> None:
+    root = _make_workspace(tmp_path)
+    _write_canon_doc(root, "src/uiao/canon/specs/registered.md", "UIAO_985", "# Registered\n")
+    report = walk_substrate(workspace_root=root)
+    assert not [f for f in report.findings if (f.subkind or "").startswith("document-id")], report.findings
+
+
+def test_data_file_back_reference_is_allocation_checked_only(tmp_path: Path) -> None:
+    """Data files under canon/data carry the id of the document they are the
+    executable form of. Requiring that id to bind to the data file's own path
+    would assert the opposite of what the field means there."""
+    root = _make_workspace(tmp_path)
+    _write_canon_doc(root, "src/uiao/canon/specs/parent.md", "UIAO_984", "# Parent\n")
+    _write_yaml(
+        root / "src/uiao/canon/data/companion.yaml",
+        {"document_id": "UIAO_984", "profile_id": "companion"},
+    )
+    report = walk_substrate(workspace_root=root)
+    assert not [f for f in report.findings if (f.subkind or "").startswith("document-id")], report.findings
+
+
+def test_data_file_back_reference_to_unallocated_id_still_fires(tmp_path: Path) -> None:
+    """Allocation is still checked: a back-reference to nothing is drift."""
+    root = _make_workspace(tmp_path)
+    _write_yaml(
+        root / "src/uiao/canon/data/orphan.yaml",
+        {"document_id": "UIAO_983", "profile_id": "orphan"},
+    )
+    report = walk_substrate(workspace_root=root)
+    matches = [f for f in report.findings if f.subkind == "document-id-unallocated"]
+    assert len(matches) == 1, report.findings
+    assert matches[0].path == "src/uiao/canon/data/orphan.yaml"
+
+
+def test_metadata_nested_document_id_is_read(tmp_path: Path) -> None:
+    """The UIAO_200/201/202 convention nests the id under `metadata:`."""
+    root = _make_workspace(tmp_path)
+    _write_yaml(
+        root / "src/uiao/canon/data/nested.yaml",
+        {"metadata": {"document_id": "UIAO_982"}, "payload": {}},
+    )
+    report = walk_substrate(workspace_root=root)
+    assert [f for f in report.findings if f.subkind == "document-id-unallocated"], report.findings
+
+
+def test_non_uiao_namespaces_are_out_of_scope(tmp_path: Path) -> None:
+    """document-registry.yaml allocates the UIAO_NNN namespace and only that.
+    CHARTER-NNN and descriptive data-file slugs are governed elsewhere."""
+    root = _make_workspace(tmp_path)
+    charter = root / "src/uiao/canon/charter/CHARTER-001.md"
+    charter.parent.mkdir(parents=True, exist_ok=True)
+    charter.write_text("---\ndocument_id: CHARTER-001\n---\n# Charter\n")
+    _write_yaml(
+        root / "src/uiao/canon/data/slug-id.yaml",
+        {"document_id": "mssql-rationalization-domain-catalog"},
+    )
+    report = walk_substrate(workspace_root=root)
+    assert not [f for f in report.findings if (f.subkind or "").startswith("document-id")], report.findings
+
+
+def test_document_without_frontmatter_is_skipped(tmp_path: Path) -> None:
+    """Unparseable or frontmatter-less files belong to schema validation, not
+    here — guessing at a broken file's identity produces a worse finding."""
+    root = _make_workspace(tmp_path)
+    bare = root / "src/uiao/canon/specs/bare.md"
+    bare.parent.mkdir(parents=True, exist_ok=True)
+    bare.write_text("# No frontmatter at all\n")
+    broken = root / "src/uiao/canon/specs/broken.md"
+    broken.write_text("---\ndocument_id: [unclosed\n---\n# Broken\n")
+    report = walk_substrate(workspace_root=root)
+    assert not [f for f in report.findings if (f.subkind or "").startswith("document-id")], report.findings
+
+
+def test_document_ids_checked_counter_is_reported(tmp_path: Path) -> None:
+    root = _make_workspace(tmp_path)
+    _write_canon_doc(root, "src/uiao/canon/specs/counted.md", "UIAO_981", "# Counted\n")
+    report = walk_substrate(workspace_root=root)
+    # manifest + contract + the new doc.
+    assert report.document_ids_checked == 3
+    assert "document_ids_checked" in report.as_dict()
+
+
+def test_live_corpus_has_no_document_id_drift() -> None:
+    """Every UIAO_NNN declared in canon is allocated, and to that same path."""
+    report = walk_substrate()
+    matches = [f for f in report.findings if (f.subkind or "").startswith("document-id")]
+    assert matches == [], "canon -> registry drift:\n" + "\n".join(f"{f.path}: {f.detail}" for f in matches)
