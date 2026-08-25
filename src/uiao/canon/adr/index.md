@@ -78,6 +78,7 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-032](adr-032-single-package-consolidation.md) | Single-Package Consolidation — flatten src/uiao/ | ACCEPTED | 2026-04-20 |
 | [ADR-044](adr-044-substrate-governance-realignment.md) | Substrate Governance Realignment to Post-ADR-032 Single Package | ACCEPTED | 2026-04-23 |
 | [ADR-046](adr-046-cli-surface-convention.md) | CLI Surface Convention: Sub-App-per-Domain | ACCEPTED | 2026-04-23 |
+| [ADR-138](adr-138-ephemeral-governance-engine.md) | Ephemeral Governance Engine — decompose the substrate by lifetime, not by function | PROPOSED | 2026-08-25 |
 
 ### Boundary & Compliance
 
