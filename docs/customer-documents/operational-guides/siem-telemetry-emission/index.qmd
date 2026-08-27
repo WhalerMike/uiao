@@ -1,0 +1,184 @@
+---
+title: "SIEM Telemetry Emission — Entra, Azure, and Microsoft 365"
+subtitle: "Configuring the Microsoft portals and the Graph / ARM / Management APIs so identity and platform audit events actually reach the SIEM, at the fidelity and retention OMB M-21-31, NIST SP 800-53, CISA, and FedRAMP require"
+doc-type: operational-guide
+audience: [Customer, Technical, Assessor]
+author: Michael Stratton
+date: "August 2026"
+status: Active
+canon-source: "src/uiao/canon/adapter-registry.yaml#siem"
+canon-reference:
+  - "docs/customer-documents/adapter-specs/siem/siem.qmd"
+  - "docs/customer-documents/orgcomp-series/Vol_III_Book_06_OrgComp_SIEM_XDR_Detection.qmd"
+  - "src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml"
+derived-from: "Microsoft Learn product documentation (linked inline per claim) plus the emission-side gap left open by the SIEM adapter spec and Vol III Book 06, which specify consumption but not configuration."
+repo-path: docs/customer-documents/operational-guides/siem-telemetry-emission/index.qmd
+created-at: 2026-08-27
+updated-at: 2026-08-27
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-02-27
+---
+
+# SIEM Telemetry Emission {.unnumbered}
+
+## What this section covers
+
+A SIEM can only correlate what a tenant actually emits. This section is the
+**emission side** of the evidence pipeline: the portal click-paths and the
+Graph / ARM / Office 365 Management API calls that turn Microsoft Entra ID,
+Azure, and Microsoft 365 into compliant audit-event producers — and the
+verification queries that prove they are still producing.
+
+Everything downstream of emission already has a home in the corpus:
+
+| Concern | Where it lives |
+|---|---|
+| Sentinel connectors, detection rules, UEBA, SOC playbooks | [Vol III Book 06 — SIEM & XDR Detection](../../orgcomp-series/Vol_III_Book_06_OrgComp_SIEM_XDR_Detection.qmd) |
+| Canonical claim shape the ingested events normalize into | [SIEM / Audit Event Adapter spec](../../adapter-specs/siem/siem.qmd) |
+| Provenance envelope and determinism contract for telemetry | [Telemetry Modernization Spec](../../modernization-specs/telemetry/telemetry.qmd) |
+| Signals the FedRAMP Moderate boundary blocks outright | [Event Logging Under the GCC-Moderate Boundary](../../whitepapers/event-logging-fedramp-boundary-limitations.qmd) |
+
+This section fills the gap between them: **nobody had written down how to
+switch the emission on.**
+
+::: {.callout-important}
+## Emission is not the default
+
+Microsoft Entra ID retains audit and sign-in logs for **7 days** on Entra ID
+Free and **30 days** on P1/P2, and `MicrosoftGraphActivityLogs` are **not
+retained at all** unless exported. Retention changes are **not retroactive** —
+data that has aged out cannot be recovered. See
+[Microsoft Entra data retention](https://learn.microsoft.com/entra/identity/monitoring-health/reference-reports-data-retention#how-long-does-microsoft-entra-id-store-the-data).
+
+An agency that has not configured diagnostic settings is not at OMB M-21-31
+EL0. It is below EL0, and every day that passes is a day of evidence it can
+never produce.
+:::
+
+## Pages in this section
+
+| Page | Surface | Primary mechanism |
+|---|---|---|
+| [1. Microsoft Entra ID](01-entra-id.qmd) | Identity — sign-ins, directory audit, provisioning, risk, Graph activity | `microsoft.aadiam/diagnosticSettings` (tenant scope) + Graph `auditLogs` |
+| [2. Azure platform](02-azure-platform.qmd) | Subscription activity log, resource logs | `Microsoft.Insights/diagnosticSettings` + Azure Policy at scale |
+| [3. Microsoft 365 unified audit](03-m365-unified-audit.qmd) | Exchange, SharePoint, OneDrive, Teams, Purview, DLP | Office 365 Management Activity API |
+| [4. Compliance crosswalk and verification](04-compliance-crosswalk.qmd) | All three | Retention configuration, control mapping, KQL scorecard |
+
+## The three-plane emission model
+
+Microsoft does not have one audit pipeline. It has three, with different
+control surfaces, different APIs, different retention semantics, and
+different failure modes. Conflating them is the single most common reason an
+agency believes it is logging something it is not.
+
+**Plane 1 — Entra ID (tenant scope).** Identity events. Configured through
+Entra diagnostic settings, which are an ARM resource
+(`microsoft.aadiam/diagnosticSettings`) deployed at *tenant* scope, not
+resource-group scope. This is why `az monitor diagnostic-settings create`
+does not work here and operators reach for the portal instead — see
+[Entra ID](01-entra-id.qmd) for the `az rest` and Bicep paths that do work.
+
+**Plane 2 — Azure Resource Manager (subscription / resource scope).**
+Control-plane and resource-plane events for Azure infrastructure. Configured
+through `Microsoft.Insights/diagnosticSettings`, at subscription scope for the
+activity log and per-resource for resource logs. Enforceable at scale with
+Azure Policy.
+
+**Plane 3 — Microsoft 365 unified audit log (tenant scope, separate
+lifecycle).** Exchange, SharePoint, OneDrive, Teams, and Purview events.
+Retained and governed by Microsoft Purview Audit, and read through the Office
+365 Management Activity API — **not** through Entra diagnostic settings and
+**not** through Microsoft Graph's `auditLogs` endpoints. Microsoft states this
+separation explicitly: Entra audit and sign-in logs "are separate from the
+Microsoft 365 Unified Audit Log (UAL)"
+([data retention reference](https://learn.microsoft.com/entra/identity/monitoring-health/reference-reports-data-retention#how-long-does-microsoft-entra-id-store-the-data)).
+
+::: {.callout-warning}
+## The overlap trap
+
+`Audit.AzureActiveDirectory` in the Management Activity API and `AuditLogs` in
+Entra diagnostic settings are **not the same stream**. They overlap
+substantially but neither is a superset of the other, and their retention is
+governed by different systems. Agencies that enable one and assume coverage of
+the other produce gapped evidence that survives internal review and fails an
+assessor's sampling. Enable both; deduplicate downstream in the SIEM, not at
+the source.
+:::
+
+## Configuration versus query — pick the right API
+
+Both Microsoft Graph and the diagnostic-settings pipeline can hand you Entra
+audit data, and they are not interchangeable.
+
+| | Diagnostic settings → Log Analytics / Event Hub | Microsoft Graph `auditLogs` |
+|---|---|---|
+| **Purpose** | Continuous bulk streaming | Targeted query, evidence sampling |
+| **Volume** | Designed for it | Microsoft: "not designed for pulling large amounts of activity data" |
+| **Retention** | Whatever you configure, up to 12 years | Bounded by tenant retention (7–30 days) |
+| **Latency** | ~15 min to first data | Immediate |
+| **Right use** | The SIEM feed | Adapter evidence pulls, spot checks, ad-hoc investigation |
+
+Microsoft's own guidance is that pulling large volumes through Graph "might
+lead to issues with pagination and performance"
+([analyze activity logs with Microsoft Graph](https://learn.microsoft.com/entra/identity/monitoring-health/howto-analyze-activity-logs-with-microsoft-graph#access-reports-using-microsoft-graph-explorer)).
+
+The substrate consequence: the [`entra-id` adapter](../../adapter-specs/entra-id/entra-id.qmd)
+reads Graph for point-in-time claims about directory *state*; the
+[`siem` adapter](../../adapter-specs/siem/siem.qmd) reads the SIEM for
+interval claims about *events*. Routing event evidence through Graph
+collapses that distinction and breaks the `evidence-class` declaration in
+the adapter registry.
+
+## Sovereign cloud endpoints
+
+Every API in this section has distinct endpoints per cloud. Using the
+commercial endpoint against a GCC High or DoD tenant fails
+authentication — access tokens are not interchangeable across clouds
+([Microsoft Graph national cloud deployments](https://learn.microsoft.com/graph/deployments)).
+
+| Surface | GCC (current UIAO boundary) | GCC High (L4) | DoD (L5) |
+|---|---|---|---|
+| Azure portal | `portal.azure.com` | `portal.azure.us` | `portal.azure.us` |
+| Entra ID / token | `login.microsoftonline.com` | `login.microsoftonline.us` | `login.microsoftonline.us` |
+| Microsoft Graph | `graph.microsoft.com` | `graph.microsoft.us` | `dod-graph.microsoft.us` |
+| Management Activity API | `manage-gcc.office.com` | `manage.office365.us` | `manage.protection.apps.mil` |
+
+::: {.callout-note}
+## GCC uses the worldwide endpoints
+
+Microsoft is explicit that a Microsoft 365 **GCC** environment continues to
+use `portal.azure.com` and `graph.microsoft.com`; only **GCC High** and **DoD**
+move to the `.us` endpoints
+([national cloud deployments](https://learn.microsoft.com/graph/deployments#microsoft-graph-and-graph-explorer-service-root-endpoints)).
+The Management Activity API is the exception — GCC has its own
+`manage-gcc.office.com` endpoint
+([Management Activity API troubleshooting](https://learn.microsoft.com/office/office-365-management-api/troubleshooting-the-office-365-management-activity-api#troubleshooting-the-office-365-management-activity-api)).
+
+The current UIAO deployment boundary is GCC-Moderate per
+[AGENTS.md](https://github.com/WhalerMike/uiao/blob/main/AGENTS.md), so the
+worldwide column applies except where the table says otherwise.
+:::
+
+## Compliance drivers in one paragraph
+
+**OMB M-21-31** sets the federal event-logging maturity tiers (EL0–EL3) and
+the retention floor — 12 months active plus 18 months cold at EL1
+([M-21-31](https://www.whitehouse.gov/wp-content/uploads/2021/08/M-21-31-Improving-the-Federal-Governments-Investigative-and-Remediation-Capabilities-Related-to-Cybersecurity-Incidents.pdf)).
+**NIST SP 800-53 Rev 5** supplies the control language the assessor grades
+against: AU-2 (event logging), AU-3 (record content), AU-6 (review and
+analysis), AU-11 (retention), AU-12 (record generation), SI-4 (system
+monitoring). **CISA** contributes the SCuBA secure-configuration baselines and
+the BOD directives that assume this telemetry already exists. **FedRAMP**
+consumes it as the KSI-MLA indicator family — `LET` (logging event types),
+`OSM` (operating SIEM capability), `RVL` (reviewing logs), `ALA` (authorizing
+log access), `EVC` (evaluating configurations).
+
+The full mapping, with the specific log categories each control depends on,
+is in [Compliance crosswalk and verification](04-compliance-crosswalk.qmd).

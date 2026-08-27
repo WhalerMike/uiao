@@ -1,0 +1,310 @@
+---
+title: "3. Microsoft 365 Unified Audit Log Emission"
+subtitle: "Verifying and enabling unified audit logging, subscribing to the Office 365 Management Activity API content types, and the retention tiers that decide whether the evidence survives"
+doc-type: operational-guide
+audience: [Customer, Technical, Assessor]
+author: Michael Stratton
+date: "August 2026"
+status: Active
+canon-source: "src/uiao/canon/adapter-registry.yaml#siem"
+derived-from: "Microsoft Learn product documentation, linked inline per claim."
+repo-path: docs/customer-documents/operational-guides/siem-telemetry-emission/03-m365-unified-audit.qmd
+created-at: 2026-08-27
+updated-at: 2026-08-27
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-02-27
+---
+
+# Microsoft 365 Unified Audit Log Emission
+
+The unified audit log (UAL) is the third emission plane and the one most often
+assumed rather than verified. It covers Exchange Online, SharePoint, OneDrive,
+Teams, Power Platform, and Purview activity — none of which appears in Entra
+diagnostic settings or Azure activity logs.
+
+## Step 1 — Verify auditing is actually on
+
+Auditing is on by default for Microsoft 365 and Office 365 **enterprise**
+organizations. It is **not** on by default for Small and Medium Business
+licenses (Business Basic, Business Standard, Business Premium), and not for
+unmanaged tenants using enterprise free trials
+([turn auditing on or off](https://learn.microsoft.com/purview/audit-log-enable-disable)).
+
+```powershell
+# Must be Exchange Online PowerShell.
+Connect-ExchangeOnline
+Get-AdminAuditLogConfig | Format-List UnifiedAuditLogIngestionEnabled
+```
+
+`True` means auditing is on.
+
+::: {.callout-warning}
+## Run this in Exchange Online PowerShell, not Security & Compliance PowerShell
+
+`Get-AdminAuditLogConfig` exists in both modules. In Security & Compliance
+PowerShell the `UnifiedAuditLogIngestionEnabled` property is **always
+`False`**, even when auditing is fully enabled
+([turn auditing on or off](https://learn.microsoft.com/purview/audit-log-enable-disable#before-you-turn-auditing-on-or-off)).
+
+This produces a specific and expensive false negative: an operator confirms
+"auditing is off," enables something that was already enabled, and — worse —
+an assessor or an automated check records a finding against a compliant
+tenant. Confirm which module the session is connected to before trusting the
+output.
+:::
+
+## Step 2 — Enable if needed
+
+Portal path: [Microsoft Purview portal](https://purview.microsoft.com) →
+**Audit** solution card → select the **Start recording user and admin
+activity** banner.
+
+PowerShell:
+
+```powershell
+Connect-ExchangeOnline
+Set-AdminAuditLogConfig -UnifiedAuditLogIngestionEnabled $true
+```
+
+Enabling takes up to **60 minutes** to take effect, and audit events may take
+several more hours to become searchable. You need the **Audit Logs** role in
+Exchange Online — held by default by the *Compliance Management* and
+*Organization Management* role groups.
+
+::: {.callout-important}
+## Turning auditing off breaks everything downstream
+
+With auditing disabled you cannot use the Office 365 Management Activity API
+or Microsoft Sentinel to access audit data, Purview audit searches return no
+results, and `Search-UnifiedAuditLog` returns nothing
+([turn auditing on or off](https://learn.microsoft.com/purview/audit-log-enable-disable)).
+
+Changes to the auditing status are themselves audited. Include
+`Set-AdminAuditLogConfig` in the SIEM's high-severity detection set — an
+adversary disabling tenant auditing is a pre-exfiltration signal, and it is
+one of the few events that destroys the evidence of everything that follows:
+
+```powershell
+Search-UnifiedAuditLog -Operations Set-AdminAuditLogConfig `
+  -StartDate (Get-Date).AddDays(-90) -EndDate (Get-Date)
+```
+:::
+
+## Step 3 — Register the app for API access
+
+The Management Activity API is app-only. Register an application in Entra ID
+in the **same national cloud as the tenant**, grant it Office 365 Management
+APIs permissions, and admin-consent them.
+
+| Setting | GCC (current boundary) | GCC High | DoD |
+|---|---|---|---|
+| API audience / resource | `https://manage-gcc.office.com` | `https://manage.office365.us` | `https://manage.protection.apps.mil` |
+| Authority | `https://login.windows.net` | `https://login.microsoftonline.us` | `https://login.microsoftonline.us` |
+
+Endpoint and authority values from the
+[Management Activity API troubleshooting guide](https://learn.microsoft.com/office/office-365-management-api/troubleshooting-the-office-365-management-activity-api#troubleshooting-the-office-365-management-activity-api)
+and the
+[Office 365 Management API collection reference](https://learn.microsoft.com/power-platform/guidance/coe/setup-auditlog-http#create-a-microsoft-entra-app-registration-for-office-365-management-api-access).
+The commercial-cloud audience is `https://manage.office.com`.
+
+::: {.callout-note}
+## GCC differs here even though it matches worldwide elsewhere
+
+Microsoft Graph and the Azure portal use worldwide endpoints for GCC. The
+Management Activity API does **not** — GCC has its own `manage-gcc.office.com`
+endpoint. This is the single most common cross-cloud misconfiguration on this
+surface, because the Graph endpoint working reinforces the assumption that
+everything else is worldwide too.
+:::
+
+## Step 4 — Subscribe to content types
+
+Unlike Entra diagnostic settings, the Management Activity API has no
+per-event-category selection. You subscribe per **content type**, and each
+subscription is per tenant.
+
+| Content type | Workload |
+|---|---|
+| `Audit.AzureActiveDirectory` | User sign-in and directory-change events as recorded by M365 |
+| `Audit.Exchange` | Mailbox activity — reads, deletes, rule changes, admin actions |
+| `Audit.SharePoint` | SharePoint and OneDrive file access, edits, sharing, downloads |
+| `Audit.General` | All other workloads — Teams, Power Platform, Purview, Forms |
+| `DLP.All` | Data Loss Prevention policy matches across all workloads |
+
+Content types from the
+[Management Activity API reference](https://learn.microsoft.com/office/office-365-management-api/office-365-management-activity-api-reference#working-with-the-office-365-management-activity-api).
+
+Start a subscription:
+
+```powershell
+$tenantGUID = "<tenant-guid>"
+$resource   = "https://manage-gcc.office.com"   # GCC; see the endpoint table
+
+foreach ($contentType in @(
+    'Audit.AzureActiveDirectory',
+    'Audit.Exchange',
+    'Audit.SharePoint',
+    'Audit.General',
+    'DLP.All'
+)) {
+    Invoke-WebRequest -Method Post -Headers $headerParams `
+      -Uri "$resource/api/v1.0/$tenantGUID/activity/feed/subscriptions/start?contentType=$contentType"
+    Start-Sleep -Seconds 900   # 15-minute throttle between start requests
+}
+```
+
+Confirm what is actually subscribed:
+
+```powershell
+Invoke-WebRequest -Method GET -Headers $headerParams `
+  -Uri "$resource/api/v1.0/$tenantGUID/activity/feed/subscriptions/list"
+```
+
+::: {.callout-warning}
+## Two timing rules that break first-time integrations
+
+**15-minute throttle.** After submitting a subscription-start request, a
+15-minute wait is required before another can be made. Stopping a subscription
+is not throttled.
+
+**12-hour first blob.** "When a subscription is created, it can take up to 12
+hours for the first content blobs to become available for that subscription."
+
+Both from the
+[Management Activity API reference](https://learn.microsoft.com/office/office-365-management-api/office-365-management-activity-api-reference#working-with-the-office-365-management-activity-api).
+A team that subscribes all five content types in a loop and declares failure
+an hour later has hit both rules at once — the loop was throttled and the data
+was never due yet.
+:::
+
+## Step 5 — Retrieve content
+
+Poll for available blobs, or register a webhook and be notified.
+
+```powershell
+Invoke-WebRequest -Method GET -Headers $headerParams `
+  -Uri "$resource/api/v1.0/$tenantGUID/activity/feed/subscriptions/content?contentType=Audit.AzureActiveDirectory&startTime=2026-08-26T00:00&endTime=2026-08-27T00:00"
+```
+
+Constraints from the
+[API reference](https://learn.microsoft.com/office/office-365-management-api/office-365-management-activity-api-reference#list-available-content):
+
+- `startTime` and `endTime` must both be supplied or both omitted.
+- They must be no more than **24 hours** apart, with `startTime` no more than
+  **7 days** in the past. Requests spanning more than 24 hours "could be
+  partial results and should not be taken into account."
+- Results paginate via a `NextPageUri` response header. Keep following it
+  until a response arrives without one — a single page is not the full set.
+- Set `PublisherIdentifier` to your organization's tenant GUID on every
+  request to get a dedicated throttling quota. Requests without it share one
+  global quota with every other caller who also omitted it.
+
+::: {.callout-important}
+## Events are not ordered, and this is by design
+
+"The actions and events contained in the content blobs will not necessarily
+appear in the order in which they occurred. One content blob can contain
+actions and events that occurred prior to the actions and events contained in
+an earlier content blob"
+([API reference](https://learn.microsoft.com/office/office-365-management-api/office-365-management-activity-api-reference#working-with-the-office-365-management-activity-api)).
+
+Any ingestion pipeline that assumes blob order equals event order, or that
+uses "last blob retrieved" as a high-water mark, will silently drop events.
+Track ingestion by `contentId`, deduplicate on it, and re-scan a trailing
+window. This is a direct instance of the ADR-006 determinism requirement — no
+silent drops — that the
+[Telemetry Modernization Spec](../../modernization-specs/telemetry/telemetry.qmd)
+imposes on every telemetry adapter.
+:::
+
+## Retention — the tier that decides the evidence
+
+Enabling the UAL does not by itself satisfy AU-11 or OMB M-21-31. Retention is
+governed by license tier and by audit retention policies:
+
+| Tier | Retention |
+|---|---|
+| Audit (Standard) | **180 days** by default (logs generated before 2023-10-17: 90 days) |
+| Audit (Premium) | **1 year** for Exchange, SharePoint, OneDrive, and `AzureActiveDirectory` workload records, via a non-modifiable default policy |
+| Audit (Premium), all other workloads | **180 days** unless a custom retention policy extends them |
+| Audit (Premium) + 10-year add-on | Up to **10 years**, per-user add-on license required |
+
+From
+[Manage audit log retention policies](https://learn.microsoft.com/purview/audit-log-retention-policies)
+and
+[auditing solutions in Microsoft Purview](https://learn.microsoft.com/purview/audit-solutions-overview#audit-premium).
+
+::: {.callout-warning}
+## The default Premium policy is license-scoped, not tenant-scoped
+
+The one-year default retention applies only to records for activity performed
+by users assigned an Office 365 / Microsoft 365 **E5** license, a Microsoft
+Purview Suite license, or the E5 eDiscovery and Audit add-on. "If you have
+non-E5 users or guest users in your organization, their corresponding audit
+records are retained for 180 days"
+([audit log retention policies](https://learn.microsoft.com/purview/audit-log-retention-policies)).
+
+Federal tenants are rarely uniformly E5. A mixed-license estate has a
+**split retention horizon** that no dashboard displays: E5 users at one year,
+everyone else — including every guest and every service account on a lower
+SKU — at 180 days. Enumerate license assignment against the M-21-31 scope
+before asserting a retention position, and record the mixed state explicitly
+if it exists.
+
+Retention policies are also **not retroactive**. A 10-year policy created
+today cannot retain records generated yesterday.
+:::
+
+## Sentinel ingestion
+
+For Sentinel, the **Microsoft 365** (Office 365) data connector ingests
+Exchange, SharePoint, and Teams activity into the `OfficeActivity` table
+without a custom Management API client. Use the connector for the
+SOC-detection path and the Management Activity API for the substrate's
+evidence path, where the
+[SIEM adapter spec](../../adapter-specs/siem/siem.qmd) requires a
+provenance envelope the connector does not produce.
+
+Where both are running, they are independent readers of the same UAL. The
+connector does not consume blobs in a way that hides them from an API
+subscription.
+
+## Verify emission
+
+```kusto
+// M365 unified audit emission health by workload.
+OfficeActivity
+| where TimeGenerated > ago(24h)
+| summarize Events = count(), LastEvent = max(TimeGenerated) by OfficeWorkload, RecordType
+| extend Stale = LastEvent < ago(6h)
+| order by Stale desc, Events desc
+```
+
+Tenant-side, independent of any SIEM:
+
+```powershell
+# Does the UAL itself hold recent records for each workload?
+foreach ($wl in @('AzureActiveDirectory','Exchange','SharePoint','MicrosoftTeams')) {
+    $n = (Search-UnifiedAuditLog -StartDate (Get-Date).AddDays(-1) `
+            -EndDate (Get-Date) -RecordType $wl -ResultSize 1).Count
+    "{0,-22} {1}" -f $wl, $(if ($n -gt 0) { "OK" } else { "NO RECORDS" })
+}
+```
+
+Run both. The KQL proves the SIEM is receiving; the PowerShell proves the
+tenant is recording. A green KQL result with a stale pipeline can persist for
+hours on cached data — only the tenant-side check distinguishes "nothing
+happened" from "nothing is being captured."
+
+## Next
+
+[Compliance crosswalk and verification](04-compliance-crosswalk.qmd) — mapping
+all three planes to M-21-31 tiers, NIST controls, CISA baselines, and FedRAMP
+KSIs, and setting the retention that makes the evidence admissible.

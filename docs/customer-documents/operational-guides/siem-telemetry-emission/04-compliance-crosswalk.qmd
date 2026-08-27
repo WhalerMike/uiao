@@ -1,0 +1,307 @@
+---
+title: "4. Compliance Crosswalk and Verification"
+subtitle: "Mapping emitted log categories to OMB M-21-31 maturity tiers, NIST SP 800-53 Rev 5 audit controls, CISA baselines, and FedRAMP KSI-MLA indicators — plus the retention settings and scorecard that make the claim defensible"
+doc-type: operational-guide
+audience: [Customer, Technical, Assessor]
+author: Michael Stratton
+date: "August 2026"
+status: Active
+canon-source: "src/uiao/canon/compliance/reference/fedramp-cr26/"
+canon-reference:
+  - "docs/customer-documents/orgcomp-series/Vol_III_Book_06_OrgComp_SIEM_XDR_Detection.qmd"
+  - "docs/customer-documents/uiao-orgcomp-integration/06-federal-conmon-reporting-reference.qmd"
+derived-from: "FedRAMP CR26 catalog (KSI-MLA theme) plus Microsoft Learn product documentation and OMB M-21-31, linked inline per claim. Retention decisions are owned by Vol III Book 06 and are cited, not re-decided, here."
+repo-path: docs/customer-documents/operational-guides/siem-telemetry-emission/04-compliance-crosswalk.qmd
+created-at: 2026-08-27
+updated-at: 2026-08-27
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-02-27
+---
+
+# Compliance Crosswalk and Verification
+
+## OMB M-21-31 — the mandate that sets the floor
+
+OMB M-21-31, *Improving the Federal Government's Investigative and Remediation
+Capabilities Related to Cybersecurity Incidents*, defines four event-logging
+maturity tiers and the retention each requires
+([M-21-31](https://www.whitehouse.gov/wp-content/uploads/2021/08/M-21-31-Improving-the-Federal-Governments-Investigative-and-Remediation-Capabilities-Related-to-Cybersecurity-Incidents.pdf)).
+
+| Tier | Meaning | Deadline |
+|---|---|---|
+| EL0 | Not effective — logging requirements of highest criticality not met | — |
+| EL1 | Basic — highest-criticality requirements met | August 2022 |
+| EL2 | Intermediate — intermediate-criticality requirements met | February 2023 |
+| EL3 | Advanced — full enterprise-wide logging maturity | August 2023 |
+
+Deadlines as recorded in the repo's
+[federal ConMon gap roadmap](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/orgcomp-series/federal-orgcomp-conmon-gap-roadmap.md).
+All three have passed. An agency below EL3 today is not approaching a deadline;
+it is carrying an open finding.
+
+**EL1 retention floor: 12 months in active (readily accessible) storage plus
+18 months in cold storage.** Under M-21-31 the logs are retained at the agency
+and made available to CISA and the FBI on request
+([federal ConMon reporting reference](../../uiao-orgcomp-integration/06-federal-conmon-reporting-reference.qmd)).
+
+::: {.callout-important}
+## The 90-day interactive window does not meet EL1 on its own
+
+Vol III Book 06 configures a 90-day interactive tier plus archive for AU-11 /
+NARA GRS 3.2, and explicitly records that this is **shorter than the M-21-31
+EL1 active-storage floor**. It documents two conformant options: extend
+interactive retention to 12 months for in-scope tables, or argue that the
+Tier 2 archive's asynchronous query-job latency still satisfies "readily
+accessible" for a given table and record the residual-risk acceptance.
+
+**That decision is owned by
+[Vol III Book 06 §AU-11 Retention Architecture](../../orgcomp-series/Vol_III_Book_06_OrgComp_SIEM_XDR_Detection.qmd), not by this
+page.** What follows is the mechanism for implementing whichever option the
+agency has recorded — per table, so an assessor can trace the choice.
+:::
+
+## Retention configuration {#retention}
+
+Log Analytics retention is set **per table**, not on the workspace and not on
+the diagnostic setting. Two values matter:
+
+- `RetentionInDays` — the interactive (hot) window. Directly queryable.
+- `TotalRetentionInDays` — interactive plus archive. Archive data requires a
+  search job or restore to query.
+
+```powershell
+$WorkspaceRg   = "<resource-group>"
+$WorkspaceName = "<workspace-name>"
+
+# M-21-31 EL1 option 1: 12 months interactive (365d) + 18 months archive
+# = 30 months total (913d) for the in-scope identity and audit tables.
+$M2131Tables = @(
+    "SigninLogs",
+    "AADNonInteractiveUserSignInLogs",
+    "AADServicePrincipalSignInLogs",
+    "AADManagedIdentitySignInLogs",
+    "AuditLogs",
+    "AADProvisioningLogs",
+    "MicrosoftGraphActivityLogs",
+    "AzureActivity",
+    "OfficeActivity",
+    "SecurityAlert"
+)
+
+foreach ($Table in $M2131Tables) {
+    Set-AzOperationalInsightsTable `
+        -ResourceGroupName $WorkspaceRg `
+        -WorkspaceName $WorkspaceName `
+        -TableName $Table `
+        -RetentionInDays 365 `
+        -TotalRetentionInDays 913
+}
+```
+
+Audit the applied state — this output is assessor evidence, not just an
+operational check:
+
+```powershell
+Get-AzOperationalInsightsTable -ResourceGroupName $WorkspaceRg -WorkspaceName $WorkspaceName |
+  Select-Object Name, RetentionInDays, TotalRetentionInDays,
+    @{n='M2131_EL1'; e={ if ($_.RetentionInDays -ge 365 -and $_.TotalRetentionInDays -ge 913) { 'PASS' } else { 'REVIEW' } }} |
+  Sort-Object M2131_EL1, Name | Format-Table -AutoSize
+```
+
+::: {.callout-warning}
+## Three retention settings that look equivalent and are not
+
+1. **`retentionPolicy` on the diagnostic setting** — applies to
+   **storage-account destinations only**. It does nothing for a Log Analytics
+   destination
+   ([Azure Monitor REST reference](https://learn.microsoft.com/azure/data-factory/monitor-logs-rest#enable-diagnostic-logs-via-the-monitor-rest-api)).
+2. **Workspace-level default retention** — the fallback for tables with no
+   explicit setting. Silently governs any table you forget.
+3. **Table-level retention** — the only one that reliably satisfies a
+   per-table M-21-31 or AU-11 position.
+
+Setting (1) and believing you have configured (3) is the most common
+retention failure on this surface, and it fails at exactly the wrong moment:
+during an incident, when someone queries beyond the real horizon and finds
+nothing.
+
+The M365 unified audit log is a fourth, separate regime entirely — governed by
+Purview audit retention policies and license tier, not by any of the above.
+See [M365 unified audit §Retention](03-m365-unified-audit.qmd#retention--the-tier-that-decides-the-evidence).
+:::
+
+## NIST SP 800-53 Rev 5 — control to category
+
+| Control | Requirement | Categories that supply the evidence |
+|---|---|---|
+| **AU-2** Event Logging | Identify events the system is capable of logging and select those to be logged | All Entra core categories; activity log `Administrative` / `Security` / `Policy`; UAL content types |
+| **AU-3** Content of Audit Records | Records contain what/when/where/source/outcome/identity | Native schema of each table; enforced downstream by the [SIEM adapter](../../adapter-specs/siem/siem.qmd) canonical claim shape |
+| **AU-6** Audit Review, Analysis, Reporting | Review and analyze records for indications of inappropriate activity | Sentinel analytics rules and the review cadence in [Vol III Book 06](../../orgcomp-series/Vol_III_Book_06_OrgComp_SIEM_XDR_Detection.qmd) |
+| **AU-11** Audit Record Retention | Retain per records-retention requirements | `RetentionInDays` / `TotalRetentionInDays`; Purview retention policy for the UAL |
+| **AU-12** Audit Record Generation | Generate records for the AU-2 event set across all components | Diagnostic settings on **every** subscription and resource; Azure Policy enforcement |
+| **SI-4** System Monitoring | Detect attacks and indicators of potential attacks | `AADUserRiskEvents`, `AADRiskyUsers`, `SecurityAlert`, activity log `Security` |
+| **AC-2** Account Management | Monitor account creation, modification, enabling, disabling, removal | `AuditLogs`, `AADProvisioningLogs`, UAL `Audit.AzureActiveDirectory` |
+| **AC-6** Least Privilege | Audit execution of privileged functions | `AuditLogs` (role assignment, PIM activation); activity log `Administrative` (Azure RBAC) |
+| **IA-2** Identification and Authentication | MFA for privileged and non-privileged accounts | `SigninLogs` with `appliedConditionalAccessPolicies` — requires the `Policy.Read.All` grant described in [Entra ID](01-entra-id.qmd) |
+
+::: {.callout-note}
+## AU-12 is where estates actually fail
+
+AU-2 asks whether you *selected* the right events. AU-12 asks whether records
+are generated **across all system components**. A tenant with perfect Entra
+diagnostic settings and eleven of fourteen subscriptions exporting activity
+logs passes an AU-2 review and fails AU-12 — and the gap is invisible to every
+query that only looks at what arrived. This is why
+[Azure platform §Enforce at scale](02-azure-platform.qmd#part-3--enforce-at-scale-with-azure-policy)
+treats the policy compliance percentage, not the ingestion query, as the
+coverage metric.
+:::
+
+## FedRAMP — KSI-MLA indicators
+
+The FedRAMP CR26 catalog's **Monitoring, Logging, and Auditing** theme
+(`KSI-MLA`) is what this configuration is graded against under FedRAMP 20x.
+Statements below are quoted from the catalog snapshot at
+`src/uiao/canon/compliance/reference/fedramp-cr26/`.
+
+| Indicator | Statement | Satisfied by |
+|---|---|---|
+| **KSI-MLA-LET** Logging Event Types | "A list of information resources and event types that will be logged, monitored, and audited is maintained and persistently reviewed to ensure these activities occur." | The category tables in pages 1–3, maintained as code, plus the verification scorecard below |
+| **KSI-MLA-OSM** Operating SIEM Capability | "A SIEM or similar system(s) is used and persistently reviewed for centralized, tamper-resistant logging of events, activities, and changes." | Log Analytics / Sentinel as the central store; immutable archive per Vol III Book 06 |
+| **KSI-MLA-RVL** Reviewing Logs | "Logs are persistently reviewed and audited." | Sentinel analytics rules and the AU-6 review cadence |
+| **KSI-MLA-ALA** Authorizing Log Access | "A least-privileged, role and attribute-based, and just-in-time access authorization model is used and persistently reviewed for access to log data based on organizationally defined data sensitivity." | Workspace RBAC plus PIM on Log Analytics Reader / Sentinel roles |
+| **KSI-MLA-EVC** Evaluating Configurations | "The configuration of machine-based information resources, especially infrastructure as code, is persistently evaluated and tested." | Azure Policy DINE assignments and the Bicep in pages 1–2 |
+
+`LET` is the reason the *maintained list* matters as much as the
+configuration. The indicator is not satisfied by having logging turned on; it
+is satisfied by a reviewed, current inventory of resources and event types
+that someone can show has been checked. The category tables in this section
+are that inventory — kept in git, reviewed on the `lifecycle_review` cadence
+in each page's frontmatter.
+
+## CISA
+
+| Driver | Relationship to this configuration |
+|---|---|
+| **SCuBA** secure configuration baselines | M365/Entra baseline assertions are assessed by ScubaGear, which reads tenant configuration — including whether diagnostic settings and unified audit logging are enabled. See the [`scubagear` adapter](../../adapter-specs/scubagear/scubagear.qmd). |
+| **BOD 22-01** (KEV) | Remediation deadlines are enforced against an asset inventory; exploitation detection depends on the device and identity telemetry emitted here. |
+| **BOD 25-01** (M365 secure configuration) | Directly requires SCuBA baseline implementation and continuous assessment of M365 tenants. See [BOD 25-01 — close before assess](../../whitepapers/bod-25-01-close-before-assess.qmd). |
+| **ZTMM v2.0** Visibility & Analytics pillar | Maturity in this pillar is a direct function of telemetry completeness. Signals the FedRAMP Moderate boundary blocks are enumerated in [`gcc-moderate-telemetry-gaps.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml). |
+
+::: {.callout-warning}
+## Some signals cannot be emitted at all under the boundary
+
+26 telemetry signals are unavailable, restricted, or retention-limited under
+the FedRAMP Moderate authorization boundary — mostly Microsoft's own
+cloud-side computed products (risk scores, adoption aggregates, ML-derived
+detections) rather than raw events. No amount of diagnostic-setting
+configuration recovers them.
+
+Do not write an SSP narrative claiming coverage this configuration cannot
+deliver. The honest accounting, including which gaps an in-boundary Event Hubs
+pipeline can partially rebuild, is
+[Event Logging Under the GCC-Moderate Boundary](../../whitepapers/event-logging-fedramp-boundary-limitations.qmd).
+:::
+
+## The verification scorecard
+
+One query, all three planes. Run daily; treat any `FAIL` as an AU-12 finding
+until cleared.
+
+```kusto
+// UIAO SIEM emission scorecard — all three planes.
+// FAIL = no data in 24h. Absent row = never emitted (worse).
+let window = 24h;
+let expected = datatable(TableName:string, Plane:string, Tier:string)
+[
+    "SigninLogs",                      "Entra",  "core",
+    "AADNonInteractiveUserSignInLogs", "Entra",  "core",
+    "AADServicePrincipalSignInLogs",   "Entra",  "core",
+    "AADManagedIdentitySignInLogs",    "Entra",  "core",
+    "AuditLogs",                       "Entra",  "core",
+    "AADProvisioningLogs",             "Entra",  "core",
+    "MicrosoftGraphActivityLogs",      "Entra",  "core",
+    "AADRiskyUsers",                   "Entra",  "risk",
+    "AADUserRiskEvents",               "Entra",  "risk",
+    "AzureActivity",                   "Azure",  "core",
+    "OfficeActivity",                  "M365",   "core",
+    "SecurityAlert",                   "Signal", "core",
+];
+let observed = union withsource=TableName
+        SigninLogs, AADNonInteractiveUserSignInLogs,
+        AADServicePrincipalSignInLogs, AADManagedIdentitySignInLogs,
+        AuditLogs, AADProvisioningLogs, MicrosoftGraphActivityLogs,
+        AADRiskyUsers, AADUserRiskEvents,
+        AzureActivity, OfficeActivity, SecurityAlert
+    | where TimeGenerated > ago(window)
+    | summarize Records = count(), LastRecord = max(TimeGenerated) by TableName;
+expected
+| join kind=leftouter observed on TableName
+| extend Records = coalesce(Records, 0)
+| extend Status = case(
+      Records == 0,             "FAIL",
+      LastRecord < ago(6h),     "STALE",
+                                "PASS")
+| project Plane, Tier, TableName, Status, Records, LastRecord
+| order by Status asc, Plane asc, TableName asc
+```
+
+::: {.callout-note}
+## A `union` over a table that has never existed
+
+If a table has never received a single record it does not exist in the
+workspace, and naming it in a `union` produces a semantic error rather than an
+empty result. That is the failure mode this query is built around — the
+`datatable` of expectations is joined against observations, so a table that
+has never emitted shows as `FAIL` instead of breaking the query.
+
+If the `union` itself errors on a workspace where several tables have never
+existed, prefix the offending names with `union isfuzzy=true` for the
+diagnostic run — then treat every fuzzed-away table as a `FAIL`, not as a
+pass.
+:::
+
+## Assessor evidence pack
+
+What to hand an assessor, and what each artifact proves:
+
+| Artifact | Proves | Produced by |
+|---|---|---|
+| Entra diagnostic setting `GET` output | AU-2 category selection at the identity plane | `az rest --method GET` ([page 1](01-entra-id.qmd#path-c--az-rest)) |
+| Azure Policy compliance report | AU-12 generation across all components | Azure Policy compliance dashboard |
+| Table retention audit | AU-11 and M-21-31 EL1 retention position, per table | `Get-AzOperationalInsightsTable` ([above](#retention)) |
+| `Get-AdminAuditLogConfig` output | UAL enabled at the tenant | Exchange Online PowerShell ([page 3](03-m365-unified-audit.qmd)) |
+| Management API `subscriptions/list` | UAL content-type coverage | Management Activity API ([page 3](03-m365-unified-audit.qmd)) |
+| 30 days of scorecard results | KSI-MLA-LET persistent review; continuous AU-2 coverage | The scorecard above, run on a schedule |
+| Boundary-probe drift findings | Which gaps are boundary-imposed rather than misconfiguration | [GCC Boundary Probe adapter](https://github.com/WhalerMike/uiao/blob/main/src/uiao/adapters/modernization/gcc_boundary_probe/) |
+
+The last row matters disproportionately. An assessor who finds a telemetry gap
+will ask whether it is a control failure or an authorization-boundary
+constraint. An agency that can produce the gap matrix and the probe findings
+answers that in one document; an agency that cannot is defending a finding it
+did not cause.
+
+## Substrate integration
+
+Emission configured per this section feeds the substrate as follows:
+
+- The [`siem` adapter](../../adapter-specs/siem/siem.qmd) ingests the emitted
+  events and normalizes them to canonical claim shape with a provenance
+  envelope — the `AU-*` and `SI-4` evidence stream.
+- The [GCC Boundary Probe](https://github.com/WhalerMike/uiao/blob/main/src/uiao/adapters/modernization/gcc_boundary_probe/)
+  runs the completeness queries and emits `DRIFT-BOUNDARY` findings when a
+  category stops emitting.
+- The [Telemetry Modernization Spec](../../modernization-specs/telemetry/telemetry.qmd)
+  imposes the ADR-006 determinism guarantees — no silent drops, append-only,
+  ordered, idempotent — that the ingestion pipeline must honor.
+
+Configuration without the probe is a point-in-time claim. The substrate's
+position is that a compliance claim is only as good as the drift detection
+behind it.

@@ -1,0 +1,391 @@
+---
+title: "1. Microsoft Entra ID — Identity Telemetry Emission"
+subtitle: "Portal click-path, tenant-scope ARM/Bicep, and az rest for Entra diagnostic settings; Microsoft Graph auditLogs for targeted evidence pulls"
+doc-type: operational-guide
+audience: [Customer, Technical, Assessor]
+author: Michael Stratton
+date: "August 2026"
+status: Active
+canon-source: "src/uiao/canon/adapter-registry.yaml#siem"
+derived-from: "Microsoft Learn product documentation, linked inline per claim."
+repo-path: docs/customer-documents/operational-guides/siem-telemetry-emission/01-entra-id.qmd
+created-at: 2026-08-27
+updated-at: 2026-08-27
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-02-27
+---
+
+# Microsoft Entra ID — Identity Telemetry Emission
+
+## Prerequisites
+
+| Requirement | Detail |
+|---|---|
+| Role | **Security Administrator** on the Entra tenant — required to create or edit any diagnostic setting ([log options reference](https://learn.microsoft.com/entra/identity/monitoring-health/concept-diagnostic-settings-logs-options)) |
+| Additional role | **Attribute Log Administrator** *plus* Security Administrator, if routing `CustomSecurityAttributeAuditLogs` |
+| Destination | Log Analytics workspace, Event Hubs namespace, or storage account — **must exist before** the diagnostic setting is created |
+| License | `MicrosoftGraphActivityLogs` requires Entra ID **P1 or P2** ([data retention](https://learn.microsoft.com/entra/identity/monitoring-health/reference-reports-data-retention#how-long-does-microsoft-entra-id-store-the-data)) |
+| Tenancy | The subscription and Event Hubs namespace must be associated with the same Entra tenant whose logs you are streaming |
+
+## The log categories
+
+These are every category Entra diagnostic settings can route, with the
+Log Analytics table each lands in. Categories marked **Core** carry the
+AU-2 / AU-3 / AU-12 evidence stream and should be enabled in every federal
+tenant regardless of feature adoption.
+
+| Category | Log Analytics table | Tier | What it captures |
+|---|---|---|---|
+| `AuditLogs` | `AuditLogs` | **Core** | Directory changes — users, groups, apps, licenses, roles, policy |
+| `SignInLogs` | `SigninLogs` | **Core** | Interactive user sign-ins (username/password, MFA challenge) |
+| `NonInteractiveUserSignInLogs` | `AADNonInteractiveUserSignInLogs` | **Core** | Sign-ins on behalf of a user by a client app using a token or code |
+| `ServicePrincipalSignInLogs` | `AADServicePrincipalSignInLogs` | **Core** | App / service-principal authentication via certificate or client secret |
+| `ManagedIdentitySignInLogs` | `AADManagedIdentitySignInLogs` | **Core** | Managed-identity authentication where Azure holds the secret |
+| `ProvisioningLogs` | `AADProvisioningLogs` | **Core** | Users, groups, roles provisioned by the Entra provisioning service |
+| `MicrosoftGraphActivityLogs` | `MicrosoftGraphActivityLogs` | **Core** | Every HTTP request against tenant resources through the Graph API |
+| `RiskyUsers` | `AADRiskyUsers` | High value | ID Protection — users assessed as at risk |
+| `UserRiskEvents` | `AADUserRiskEvents` | High value | ID Protection — individual risk detections |
+| `RiskyServicePrincipals` | `AADRiskyServicePrincipals` | High value | ID Protection — risky workload identities |
+| `ServicePrincipalRiskEvents` | `AADServicePrincipalRiskEvents` | High value | ID Protection — workload-identity risk detections |
+| `ADFSSignInLogs` | `ADFSSignInLogs` | Conditional | AD FS application sign-in activity — required while federation persists |
+| `CustomSecurityAttributeAuditLogs` | `CustomSecurityAttributeAuditLogs` | Conditional | Changes to custom security attributes |
+| `RiskyAgents` | `RiskyAgents` | Conditional | ID Protection — agent identities assessed as risky |
+| `AgentRiskEvents` | `AgentRiskEvents` | Conditional | ID Protection — agent risk detections |
+| `NetworkAccessTrafficLogs` | `NetworkAccessTraffic` | Conditional | Global Secure Access traffic — no data unless GSA is deployed |
+| `RemoteNetworkHealthLogs` | `RemoteNetworkHealthLogs` | Conditional | Global Secure Access remote-network health |
+| `EnrichedOffice365AuditLogs` | `EnrichedMicrosoft365AuditLogs` | Conditional | GSA-enriched M365 logs — requires GSA *and* enrichment enabled |
+| `MicrosoftServicePrincipalSignInLogs` | — | **Not recommended** | First-party Microsoft service-to-service auth (preview) |
+
+Category names and behavior are from
+[What are the identity logs you can stream to an endpoint?](https://learn.microsoft.com/entra/identity/monitoring-health/concept-diagnostic-settings-logs-options);
+table names from the
+[Microsoft Entra ID data connector reference](https://learn.microsoft.com/azure/sentinel/connect-azure-active-directory#microsoft-entra-id-data-connector-data-types)
+and the [ID Protection export guidance](https://learn.microsoft.com/entra/id-protection/howto-export-risk-data#log-analytics).
+
+::: {.callout-tip}
+## Confirm table names against your own workspace
+
+Most — not all — Entra tables carry an `AAD` prefix, and the mapping is not
+mechanical (`SignInLogs` → `SigninLogs` with a lowercase `i`;
+`EnrichedOffice365AuditLogs` → `EnrichedMicrosoft365AuditLogs`). Before
+committing detection rules or retention policy that name a table, confirm it
+resolves in the target workspace. The verification query in
+[§Verify emission](#verify-emission) does this for the seven core tables.
+:::
+
+::: {.callout-warning}
+## Do not enable `MicrosoftServicePrincipalSignInLogs`
+
+Microsoft's own guidance is that these logs "are not necessary for most
+customers as they are complex and generate a high volume of data," that the
+data "is not essential for security investigations," and that Microsoft
+"strongly advise[s] against taking actions such as disabling applications
+based on this data, as doing so could cause misconfigurations and potential
+adverse effects such as tenant lock-out"
+([log options reference](https://learn.microsoft.com/entra/identity/monitoring-health/concept-diagnostic-settings-logs-options)).
+
+The ingestion cost is real and the analytic value is negative. Leave it off.
+:::
+
+### Why the four sign-in categories are not optional
+
+`SignInLogs` alone covers interactive human sign-ins. It does not cover the
+client app refreshing a token on a user's behalf, the service principal
+authenticating with a client secret, or the managed identity pulling from Key
+Vault. Those are `NonInteractiveUserSignInLogs`,
+`ServicePrincipalSignInLogs`, and `ManagedIdentitySignInLogs` respectively.
+
+This is the exact failure the repo's own boundary probe was written to catch —
+symptom #1, "invisible non-interactive / service-principal / managed-identity
+sign-in activity," validated by
+[`01-entra-diagnostic-completeness.kql`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/adapters/modernization/gcc_boundary_probe/queries/01-entra-diagnostic-completeness.kql).
+A tenant with only `SignInLogs` enabled is blind to every non-human
+authentication in the estate while appearing, on the sign-ins blade, to be
+fully instrumented.
+
+## Path A — Portal
+
+The click-path, for tenants where configuration is a one-time manual act:
+
+1. Sign in to the [Microsoft Entra admin center](https://entra.microsoft.com)
+   as at least **Security Administrator**.
+2. Browse to **Entra ID** → **Monitoring & health** → **Diagnostic settings**.
+   (**Export Settings** on the **Audit Logs** or **Sign-ins** blade reaches
+   the same place.)
+3. Select **+ Add diagnostic setting**.
+4. Enter a **Diagnostic setting name**. This cannot be changed later — pick
+   something an assessor will recognize, e.g. `uiao-siem-emission-core`.
+5. Under **Logs**, check every category from the **Core** tier above, plus the
+   **High value** tier if ID Protection is licensed.
+6. Under **Destination details**, select **Send to Log Analytics workspace**
+   (and/or **Stream to an event hub** for a third-party SIEM), then choose the
+   subscription and target.
+7. **Save**.
+
+Data begins appearing at the destination after roughly **15 minutes**
+([configure diagnostic settings](https://learn.microsoft.com/entra/identity/monitoring-health/howto-configure-diagnostic-settings#select-the-logs-and-destination)).
+
+::: {.callout-note}
+## The portal is fine for the first tenant and wrong for the fleet
+
+A portal-configured diagnostic setting has no source of truth, no review
+trail, and no drift detection — it is a click somebody made once. FedRAMP
+**KSI-MLA-EVC** requires that the configuration of machine-based information
+resources "especially infrastructure as code, is persistently evaluated and
+tested." Use Path B or C for anything that has to survive an assessment.
+:::
+
+## Path B — Tenant-scope ARM / Bicep
+
+Entra diagnostic settings are the ARM resource type
+`microsoft.aadiam/diagnosticSettings`, API version `2017-04-01`, and they
+deploy at **tenant scope**
+([resource reference](https://learn.microsoft.com/azure/templates/microsoft.aadiam/2017-04-01/diagnosticsettings)).
+
+```bicep
+// entra-diagnostics.bicep
+// Deploy with: az deployment tenant create --location <region> \
+//   --template-file entra-diagnostics.bicep \
+//   --parameters workspaceId=<log-analytics-resource-id>
+targetScope = 'tenant'
+
+@description('Full ARM resource ID of the destination Log Analytics workspace.')
+param workspaceId string
+
+@description('Diagnostic setting name. Immutable once created.')
+param settingName string = 'uiao-siem-emission-core'
+
+var coreCategories = [
+  'AuditLogs'
+  'SignInLogs'
+  'NonInteractiveUserSignInLogs'
+  'ServicePrincipalSignInLogs'
+  'ManagedIdentitySignInLogs'
+  'ProvisioningLogs'
+  'MicrosoftGraphActivityLogs'
+  'RiskyUsers'
+  'UserRiskEvents'
+  'RiskyServicePrincipals'
+  'ServicePrincipalRiskEvents'
+]
+
+resource entraDiagnostics 'microsoft.aadiam/diagnosticSettings@2017-04-01' = {
+  name: settingName
+  properties: {
+    workspaceId: workspaceId
+    logs: [for category in coreCategories: {
+      category: category
+      enabled: true
+      // retentionPolicy is honored only for storage-account destinations.
+      // Log Analytics retention is set per-table — see page 4.
+      retentionPolicy: {
+        days: 0
+        enabled: false
+      }
+    }]
+  }
+}
+```
+
+::: {.callout-important}
+## `retentionPolicy` here does nothing for Log Analytics
+
+The `retentionPolicy` block on a diagnostic setting is "used for storage
+accounts only"
+([Azure Monitor REST API reference](https://learn.microsoft.com/azure/data-factory/monitor-logs-rest#enable-diagnostic-logs-via-the-monitor-rest-api)).
+Setting `days: 3650` here and believing you have satisfied AU-11 or M-21-31 is
+a common and expensive mistake — the retention that counts is configured
+per-table on the workspace. See
+[Compliance crosswalk and verification](04-compliance-crosswalk.qmd#retention).
+:::
+
+## Path C — `az rest`
+
+`az monitor diagnostic-settings create` targets resources inside a resource
+group and **cannot** create an Entra tenant-scope setting. Operators who try
+it hit an opaque failure. Use `az rest` against the ARM endpoint directly:
+
+```bash
+#!/usr/bin/env bash
+# Create or update the Entra tenant diagnostic setting.
+# Requires: Security Administrator on the tenant.
+set -euo pipefail
+
+SETTING_NAME="uiao-siem-emission-core"
+WORKSPACE_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RG}/providers/Microsoft.OperationalInsights/workspaces/${WORKSPACE}"
+
+CATEGORIES=(
+  AuditLogs SignInLogs NonInteractiveUserSignInLogs
+  ServicePrincipalSignInLogs ManagedIdentitySignInLogs
+  ProvisioningLogs MicrosoftGraphActivityLogs
+  RiskyUsers UserRiskEvents
+  RiskyServicePrincipals ServicePrincipalRiskEvents
+)
+
+LOGS_JSON=$(printf '%s\n' "${CATEGORIES[@]}" \
+  | jq -R . | jq -s 'map({category: ., enabled: true})')
+
+az rest --method PUT \
+  --uri "https://management.azure.com/providers/microsoft.aadiam/diagnosticSettings/${SETTING_NAME}?api-version=2017-04-01" \
+  --headers "Content-Type=application/json" \
+  --body "$(jq -n --arg ws "$WORKSPACE_ID" --argjson logs "$LOGS_JSON" \
+      '{properties: {workspaceId: $ws, logs: $logs}}')"
+```
+
+Read the current state back — this is also the supported way to discover which
+categories a given tenant actually supports, since availability varies with
+licensing and feature enablement:
+
+```bash
+az rest --method GET \
+  --uri "https://management.azure.com/providers/microsoft.aadiam/diagnosticSettings?api-version=2017-04-01" \
+  --query "value[].{name:name, workspace:properties.workspaceId, categories:properties.logs[?enabled].category}" \
+  -o jsonc
+```
+
+::: {.callout-note}
+## Sovereign clouds
+
+Replace `management.azure.com` with `management.usgovcloudapi.net` for Azure
+Government. Entra portal and Graph endpoints shift too — see the
+[endpoint table](index.qmd#sovereign-cloud-endpoints). GCC (the current UIAO
+boundary) stays on the worldwide ARM and Graph endpoints.
+:::
+
+## Microsoft Graph — targeted evidence, not the feed
+
+Graph's `auditLogs` endpoints answer *"show me this specific thing"*. They are
+the wrong tool for continuous ingestion, and Microsoft says so directly: the
+API "isn't designed for pulling large amounts of activity data," which "might
+lead to issues with pagination and performance"
+([analyze activity logs with Graph](https://learn.microsoft.com/entra/identity/monitoring-health/howto-analyze-activity-logs-with-microsoft-graph#access-reports-using-microsoft-graph-explorer)).
+
+### Endpoints
+
+| Endpoint | Returns |
+|---|---|
+| `GET /v1.0/auditLogs/directoryAudits` | Directory change history — role grants, app consent, password resets, group management ([reference](https://learn.microsoft.com/graph/api/directoryaudit-list?view=graph-rest-1.0)) |
+| `GET /v1.0/auditLogs/signIns` | Interactive, non-interactive, service-principal, and managed-identity sign-ins ([reference](https://learn.microsoft.com/graph/api/signin-list?view=graph-rest-1.0#permissions)) |
+| `GET /v1.0/auditLogs/provisioning` | Provisioning-service activity |
+| `GET /beta/auditLogs/signUps` | Self-service sign-up activity (beta — not for production) |
+
+### Permissions
+
+`AuditLog.Read.All` is the least-privileged permission for both delegated and
+application access on `directoryAudits` and `signIns`. `Get directoryAudit`
+(single item) additionally requires `Directory.Read.All`. For delegated
+access the signed-in user must hold a supporting role — **Reports Reader**,
+**Security Reader**, **Security Administrator**, or **Global Reader**
+depending on the endpoint.
+
+::: {.callout-warning}
+## Conditional Access data is separately gated
+
+`appliedConditionalAccessPolicies` is **omitted** from the `signIns` response
+unless the caller also holds `Policy.Read.All`,
+`Policy.Read.ConditionalAccess`, or `Policy.ReadWrite.ConditionalAccess`
+([signIns permissions](https://learn.microsoft.com/graph/api/signin-list?view=graph-rest-1.0#permissions)).
+
+The property is dropped silently — no error, no warning. An evidence pipeline
+built without one of those permissions produces sign-in records that look
+complete and contain no CA evaluation data at all, which is precisely the
+evidence AC-2 and AC-6 assessment turns on. This is the repo's boundary-probe
+symptom #5, "CA evaluation-log incompleteness."
+:::
+
+### Example — CA failures in a bounded window
+
+Always apply a `createdDateTime` filter; unbounded queries time out.
+
+```http
+GET https://graph.microsoft.com/v1.0/auditLogs/signIns
+  ?$filter=conditionalAccessStatus eq 'failure'
+    and createdDateTime ge 2026-08-01T00:00:00Z
+    and createdDateTime lt 2026-08-08T00:00:00Z
+  &$top=999
+Authorization: Bearer {token}
+```
+
+PowerShell equivalent, via the Graph SDK:
+
+```powershell
+Connect-MgGraph -Scopes 'AuditLog.Read.All','Policy.Read.All'
+
+Get-MgAuditLogDirectoryAudit -Filter @"
+category eq 'RoleManagement' and activityDateTime gt 2026-08-01T00:00:00Z
+"@ -All
+```
+
+For Azure Government, connect with `-Environment USGov` and request the
+`https://graph.microsoft.us/.default` scope
+([national clouds with the Graph SDKs](https://learn.microsoft.com/graph/sdks/national-clouds#examples)).
+
+## Verify emission {#verify-emission}
+
+Configuration succeeding is not emission succeeding. Run this against the
+destination workspace 24 hours after the setting is created, and on a
+schedule thereafter — every core table must return a non-zero `RecordCount`
+with `LastRecord` inside the last day.
+
+```kusto
+// Entra diagnostic-setting completeness.
+// Pass criterion: every row returns RecordCount > 0
+// and LastRecord within the last 24h.
+union withsource=TableName
+    SigninLogs,
+    AADNonInteractiveUserSignInLogs,
+    AADServicePrincipalSignInLogs,
+    AADManagedIdentitySignInLogs,
+    AuditLogs,
+    AADProvisioningLogs,
+    MicrosoftGraphActivityLogs,
+    AADRiskyUsers,
+    AADUserRiskEvents
+| summarize RecordCount = count(), LastRecord = max(TimeGenerated) by TableName
+| extend Stale = LastRecord < ago(24h)
+| order by Stale desc, TableName asc
+```
+
+A table that is **absent from the result entirely** has never received data —
+that category was never enabled, or was enabled against a different
+workspace. A table present but `Stale` means emission stopped, which is the
+more dangerous condition because the historical data masks it on any query
+with a wide time range.
+
+::: {.callout-important}
+## This query is canon, not an example
+
+The substrate ships this check as
+[`01-entra-diagnostic-completeness.kql`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/adapters/modernization/gcc_boundary_probe/queries/01-entra-diagnostic-completeness.kql),
+executed by the GCC Boundary Probe adapter, which emits per-symptom
+`DRIFT-BOUNDARY` findings. The version above adds
+`MicrosoftGraphActivityLogs` and the explicit staleness flag. Treat the
+committed `.kql` as the source of truth and this page as its narrative
+explanation.
+:::
+
+## Sentinel data connector
+
+If the destination workspace is Microsoft Sentinel, the **Microsoft Entra ID**
+data connector surfaces the same categories through the connector UI rather
+than the Entra diagnostic-settings blade. They write to the same tables;
+enabling both does not duplicate data. Connector setup, expected EPS at
+5,000 users, and the detection rules built on these tables are covered in
+[Vol III Book 06 §Connector: Entra ID](../../orgcomp-series/Vol_III_Book_06_OrgComp_SIEM_XDR_Detection.qmd).
+
+## What this page does not cover
+
+Entra diagnostic settings emit **identity** events. They do not emit Azure
+resource activity (see [Azure platform](02-azure-platform.qmd)) and they do
+not emit the Microsoft 365 unified audit log (see
+[M365 unified audit](03-m365-unified-audit.qmd)). Nor do they recover the
+26 telemetry signals the FedRAMP Moderate boundary blocks outright — that
+accounting is in
+[Event Logging Under the GCC-Moderate Boundary](../../whitepapers/event-logging-fedramp-boundary-limitations.qmd).
