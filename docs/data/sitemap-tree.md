@@ -74,6 +74,7 @@
 - [UIAO-core Value Proposition — Two-Way Governance Architecture for SCuBA and BOD 25-01](canon/UIAO_005_SCuBA_Value_Proposition_v1.0.html)
 - [OrgPath in NAC / 802.1X & Cert-Based Network Admission](canon/UIAO_012_OrgPath_in_NAC_and_8021X.html)
 - [GPO Modernization — Parse, Crosswalk, OrgPath Join](canon/UIAO_014_GPO_Modernization_Parse_Crosswalk_OrgPath_Join_v1.0.html)
+- [Governance-Platform Coverage And Gap Doctrine](canon/UIAO_015_Governance_Platform_Coverage_And_Gap_Doctrine_v1.0.html)
 - [Identity & Directory Transformation Inventory — AD to Entra ID](canon/UIAO_135_identity-directory-transformation-inventory.html)
 - [UIAOIdentityAssessment Module Specification](canon/UIAO_181_UIAOIdentityAssessment_Module_Specification.html)
 - [UIAOImportAdapters Module Specification](canon/UIAO_182_UIAOImportAdapters_Module_Specification.html)
