@@ -235,6 +235,7 @@
 - [SailPoint IdentityIQ — Option-C Slot Allocation and Vendor Contract Pin](adr/adr-136-sailpoint-identityiq-option-c-slot-allocation.html)
 - [Tenant-extension facets — admin tier, device type, and environment on slots 11-13](adr/adr-137-tenant-extension-facets.html)
 - [Ephemeral Governance Engine — decompose the substrate by lifetime, not by function](adr/adr-138-ephemeral-governance-engine.html)
+- [Coverage-and-gap doctrine is per-plane — allocate UIAO_015 for the governance plane](adr/adr-139-governance-plane-coverage-doctrine.html)
 
 ## Schema Reference
 

@@ -7,11 +7,12 @@ owner: "Michael Stratton"
 created_at: "2026-08-27"
 updated_at: "2026-08-27"
 provenance:
-  source: "Sibling doctrine to UIAO_009; authored to close the governance-plane half of the coverage question"
+  source: "ADR-139 §Decision 2 (allocation decision); sibling doctrine to UIAO_009"
   version: "1.0"
   derived_at: "2026-08-27"
   derived_by: "Doctrine synthesized from the two adapter registries (declared class / mission-class / scope / status), ADR-059 §Decision 5, ADR-092 (control-plane slots, L0–L4 ladder), ADR-135, ADR-136, and UIAO_210 / UIAO_211 vendor contract pins. Authored fresh — not derived from any external draft."
 canonical_adrs:
+  - ADR-139
   - ADR-049
   - ADR-059
   - ADR-092
@@ -43,7 +44,9 @@ where they stop, and how to decide whether a given governance task
 belongs to them or to the Microsoft-native surface.
 
 This document is that accounting. It is the governance-plane sibling of
-UIAO_009 and uses the same section shape deliberately.
+UIAO_009 and uses the same section shape deliberately. Its allocation and
+the per-plane doctrine pattern it instantiates are decided by
+[ADR-139](adr/adr-139-governance-plane-coverage-doctrine.md).
 
 ::: {.callout-note}
 The recurring field question this doctrine answers is: *"Do we produce
@@ -195,7 +198,10 @@ surface offered by two vendors**, and SailPoint additionally ships
 native Entra ID and Active Directory connectors.
 
 [ADR-059](adr/adr-059-sailpoint-adapter-family.md) §Decision 5 already
-rules on it, and that ruling is canonical:
+rules on it, and that ruling is canonical. What follows is a
+**restatement promoted to a discoverable location, not an extension** —
+per [ADR-139](adr/adr-139-governance-plane-coverage-doctrine.md)
+§Decision 4, where wording differs, ADR-059 governs:
 
 > SailPoint ships native Entra ID and Active Directory connectors that
 > overlap with the existing `entra-id`, `entra-id-governance`, and
@@ -264,6 +270,7 @@ revision of the claim text.
 
 ## 7. Cross-References
 
+- Authorizing decision: [ADR-139](adr/adr-139-governance-plane-coverage-doctrine.md).
 - Microsoft half of this accounting: [UIAO_009](UIAO_009_Microsoft_Coverage_And_Gap_Doctrine_v1.0.md).
 - Dual-axis taxonomy: [UIAO_003](UIAO_003_Adapter_Segmentation_Overview_v1.0.md).
 - Vendor contract pins: [UIAO_210](specs/external/sailpoint-iiq/UIAO_210_identityiq-api-contract-pin.md), [UIAO_211](specs/external/servicenow/UIAO_211_servicenow-deployment-contract-pin.md).
