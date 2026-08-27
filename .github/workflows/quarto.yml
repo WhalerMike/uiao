@@ -955,6 +955,35 @@ jobs:
         # kit-build scripts write into; a bare `*` glob swept that page's
         # own HTML into the release too (caught after the fact as a stray
         # `index.html` release asset on the first run of this step).
+        #
+        # DECOUPLED FROM THE DEPLOY (2026-08-27). This step uploads ~30 assets
+        # through GitHub's release-asset API, and that API returns a transient
+        # 5xx often enough to matter: it failed here twice in one hour on
+        # 2026-08-27 (runs 33097273129 and 33099500137), both times with
+        # GitHub's "Unicorn!" HTML 500 mid-batch. Because the Pages upload and
+        # the deploy job are downstream of this step, a flaky *download*
+        # publish was taking out the entire *site* deploy — the site went
+        # unpublished twice for a reason that had nothing to do with the site.
+        # `continue-on-error` breaks that coupling: a failed upload is now
+        # recorded and warned about, but `assemble` still succeeds, the Pages
+        # artifact still uploads, and `deploy` (which gates on `needs:
+        # assemble`) still runs.
+        #
+        # Why not a separate job? The release payload is ~1.1 GB. Moving it to
+        # its own job means round-tripping that through the artifact store on
+        # every deploy, which costs more than the coupling it removes. Keeping
+        # it in `assemble` and making it non-fatal gets the same isolation.
+        #
+        # Trade-off, recorded deliberately: the strip step below still runs
+        # unconditionally when a publish fails. It has to — leaving ~1.1 GB of
+        # kits in the Pages artifact re-triggers the >1 GB Pages problem this
+        # whole scheme exists to avoid. So a failed publish means the release
+        # keeps its previous (possibly stale or partial) assets while the site
+        # deploys normally. link-check.yml catches any download link that 404s
+        # as a result, which is exactly how the 2026-08-27 partial upload was
+        # found.
+        id: publish_kits
+        continue-on-error: true
         if: env.MAINTENANCE_MODE != 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: softprops/action-gh-release@v3
         with:
@@ -971,6 +1000,67 @@ jobs:
             _release_bundles/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Back off before retrying the download-kit publish
+        # A 5xx from the asset API is usually over in seconds, but retrying
+        # instantly tends to hit the same unhealthy backend. One short pause
+        # before the single retry below.
+        if: env.MAINTENANCE_MODE != 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.publish_kits.outcome == 'failure'
+        run: sleep 30
+
+      - name: Publish download kits to GitHub Releases (retry)
+        # One retry, and only for a first attempt that actually failed. The
+        # action is idempotent against the fixed `downloads-latest` tag —
+        # same-named assets are replaced in place — so re-running it re-uploads
+        # the full set rather than duplicating or half-applying it. That is
+        # what makes a blind retry safe here.
+        #
+        # Kept as a duplicated step rather than a loop because GitHub Actions
+        # does not support YAML anchors and offers no retry primitive for a
+        # `uses:` step. If a third attempt is ever needed, that is the signal
+        # to stop retrying and reach for `gh release upload --clobber` in a
+        # real backoff loop instead.
+        id: publish_kits_retry
+        continue-on-error: true
+        if: env.MAINTENANCE_MODE != 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.publish_kits.outcome == 'failure'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: downloads-latest
+          name: "Download Kits — latest"
+          body: |
+            Rebuilt from source on every deploy to `main` — not a versioned
+            release. See the [Downloads page](https://whalermike.github.io/uiao/download/)
+            for what each file contains and how to verify a download.
+          make_latest: false
+          files: |
+            _site/download/*.zip
+            _site/download/ScubaDrift-Documentation.docx
+            _release_bundles/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Report the download-kit publish outcome
+        # Non-fatal by design, but never silent: a failed publish has to be
+        # visible in the run summary, otherwise the deploy looks entirely
+        # green while `downloads-latest` quietly holds stale assets.
+        if: env.MAINTENANCE_MODE != 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        run: |
+          first='${{ steps.publish_kits.outcome }}'
+          retry='${{ steps.publish_kits_retry.outcome }}'
+          if [ "$first" = 'success' ]; then
+            echo "Download kits published on the first attempt."
+          elif [ "$retry" = 'success' ]; then
+            echo "::notice title=Download kits published on retry::The first \
+          release-asset upload failed (transient GitHub 5xx) and the retry succeeded."
+          else
+            echo "::warning title=Download kits NOT published::Both attempts to \
+          upload release assets failed. The site deploy proceeded as intended, but \
+          the downloads-latest release may hold stale or partial assets — expect \
+          link-check.yml to flag any download link that 404s. Two consecutive \
+          failures here means the transient-5xx assumption no longer holds; \
+          replace this pair of steps with a gh release upload --clobber backoff \
+          loop."
+          fi
 
       - name: Remove published download kits and .docx bundles from the Pages artifact
         # Now that the same files are on the downloads-latest release,
