@@ -1,0 +1,292 @@
+---
+title: "Multi-Tree Forest → OrgPath: Sequencing the Hybrid Write Path"
+subtitle: "Why a fully-synced estate stamps OrgPath into AD first, why the cutover is a sourcing flip rather than a tenant move, and why twelve trees means twelve decommission gates rather than one date"
+doc-type: operational-guide
+audience: [Customer, Technical]
+author: Michael Stratton
+date: "August 2026"
+status: Active
+repo-path: docs/customer-documents/operational-guides/identity-orgtree/multi-tree-forest-transition.qmd
+created-at: 2026-08-22
+updated-at: 2026-08-22
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+    toc-depth: 3
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-02-22
+---
+
+## Scope
+
+This guide covers the transition to OrgPath for an estate with a specific and
+common shape:
+
+- **one Active Directory forest containing multiple domain trees** — several
+  distinct DNS namespaces under one schema and one Global Catalog;
+- **one live Entra ID tenant** at the GCC-Moderate boundary; and
+- **directory synchronisation already established**, so every user in the
+  tenant is a synced object rather than a cloud-only one.
+
+The worked estate below is twelve trees in one forest. Nothing in the sequencing
+depends on the number; substitute your own tree count and the phase structure is
+unchanged.
+
+It complements rather than repeats the canon material. The pattern — attributes
+plus dynamic groups plus Administrative Units replacing the OU tree — is
+[UIAO_007](../../reference-architecture/orgtree.qmd). The step-by-step runbook is
+UIAO_156. The phase model is
+[ADR-081](../../../adr/adr-081-directory-migration-phase-canonical-model.qmd).
+What none of those state is the **sequencing constraint a fully-synced estate
+imposes**, which is what this guide exists for.
+
+## 1. What the estate shape decides for you
+
+Three properties of the shape settle three questions that would otherwise be
+open design decisions. They are worth stating explicitly, because each one
+closes off an approach that looks reasonable in the abstract.
+
+### 1.1 One forest means discovery is cheap
+
+Multiple trees in a *single* forest share one schema, one Configuration naming
+context, one Global Catalog, and transitive two-way trusts throughout. For
+OrgPath purposes the estate is closer to one large directory than to N
+directories.
+
+Concretely, a single `GC://<forest-root>` query enumerates principals across
+every tree. The per-forest service accounts and two-way-trust prerequisite
+documented for genuinely multi-*forest* estates in
+[Windows Server Deployment](../../platform/windows-server-deployment.qmd) do not
+apply here.
+
+Multiple trees still matter — for UPN suffix routing, GPO scoping, delegated
+administration boundaries, and the order of decommissioning — but not for the
+cost of discovery.
+
+### 1.2 Every user being synced decides the write path
+
+This is the constraint that shapes everything downstream.
+
+For a **directory-synced** user, `onPremisesExtensionAttributes` is **read-only
+in the cloud**. The OrgPath facets cannot be stamped directly onto those objects
+through Graph. They must be written **on-premises in Active Directory** and
+carried up by sync.
+
+Canon already assumes this. [ADR-063](../../../adr/adr-063-orgpath-storage-slot-binding.qmd)
+rejects that slot family for cloud-only tenants precisely because the attributes
+are *"replicated from on-prem AD via Entra Connect and are read-only in the
+cloud,"* and the Active Directory survey adapter is specified to write *"OrgPath
+back to extensionAttributes in AD for Entra Connect pickup."*
+
+The consequence is worth stating plainly, because it inverts the intuition that
+a cloud-forward programme writes to the cloud:
+
+> During the overlay, the AD forest is the **write path**. It stops being the
+> *source* of organisational truth on day one — that becomes HR — but it remains
+> the *transport* for OrgPath until the sourcing cutover.
+
+Two corollaries:
+
+- **Do not mirror the forest into an external LDAP copy.** A copy is a
+  point-in-time snapshot that freezes current drift, and it loses even the thin
+  history AD does keep, since replication metadata
+  (`msDS-ReplAttributeMetaData`, `msDS-ReplValueMetaData`) is constructed and does
+  not survive an LDIF export. The forest you would be copying is the one you still
+  need to write to.
+- **The device plane is a separate surface.** Device `extensionAttributes` are
+  writable through Graph regardless of join type, so the device plane
+  ([ADR-038](../../../adr/adr-038-device-plane-orgpath.qmd)) does not carry this
+  constraint. Expect the user plane and device plane to have *different* write
+  paths during coexistence.
+
+### 1.3 A live tenant means there is no tenant migration
+
+The overlay target already exists. Every principal across all trees is already a
+cloud object with a settled source anchor.
+
+Standing up a second production tenant would convert an in-place
+attribute-stamping exercise into a full tenant-to-tenant migration — mailboxes,
+device re-enrolment, app registrations, Conditional Access baselines, licensing,
+B2B relationships — and would require re-anchoring the estate, which is among the
+least forgiving operations in Entra. None of that is required by the OrgPath
+model, which stamps facets and a derived path onto objects that already exist.
+
+A **pre-production** tenant remains correct and is assumed by canon: UAT-1 and
+UAT-2 run against a pre-prod tenant. Build one to rehearse stamping, rule
+evaluation, and AU delegation — not as the production destination.
+
+## 2. The sequencing constraint
+
+Canon's steady-state posture is **cloud-first and asymmetric**: Entra is source
+of truth, AD-side edits are unsupported, and a writeback configuration carries a
+defined attribute set back down for residual on-premises consumers.
+
+That posture is **post-cutover**. It cannot run on day one against a
+fully-synced estate, because §1.2 forbids the cloud-side write it depends on.
+The transition therefore has two stages, and conflating them is the most likely
+way to design a pipeline that silently does nothing:
+
+| Stage | Source of truth | OrgPath written to | Reaches Entra via |
+|---|---|---|---|
+| **Overlay** (from day one) | HR | On-premises AD | Directory sync |
+| **Steady state** (post-cutover) | Entra | Entra | Writeback to AD for legacy consumers |
+
+The event that separates them is the **sourcing cutover** — §5.
+
+## 3. Prerequisites
+
+Three checks gate the programme. All three are cheap; none should be assumed.
+
+### 3.1 Do the extension attributes exist in the schema?
+
+`extensionAttribute1`–`15` arrive with the Exchange schema extension
+(`ms-Exch-Extension-Attribute-N`). One forest means one schema, so this is a
+single yes/no for the whole estate.
+
+If the answer is no, a **forest-wide schema extension becomes a gating change
+window** with its own approval path — a materially different programme start
+than if the attributes are already present.
+
+### 3.2 Are the target slots already occupied?
+
+ADR-063 §3 requires a formal rebind procedure when a non-OrgPath value already
+occupies a target slot for a non-trivial population (defined as ≥1% of in-scope
+users):
+
+1. snapshot existing values to the Evidence Fabric with a `DRIFT-PROVENANCE`
+   annotation, preserving the prior investment for audit;
+2. identify the inherited use — typically a cost-centre, location code, or
+   mailbox-region tag — and record the prior owner; then
+3. negotiate a relocation slot before any OrgPath write occurs.
+
+Across a dozen trees, expect at least one to have colonised these slots
+independently. Run the occupancy census **per tree**, not forest-wide in
+aggregate: a 0.4% forest-wide occupancy can still be 100% of one tree.
+
+### 3.3 How do the UPN suffixes route?
+
+Multiple trees means multiple DNS namespaces and potentially multiple UPN
+suffixes. With sync already established this is usually settled, but confirm
+whether each suffix is a verified tenant domain or whether some trees' users
+landed on an alternate suffix.
+
+This does not affect OrgPath. It shapes the **decommission sequence**, so it is
+worth knowing before you plan §6 rather than during it.
+
+## 4. Phase map
+
+The canon six-phase model applies unchanged. What follows is where a multi-tree,
+fully-synced estate diverges from the generic reading.
+
+| Canon phase | Applied to this estate |
+|---|---|
+| **Discover** | One `GC://<forest-root>` sweep across all trees, plus per-tree GPO, delegation, and LDAP-bind inventories. Slot-occupancy census per §3.2. |
+| **Normalize** | Build the governed OrgTree **from HR**, explicitly independent of the current OU layout. |
+| **Map** | Produce the AD-versus-HR delta (§4.1). Map each legacy OU to facet values against the codebook; flag unmappable OUs for governance review. |
+| **Migrate** | Stamp facets and the derived path **into AD**, per tree, in waves. Sync carries them up. |
+| **Validate** | Confirm facets landed on the cloud objects; build OrgPath-keyed dynamic groups and AUs; re-base policy targeting so governance stops reading OU position. |
+| **Decommission** | Per tree, after its own soak. Twelve gates — §6. |
+
+### 4.1 The delta is the deliverable
+
+The highest-value artefact this programme produces is not the stamped attribute.
+It is the **reconciliation between what the twelve trees assert and what HR
+asserts**.
+
+The OU estate is a downstream projection of organisational truth that has drifted
+across years of reorganisations, mergers, and ad-hoc container moves. OrgTree is
+seeded from HR precisely because the OU tree is no longer a reliable statement of
+the organisation. That makes the delta a governance finding in its own right —
+frequently the first defensible, evidence-backed statement of how far the
+directory has diverged from the organisation it was built to model.
+
+Treat the twelve-tree structure as a **mapping input and a drift report**, never
+as a source.
+
+### 4.2 What is overlaid, and what is retired
+
+The transition does **not** realign the OU tree to match reality. OU remediation
+as a standalone project is expensive, high-risk, and obsoleted by the overlay:
+once policy reads OrgPath, the OU tree's correctness stops being a governance
+signal.
+
+That is not licence to ignore OU-bound dependencies. Group Policy links,
+delegated administration, and LDAP-bound applications are inventoried in the
+dependency map and retired deliberately. Every LDAP-dependent application should
+land in exactly one of the four canonical target states — application proxy,
+SAML, OIDC, or a managed domain service — before the tree hosting it is retired.
+An application with no documented target state is a decommission blocker, and it
+is better to discover that in Discover than in Decommission.
+
+## 5. The cutover is a sourcing flip, not a tenant move
+
+There is a real cutover date, and it is worth naming precisely because
+"cutover" invites the wrong mental model.
+
+It is the moment **Entra becomes source of truth**: AD-side edits stop being
+supported, on-premises write access is constrained at the ACL layer to a service
+identity plus a small break-glass set, and writeback begins carrying attributes
+down to whatever legacy consumers remain. The production cutover runbook covers
+the sequence; the validation report gates entry to it.
+
+What it is **not** is a migration of objects between tenants. Nothing moves. The
+same objects, in the same tenant, change which system is authoritative for them.
+
+Two practical notes:
+
+- **One cutover, twelve retirements.** The sourcing flip is estate-wide. Tree
+  retirement is not.
+- **The risk lives in the coexistence window, not on the date.** A long
+  coexistence period with both planes writable is where drift accumulates. The
+  posture that AD-side edits are unsupported must be *enforced*, not merely
+  documented, or the next sync silently overwrites an operator's change with no
+  warning.
+
+## 6. Decommission: twelve gates, not one date
+
+Each tree retires on its own evidence. The canon Decommission phase exists
+precisely so that retirement follows validation rather than coinciding with it,
+and the customer guides in adjacent domains set the expectation for soak periods:
+the DNS modernisation guide requires a 30-day validation window followed by 90
+days of parallel operation before retiring legacy servers; the PKI guide holds a
+30-day rollback window before its Decommission phase.
+
+Apply the same discipline per tree. A tree is retirable when:
+
+1. every principal in it carries validated facets and a derived path;
+2. no policy, group, or AU still targets it by OU position;
+3. every GPO, delegation, and LDAP-bound application it hosted has a documented
+   target state that has been executed;
+4. its soak has elapsed with no critical drift events; and
+5. the retirement is signed off and recorded.
+
+Sequence the trees by dependency and blast radius, not by convenience. The tree
+carrying the forest root and its FSMO roles retires **last**, and its retirement
+is a separate exercise from retiring a leaf tree.
+
+## What this guide does not decide
+
+Stated explicitly so the boundaries are not mistaken for omissions:
+
+- **It does not choose your HR integration.** The architecture binds to no
+  specific HR product; the source slot is a property of the deployed vertical.
+- **It does not size the waves.** Wave composition depends on tree size,
+  business calendar, and help-desk capacity — none of which the estate shape
+  determines.
+- **It does not cover mainframe or non-Windows directory consumers**, which
+  follow their own adapter paths.
+- **It does not address a genuinely multi-forest estate.** If a second forest
+  exists, §1.1 no longer holds and discovery reverts to the per-forest model.
+
+## Related
+
+- [OrgTree Modernization — AD to Entra ID](../../reference-architecture/orgtree.qmd) — the underlying pattern
+- [Domain-Join → OrgPath-Join Crosswalk](domain-join-to-orgpath-join.qmd) — what a domain join silently establishes, and its OrgPath equivalent
+- [AD to Entra ID Tree](ad-to-entraid-tree.qmd) — encoding reference
+- [ADR-081](../../../adr/adr-081-directory-migration-phase-canonical-model.qmd) — the canonical six-phase model
+- [ADR-063](../../../adr/adr-063-orgpath-storage-slot-binding.qmd) — storage slot binding and the rebind procedure
+- [ADR-127](../../../adr/adr-127-orgpath-hybrid-derived-path.qmd) — Hybrid-C+Path, facets plus the derived canonical path

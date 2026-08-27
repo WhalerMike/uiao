@@ -467,6 +467,7 @@
   - [AD to Entra ID — OrgTree Translation](customer-documents/operational-guides/identity-orgtree/ad-to-entraid-tree.html)
   - [UIAO Identity Modernization Guide](customer-documents/operational-guides/identity-orgtree/identity-modernization.html)
   - [Domain-Join → OrgPath-Join Crosswalk](customer-documents/operational-guides/identity-orgtree/domain-join-to-orgpath-join.html)
+  - [Multi-Tree Forest → OrgPath: Sequencing the Hybrid Write Path](customer-documents/operational-guides/identity-orgtree/multi-tree-forest-transition.html)
   - [UIAO DNS Modernization Guide](customer-documents/operational-guides/network-transformation/dns-modernization.html)
   - [UIAO PKI Modernization Guide](customer-documents/operational-guides/pki-modernization.html)
   - [UIAO Master Project Plan](customer-documents/operational-guides/program-management/master-project-plan.html)
