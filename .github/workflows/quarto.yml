@@ -600,6 +600,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write  # softprops/action-gh-release: publish/update downloads-latest
+    outputs:
+      # Surfaced so `release_publish_status` can fail the run for a broken
+      # Releases publish WITHOUT that failure having blocked the deploy.
+      release_outcome: ${{ steps.publish_release.outcome }}
     steps:
       - name: Download HTML site
         uses: actions/download-artifact@v8
@@ -955,6 +959,25 @@ jobs:
         # kit-build scripts write into; a bare `*` glob swept that page's
         # own HTML into the release too (caught after the fact as a stray
         # `index.html` release asset on the first run of this step).
+        #
+        # continue-on-error: a failure here must NOT skip the rest of this job.
+        # The steps after it include "Upload Pages artifact", and `deploy` needs
+        # this job -- so without this flag, an error from the Releases API takes
+        # the whole site deploy down with it. That happened twice in a row on
+        # 2026-08-27: runs 1357 (61b2d9e) and 1358 (efe981f) each uploaded every
+        # asset successfully and then died on GitHub's "Unicorn!" 500 page, and
+        # each time "Upload Pages artifact" and the entire `deploy` job were
+        # skipped. Nothing was wrong with either commit; the site simply stopped
+        # publishing.
+        #
+        # This step is, by its own name, "not the Pages artifact" -- the kits are
+        # self-contained downloads shipped as release assets. Its availability
+        # and the site's should not be a single fate. The failure is NOT
+        # swallowed: the outcome becomes a job output and `release_publish_status`
+        # re-raises it once the deploy has already gone out, so the run still
+        # goes red and a persistently broken publish stays visible.
+        id: publish_release
+        continue-on-error: true
         if: env.MAINTENANCE_MODE != 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: softprops/action-gh-release@v3
         with:
@@ -985,6 +1008,14 @@ jobs:
         # fix. find with -delete on a pattern that matches nothing is a
         # no-op, so this stays safe if a kit-build or staging step above
         # failed non-fatally.
+        #
+        # Left unconditional even when the release-publish step above fails.
+        # Keeping the kits in _site instead would push the Pages artifact back
+        # to ~2.8 GB -- the size that tripped GitHub's 1 GB Pages guidance on
+        # 2026-08-06 -- and risk losing the deploy to save the downloads. A
+        # publish failure so far has always come AFTER every asset uploaded
+        # (see the note on that step), so the release assets are in place; the
+        # site staying up is worth more than the residual risk that one is not.
         if: env.MAINTENANCE_MODE != 'true'
         run: |
           find _site/download -maxdepth 1 -name '*.zip' -delete
@@ -1058,3 +1089,35 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+
+  release_publish_status:
+    name: Download-kit release publish status
+    # The other half of `continue-on-error` on the release-publish step: that
+    # flag keeps a Releases API failure from taking the site deploy down with
+    # it, and this job makes sure the failure is still reported. It needs
+    # `deploy`, so it can only ever go red after the site has already shipped
+    # -- the run turns red, the deploy does not wait on it.
+    #
+    # This matters because the render is main-only and not a PR gate: a
+    # silently-green pipeline is how the 2026-08-21 breakage went five days
+    # unnoticed. Tolerating a failure is not the same as hiding it.
+    needs: [assemble, deploy]
+    if: always() && needs.assemble.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Re-raise a failed download-kit release publish
+        if: needs.assemble.outputs.release_outcome == 'failure'
+        run: |
+          echo "::error::Publishing the download kits to the downloads-latest release failed."
+          echo "The Pages deploy was NOT blocked by it and the site is published."
+          echo "Check the 'Publish download kits to GitHub Releases' step in the"
+          echo "'Assemble combined site' job for the underlying error. A GitHub 5xx"
+          echo "there is usually transient and clears on the next push to main;"
+          echo "if it repeats across several runs, the release assets are stale and"
+          echo "the downloads on the site may 404 until it succeeds."
+          exit 1
+
+      - name: Report a healthy publish
+        if: needs.assemble.outputs.release_outcome != 'failure'
+        run: |
+          echo "Download-kit release publish: ${{ needs.assemble.outputs.release_outcome }}"
