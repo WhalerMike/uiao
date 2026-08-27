@@ -499,6 +499,12 @@
   - [5 · Intune Device Writeback (Entra / Graph)](customer-documents/operational-guides/orgpath-implementation/05-intune-device-writeback.html)
   - [6 · Azure Arc Server Writeback (ARM Tags)](customer-documents/operational-guides/orgpath-implementation/06-arc-server-writeback.html)
   - [7 · Operate & Troubleshoot](customer-documents/operational-guides/orgpath-implementation/07-operate-and-troubleshoot.html)
+- **SIEM Telemetry Emission (Entra, Azure, M365)**
+  - [SIEM Telemetry Emission — Entra, Azure, and Microsoft 365](customer-documents/operational-guides/siem-telemetry-emission/index.html)
+  - [1. Microsoft Entra ID — Identity Telemetry Emission](customer-documents/operational-guides/siem-telemetry-emission/01-entra-id.html)
+  - [2. Azure Platform — Activity Log and Resource Log Emission](customer-documents/operational-guides/siem-telemetry-emission/02-azure-platform.html)
+  - [3. Microsoft 365 Unified Audit Log Emission](customer-documents/operational-guides/siem-telemetry-emission/03-m365-unified-audit.html)
+  - [4. Compliance Crosswalk and Verification](customer-documents/operational-guides/siem-telemetry-emission/04-compliance-crosswalk.html)
 - **Operational Guides — sub-category landing pages**
   - [A. Platform Substrate](customer-documents/operational-guides/platform-substrate/index.html)
   - [B. Transformation Engine](customer-documents/operational-guides/transformation-engine/index.html)
