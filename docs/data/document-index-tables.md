@@ -129,6 +129,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [The Session vs. Telemetry Divide — Why Identity Architecture Splits at the FedRAMP Boundary](whitepapers/session-vs-telemetry-identity.html) | Active | Executive, Architect, Assessor, Technical-Lead |
 | [Snowflake Key-Pair Conversion — the UIAO and OrgPath Reading](whitepapers/snowflake-keypair-vs-uiao-orgpath.html) | Draft | Executive, Technical, Customer |
 | [SD-WAN vs. DIA Under TIC 3.0](whitepapers/tic3-sdwan-vs-dia.html) | Draft | Executive, Architect, Engineer, Technical-Lead |
+| [Ticket-to-Machine — Supporting Technical Detail (Standalone Edition)](whitepapers/ticket-to-machine-appendices-standalone.html) | Draft | Architect, Engineer, Assessor, Technical-Lead |
 | [Ticket-to-Machine Appendices — Code Review, Access Governance, PKI, and Vendor Landscape](whitepapers/ticket-to-machine-appendices.html) | Draft | Architect, Engineer, Assessor, Technical-Lead |
 | [Ticket-to-Machine, Not Ticket-to-Human: Why Changing State Isn't Compliance Evidence](whitepapers/ticket-to-machine-not-ticket-to-human.html) | Draft | Executive, Customer, Technical, Assessor |
 | [Ticket-to-Machine, Not Ticket-to-Human: Why Changing State Isn't Compliance Evidence (Standalone Edition)](whitepapers/ticket-to-machine-standalone.html) | Draft | Executive, Customer, Technical, Assessor |
