@@ -37,6 +37,17 @@ The short answer is that native cloud and virtualization consoles are excellent 
 Across every platform examined in this paper — Microsoft 365, Azure, AWS, and VMware — the control-closure analysis behind it marks **CM-6 (Configuration Settings)** as `Tool-attestable: No`, without exception, regardless of vendor; the three IaaS/hybrid platforms (Azure, AWS, VMware) additionally carry **RA-5 (Vulnerability Monitoring and Scanning)** and **SI-2 (Flaw Remediation)** with the same verdict — M365 is Microsoft-managed SaaS and never reaches a control-closure table for those two at all. This is not an oversight or a gap waiting to be closed by the next product release — it is the structural finding of this paper: no native console, by itself, produces the ownership/clock/approval/evidence record FedRAMP evidence requires. That record comes from a coordination layer — ServiceNow, with SailPoint ISC Governance feeding it detection findings for the adjacent access-governance domain — sitting in front of the native tools, not replacing them.
 :::
 
+::: {.callout-note}
+## What this edition asks of the ServiceNow team
+This edition is written for the agency's internal ServiceNow team. The argument below is the *why*; the
+request is in §13. Everything §§3–8 describe depends on ServiceNow being able to reach four native
+surfaces — Entra ID/Azure, AWS, and VMware — under a service identity, with ServiceNow acting as the
+approval front end both for **SAM (Systems Access Manager)** access requests and for configuration,
+vulnerability, and patch findings. On the ServiceNow side that reach is an **IntegrationHub spoke**, and
+spokes are a licensed entitlement rather than a platform feature. **§13 asks the team to confirm which of
+those spokes the agency's current contract covers, and to name the gaps.**
+:::
+
 ## 2. The Question, Precisely
 
 "Does the native cloud portal already do this?" is really three separate questions that get collapsed into one:
@@ -121,7 +132,7 @@ The table below consolidates the `Tool-attestable?` verdict for every control ex
 
 ![Four platforms, one verdict — every native engine actuates, every control still reads Tool-attestable: No](images/orgcomp-vs-native-cloud-consoles-diagram-02-platform-rollup.png){#fig-orgcomp-rollup fig-alt="A table titled Four Platforms, One Verdict, on a white background, subtitle: every native engine actuates, every control still reads Tool-attestable No. Four rows — M365 (Conditional Access, Purview; CM-6), Azure (Azure Policy, Defender for Cloud, MDVM, Update Manager plus Arc; CM-6/RA-5/SI-2), AWS (AWS Config, Security Hub CSPM plus GuardDuty/Inspector, Patch Manager; CM-2/CM-6, CM-6/RA-5, SI-2), VMware (vSphere Configuration Profiles, VCF Operations plus NSX DFW, vSphere Lifecycle Manager; CM-2/CM-6, CM-6/RA-5, SI-2) — each row ending in a red No badge under Tool-attestable. A footer band reads: four vendors, four native stacks, one identical column — a structural finding, not a per-vendor gap. White background, navy header row, red badges." width="100%"}
 
-Four different vendors, four different native stacks, one identical column of verdicts. That consistency is a single structural claim applied uniformly, not four independent confirmations of it. §11's external validation is the independent corroboration for that claim.
+Four different vendors, four different native stacks, one identical column of verdicts. That consistency is a single structural claim applied uniformly, not four independent confirmations of it. The external validation in §11 is the independent corroboration for that claim.
 
 ## 7. The Front Door: What ServiceNow Actually Supplies
 
@@ -164,18 +175,48 @@ For a customer or assessor weighing whether to skip the coordination layer and r
 
 ## 11. External Validation and Build-vs-Buy (2026-07-28)
 
-This paper's core claim — that a native console cannot be the evidence system of record — is not a position held in isolation. Independent research done the same week this paper was drafted backs it directly: the market agrees on the structural claim (Continuum GRC; Knox Systems, 2026), and it sharpens two points worth stating plainly — ServiceNow↔VMware integration is not greenfield (VMware Aria's Management Pack, the VCF Automation ITSM plugin), and a commercial FedRAMP 20x KSI product, C1Secure SmartRAMP 20x, already competes with a custom-built scoped application for the KSI-attestation slice. It also confirms §8's SailPoint framing (findings route into ServiceNow, not around it) and surfaces the alternative architectures a critical reviewer will raise — Wiz's native VMware CNAPP coverage, and the OSCAL-first Vanta/RegScale/Paramify bet that bypasses ServiceNow/SailPoint coordination altogether.
+This paper's core claim — that a native console cannot be the evidence system of record — is not a position held in isolation. Independent research done the same week this paper was drafted backs it directly: the market agrees on the structural claim (Continuum GRC; Knox Systems, 2026), and it sharpens two points worth stating plainly — ServiceNow↔VMware integration is not greenfield (VMware Aria's Management Pack, the VCF Automation ITSM plugin), and a commercial FedRAMP 20x KSI product, C1Secure SmartRAMP 20x, already competes with a custom-built scoped application for the KSI-attestation slice. It also confirms the SailPoint framing in §8 (findings route into ServiceNow, not around it) and surfaces the alternative architectures a critical reviewer will raise — Wiz's native VMware CNAPP coverage, and the OSCAL-first Vanta/RegScale/Paramify bet that bypasses ServiceNow/SailPoint coordination altogether.
 
-The sourcing for each of these vendor claims is listed in the References table below; §13 carries the currency caveat that applies to all of them.
+The sourcing for each of these vendor claims is listed in the References table below; §14 carries the currency caveat that applies to all of them.
 
 ## 12. Honest Limits
 
-- **§4's "machine, not human" recommendation is a derived design principle, not a citable rule — see §4 itself for the honest framing.** No 800-53 control bars a human from executing an approved change, and FedRAMP's own KSI-CMT-RMV is qualified "wherever reasonable." The citations and the vCenter/PSM exception path are set out there; this paper states the conclusion in its main body rather than only here.
-- This paper's CM-6/RA-5/SI-2 argument is well-established across all four platforms and their control-closure verdicts; the AC-2/AC-3/AC-6 extension (§8) is likewise a documented closure — but VMware/vCenter identity governance remains genuinely open within it, per §8's caution.
+- **The "machine, not human" recommendation in §4 is a derived design principle, not a citable rule — see that section for the honest framing.** No 800-53 control bars a human from executing an approved change, and FedRAMP's own KSI-CMT-RMV is qualified "wherever reasonable." The citations and the vCenter/PSM exception path are set out there; this paper states the conclusion in its main body rather than only here.
+- This paper's CM-6/RA-5/SI-2 argument is well-established across all four platforms and their control-closure verdicts; the AC-2/AC-3/AC-6 extension (§8) is likewise a documented closure — but VMware/vCenter identity governance remains genuinely open within it, per the caution in §8.
 - Native-tool assessment latency (Azure Policy/Defender, AWS Config/Security Hub, VMware Configuration Profiles/VCF Operations) means "closed" in ServiceNow can lag the native platform's own evaluation cycle by one cycle; evidence timestamps record the cycle, not the instant.
 - This paper does not evaluate whether ServiceNow's own native product modules (Configuration Compliance, Vulnerability Response/USEM, GRC: Continuous Authorization and Monitoring) already ship equivalent coordination out of the box versus requiring a custom scoped application — that is a separate build-vs-buy question, orthogonal to this paper's claim that *some* coordination layer, not the native console alone, is what produces the evidence.
 
-## 13. Vendor Currency
+## 13. The Ask — Spoke Coverage Under the Agency Contract
+
+The architecture in §§3–8 only works if ServiceNow can actually reach each native surface under a service
+identity. §4 is explicit that the ticket must authorize a *machine*, not a person; a ServiceNow that can
+raise a task but cannot reach the platform is exactly the ticket-to-human anti-pattern that section
+describes. On the ServiceNow side, that reach is an IntegrationHub spoke — and because spokes are a
+licensed entitlement, this is a contract question before it is an engineering one.
+
+**The request:** for each row below, confirm whether the agency's current ServiceNow contract entitles the
+integration, and where it does not, say so explicitly so the gap can be booked rather than discovered
+during implementation.
+
+| Platform | What this paper needs ServiceNow to reach | Integration to confirm | Status to confirm |
+|---|---|---|---|
+| **Entra ID** (AC-2/AC-3/AC-6 identity lifecycle; the SAM approval front end) | User, group, license, service-principal, password, and device actions under a delegated service account | **Microsoft Entra ID Spoke** (formerly the Microsoft Azure Active Directory Spoke) | Documented by ServiceNow — confirm it is entitled, and confirm the delegated account's scope |
+| **Azure** (CM-6, RA-5, SI-2) | Read Azure Policy, Defender for Cloud, and Update Manager state; raise and close typed tasks against the reconciled CI | Microsoft Azure spokes — the **Virtual Machine** and **Virtual Network** spokes are documented; which spoke, if any, covers Policy / Defender / Update Manager is the open question | Confirm both *coverage* and entitlement |
+| **AWS** (CM-2/CM-6, RA-5, SI-2) | Read AWS Config, Security Hub, and Inspector findings and Systems Manager Patch Manager state | **AWS IAM Spoke** is documented; the **ServiceNow AWS Integration for Security Exposure Management** store app covers Inspector + Security Hub | Confirm entitlement for both, and whether Config and Patch Manager are covered |
+| **VMware** (CM-2/CM-6, RA-5, SI-2) | Read vSphere Configuration Profiles / VCF Operations / vLCM state, and actuate under a service identity | No vCenter IntegrationHub spoke was found. The documented connectors are the **VMware Aria Operations Management Pack for ServiceNow** and the **VCF Automation ITSM plugin** | Confirm what the contract covers; until a machine actuator exists, the PSM exception in §4 applies |
+
+Two notes on how to read the table. The VMware row is the one this paper already flags as genuinely open
+(§4, §8): it is not an oversight in the table but the same gap stated in contract terms, and the honest
+answer may be "no spoke exists," in which case the CyberArk PSM compensating control in §4 is the closure path
+rather than a workaround. And where a spoke turns out not to be entitled, the answer is *not* to route the
+work through a human at the console — that is precisely the anti-pattern §4 rejects. It is either to
+license the integration, or to book the gap as a declared exception with a named compensating control.
+
+Spoke names and packaging move between ServiceNow releases, and IntegrationHub entitlement is set by
+subscription terms rather than by the platform; treat every product name above as a starting point for
+that confirmation, not as a statement of what the agency already owns. §14 applies here in full.
+
+## 14. Vendor Currency
 
 ::: {.callout-important}
 ## Vendor currency caveat — read before building a Project Plan on this paper
@@ -186,8 +227,13 @@ This paper's dated vendor claims — SmartRAMP 20x, the VMware Aria/ServiceNow c
 
 | Claim | Source |
 |---|---|
+| §13 — IntegrationHub spokes list (what ships, per release) | ServiceNow — <https://www.servicenow.com/docs/r/integrate-applications/integration-hub/spokes-list.html> |
+| §13 — Microsoft Entra ID Spoke (formerly Microsoft Azure Active Directory Spoke) | ServiceNow — <https://www.servicenow.com/docs/r/integrate-applications/integration-hub/microsoft-azure-ad-spoke.html> |
+| §13 — Microsoft Azure Virtual Machine Spoke | ServiceNow — <https://www.servicenow.com/docs/r/integrate-applications/integration-hub/azure-vir-mach-spoke.html> |
+| §13 — AWS IAM Spoke | ServiceNow — <https://www.servicenow.com/docs/r/yokohama/integrate-applications/integration-hub/aws-iam-spoke.html> |
+| §13 — IntegrationHub subscription terms (entitlement is contractual, not a platform feature) | ServiceNow — <https://www.servicenow.com/content/dam/servicenow-assets/public/en-us/doc-type/legal/snc-addendum-integrationhub.pdf> |
 | PAIN-rating remediation timeframes (VDR-TFR-PVR) | FedRAMP — <https://www.fedramp.gov/2026/reference/vulnerability-detection-and-response/> |
-| §4's CM-3(2)/CM-5(1)/CM-6(1)/SI-2(2) Moderate-baseline enhancements — checked directly against the published baseline rather than asserted | FedRAMP Rev 5 Moderate baseline profile (OSCAL), `FedRAMP_rev5_MODERATE-baseline_profile.xml` |
+| The CM-3(2)/CM-5(1)/CM-6(1)/SI-2(2) Moderate-baseline enhancements cited in §4 — checked directly against the published baseline rather than asserted | FedRAMP Rev 5 Moderate baseline profile (OSCAL), `FedRAMP_rev5_MODERATE-baseline_profile.xml` |
 | KSI-CMT-RMV/VTD/RVP text (FedRAMP Consolidated Rules for 2026, version `2026.06.24.01`) | FedRAMP — <https://github.com/FedRAMP/rules> |
 | Risk-based remediation prioritization (KEV catalog) | CISA — <https://www.cisa.gov/known-exploited-vulnerabilities-catalog> |
 | "CSPM complements GRC — findings need owners and closure proof"; no single tool covers a FedRAMP boundary alone | Continuum GRC — <https://continuumgrc.com/audit-compliance-solutions-fedramp/> |
