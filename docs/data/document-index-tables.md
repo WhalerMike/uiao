@@ -131,6 +131,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [SD-WAN vs. DIA Under TIC 3.0](whitepapers/tic3-sdwan-vs-dia.html) | Draft | Executive, Architect, Engineer, Technical-Lead |
 | [Ticket-to-Machine Appendices — Code Review, Access Governance, PKI, and Vendor Landscape](whitepapers/ticket-to-machine-appendices.html) | Draft | Architect, Engineer, Assessor, Technical-Lead |
 | [Ticket-to-Machine, Not Ticket-to-Human: Why Changing State Isn't Compliance Evidence](whitepapers/ticket-to-machine-not-ticket-to-human.html) | Draft | Executive, Customer, Technical, Assessor |
+| [Ticket-to-Machine, Not Ticket-to-Human: Why Changing State Isn't Compliance Evidence (Standalone Edition)](whitepapers/ticket-to-machine-standalone.html) | Draft | Executive, Customer, Technical, Assessor |
 | [UIAO Governance OS — Whitepaper](whitepapers/uiao-governance-os-whitepaper.html) | Active | Executive, Customer, Assessor |
 | [UIAO vs Microsoft Native Tools — Gap Analysis](whitepapers/uiao-vs-native-tools.html) | Active | Executive, Customer, Technical |
 | [Zero Trust Governance Principles](whitepapers/zero-trust-governance-principles.html) | Active | Executive, Customer, Assessor, Architect |
