@@ -29,7 +29,7 @@ ADR_INDEX = REPO_ROOT / "docs" / "adr" / "adr-index.qmd"
 def test_release_tag_is_read_from_the_deploy_workflow() -> None:
     """Not a second hardcoded copy — that divergence is what caused #1429."""
     workflow = (REPO_ROOT / ".github" / "workflows" / "quarto.yml").read_text(encoding="utf-8")
-    assert f"tag_name: {gen.downloads_release_tag()}" in workflow
+    assert f'DOWNLOADS_RELEASE_TAG: "{gen.downloads_release_tag()}"' in workflow
 
 
 def test_bundle_url_is_absolute_and_points_at_releases() -> None:

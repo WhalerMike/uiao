@@ -15,6 +15,7 @@ on:
       - 'scripts/build_orgcomp_markdown_download.py'
       - 'scripts/build_day2_kit_download.py'
       - 'scripts/stamp_docx_header.py'
+      - 'scripts/publish_release_assets.py'
       - 'tools/scubadrift/**'
       - '.github/workflows/quarto.yml'
   workflow_dispatch:
@@ -47,6 +48,15 @@ env:
   # To upgrade: bump this, run the workflow via workflow_dispatch on a branch,
   # and merge only once that render is green.
   QUARTO_VERSION: "1.10.18"
+
+  # The rolling release the download kits and section .docx bundles are
+  # published under. This is the single definition of that tag:
+  # scripts/generate_adr_qmd_wrappers.py reads it from here to build the ADR
+  # index's bundle URLs, rather than keeping a second copy that can drift --
+  # the drift that caused issue #1429. Keep the name and the literal on one
+  # line; that generator and tests/test_adr_wrapper_bundle_link.py both
+  # match it textually.
+  DOWNLOADS_RELEASE_TAG: "downloads-latest"
 
 # Pipeline shape:
 #   render_html  ─┐
@@ -1085,24 +1095,55 @@ jobs:
         # swallowed: the outcome becomes a job output and `release_publish_status`
         # re-raises it once the deploy has already gone out, so the run still
         # goes red and a persistently broken publish stays visible.
+        #
+        # Uploaded by scripts/publish_release_assets.py rather than
+        # softprops/action-gh-release, because that action uploads with
+        # `Promise.all(files.map(uploadFile))` -- every asset concurrently --
+        # and with overwrite_files each asset is a DELETE plus an UPLOAD. At
+        # ~104 assets that is ~208 content-generating requests in about fifteen
+        # seconds, against GitHub's documented secondary limits of 80
+        # content-generating requests per minute and 100 concurrent requests.
+        # It breached both by roughly an order of magnitude and only sometimes
+        # got away with it, which is why the failures looked random; on
+        # 2026-08-31 (run 33402423145) it came back "You have exceeded a
+        # secondary rate limit."
+        #
+        # The script uploads serially, paces the writes against a sliding
+        # window sized from that per-minute budget, and backs off and retries
+        # when GitHub says to. It hands `gh` the bare basename exactly as the
+        # action did, so asset names -- which the Download page links by their
+        # server-normalised form -- are unchanged.
         id: publish_release
         continue-on-error: true
         if: env.MAINTENANCE_MODE != 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: downloads-latest
-          name: "Download Kits — latest"
-          body: |
-            Rebuilt from source on every deploy to `main` — not a versioned
-            release. See the [Downloads page](https://whalermike.github.io/uiao/download/)
-            for what each file contains and how to verify a download.
-          make_latest: false
-          files: |
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cat > _release_notes.md <<'NOTES'
+          Rebuilt from source on every deploy to `main` — not a versioned
+          release. See the [Downloads page](https://whalermike.github.io/uiao/download/)
+          for what each file contains and how to verify a download.
+          NOTES
+          # nullglob so a kit-build step that failed non-fatally leaves the
+          # glob empty rather than passing a literal `*` through as a filename.
+          shopt -s nullglob
+          assets=(
             _site/download/*.zip
             _site/download/ScubaDrift-Documentation.docx
             _release_bundles/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          )
+          echo "Collected ${#assets[@]} asset(s) to publish."
+          if [ ${#assets[@]} -eq 0 ]; then
+            echo "::error::no download kits were built; refusing to publish an empty release."
+            exit 1
+          fi
+          python3 _repo/scripts/publish_release_assets.py \
+            --tag "$DOWNLOADS_RELEASE_TAG" \
+            --title "Download Kits — latest" \
+            --body-file _release_notes.md \
+            --repo "${{ github.repository }}" \
+            "${assets[@]}"
 
       - name: Remove published download kits and .docx bundles from the Pages artifact
         # Now that the same files are on the downloads-latest release,
