@@ -40,6 +40,16 @@ jobs:
     # blanket `^file://` ignore that mis-resolution was invisible — it
     # produced 2,942 phantom errors that were all suppressed before anyone
     # saw them. Do not re-add it.
+    #
+    # `--accept` carries 403 and 406 because both are vendor sites refusing the
+    # crawler rather than reporting a dead link: 403 is an outright bot block
+    # (learn.microsoft.com does this to cloud-runner IPs), and 406 Not
+    # Acceptable is a content-negotiation refusal of lychee's request headers
+    # (elastic.co started doing this on 2026-08-28, turning every PR in the
+    # repo red for a live page). Neither status is evidence of link rot, so
+    # accepting them repo-wide beats accumulating per-URL `.lycheeignore`
+    # entries that each need their own justification. A genuinely dead link
+    # answers 404/410, which is still a failure.
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -75,7 +85,7 @@ jobs:
             --max-retries 3
             --retry-wait-time 5
             --timeout 20
-            --accept 200,206,403,429,503
+            --accept 200,206,403,406,429,503
             --exclude '^https?://(www\.)?onedrive\.com(/|$)'
             --exclude '^https?://onedrive\.live\.com(/|$)'
             --exclude '^https?://download\.microsoft\.com/download/'
