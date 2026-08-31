@@ -161,9 +161,9 @@ advice, no warranty) apply unchanged. Additionally:
 - What the implementation team builds differently → `CURRENT-STATE-BUILD-DELTA.md`.
 - The 2027 goal and the doctrine behind it → the base kit + Vol I Book 04 (HRIT SSOT), Vol 0 Book 00 (MACD-R).
 
-**Before the pilot — the two live-validation tracks.** Everything above is
+**Before the pilot — the live-validation tracks.** Everything above is
 proven by a mock harness against fixture data. These close the gap to real
-infrastructure, and `CURRENT-STATE-PILOT-ROLLOUT.md` §0 requires both:
+infrastructure, and `CURRENT-STATE-PILOT-ROLLOUT.md` §0 requires the first two:
 
 - Proving the scoped app, the Flow and the fail-closed contract on a real
   ServiceNow instance → `CURRENT-STATE-PDI-VALIDATION.md`.
@@ -171,3 +171,10 @@ infrastructure, and `CURRENT-STATE-PILOT-ROLLOUT.md` §0 requires both:
   MID dispatch, and the VERIFY read-back →
   `CURRENT-STATE-AD-LAB-VALIDATION.md`. Requires a throwaway lab; the ISSO may
   waive it, with the waiver recorded.
+- Joining those two together → `CURRENT-STATE-MID-BRIDGE.md`. The first two
+  tracks leave one gap between them: a PDI never picks the ECC row up, and the
+  AD lab never writes one, so `_dispatch` → MID → `resolveDispatch` has never
+  executed end to end. This track builds the dual-homed MID host that carries
+  it, settles whether the raw-JSON `payload` and the script's `-JobJson` entry
+  contract actually agree, and asserts the fail-closed read-back against a real
+  transport.

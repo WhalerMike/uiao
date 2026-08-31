@@ -66,6 +66,10 @@ CURRENT_MD_DOCX = {
     # neither -- and START-HERE pointed at "the tracks below" that were not there.
     "CURRENT-STATE-PDI-VALIDATION": "OrgComp_Day2_Kit_Current_5_PDI_Validation",
     "CURRENT-STATE-AD-LAB-VALIDATION": "OrgComp_Day2_Kit_Current_6_AD_Lab_Validation",
+    # The seam between the two tracks above: a PDI never picks the ECC row up,
+    # the AD lab never writes one, so the transport itself was covered by
+    # neither.
+    "CURRENT-STATE-MID-BRIDGE": "OrgComp_Day2_Kit_Current_7_MID_Bridge",
 }
 
 # --- Numbered docx/ reading-order sets, per edition. ----------------------------
@@ -105,6 +109,10 @@ CURRENT_DOCX_SET = {
     # §0 now requires both tracks before the pilot may start.
     "OrgComp_Day2_Kit_Current_5_PDI_Validation": "10_PDI_Validation.docx",
     "OrgComp_Day2_Kit_Current_6_AD_Lab_Validation": "11_AD_Lab_Validation.docx",
+    # Appended for the same reason as 10 and 11: renumbering to place it beside
+    # them would churn every existing filename. Reading order is carried by
+    # CURRENT-STATE-START-HERE §6, which sequences all three tracks.
+    "OrgComp_Day2_Kit_Current_7_MID_Bridge": "12_MID_Bridge.docx",
 }
 
 
