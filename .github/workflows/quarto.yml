@@ -14,6 +14,7 @@ on:
       - 'scripts/build_orgcomp_download.py'
       - 'scripts/build_orgcomp_markdown_download.py'
       - 'scripts/build_day2_kit_download.py'
+      - 'scripts/stamp_docx_header.py'
       - 'tools/scubadrift/**'
       - '.github/workflows/quarto.yml'
   workflow_dispatch:
@@ -132,6 +133,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # Full history: scripts/stamp_docx_header.py derives each
+          # document's Rev from the last commit touching its own
+          # sources. On a shallow clone `git log -- <file>` returns the
+          # tip for every file, so every document would carry the same
+          # Rev and it would move on every commit. The script refuses
+          # rather than emit that, so this is load-bearing.
+          fetch-depth: 0
 
       - name: Set up Quarto (pinned, resilient install)
         # Version is pinned via QUARTO_VERSION at the top of this file — see the
@@ -185,7 +194,17 @@ jobs:
           echo "Total files: ${#all[@]}; this shard: ${SHARD_INDEX}/${SHARD_TOTAL}"
           for i in "${!all[@]}"; do
             if (( (i % SHARD_TOTAL) + 1 == SHARD_INDEX )); then
-              quarto render "${all[$i]}" --to docx --no-execute-daemon
+              doc="${all[$i]}"
+              quarto render "$doc" --to docx --no-execute-daemon
+              # Stamp the first-page header: render clock + a Rev derived from
+              # the last commit touching this document's own sources, so a
+              # re-render of unchanged content keeps the same Rev.
+              out="_site/${doc%.qmd}.docx"
+              if [ -f "$out" ]; then
+                python3 ../scripts/stamp_docx_header.py "$out" --source "$doc" --repo ..
+              else
+                echo "::warning::no DOCX produced for $doc; header not stamped"
+              fi
             fi
           done
 
@@ -215,6 +234,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # Full history: scripts/stamp_docx_header.py derives each
+          # document's Rev from the last commit touching its own
+          # sources. On a shallow clone `git log -- <file>` returns the
+          # tip for every file, so every document would carry the same
+          # Rev and it would move on every commit. The script refuses
+          # rather than emit that, so this is load-bearing.
+          fetch-depth: 0
 
       - name: Set up Quarto (pinned, resilient install)
         # Version is pinned via QUARTO_VERSION at the top of this file — see the
@@ -254,7 +281,17 @@ jobs:
           mapfile -t all < <(find canon -name '*.qmd' | sort)
           echo "Canon DOCX files: ${#all[@]}"
           for f in "${all[@]}"; do
-            quarto render "$f" --to docx --no-execute-daemon
+            doc="$f"
+            quarto render "$doc" --to docx --no-execute-daemon
+            # Stamp the first-page header: render clock + a Rev derived from
+            # the last commit touching this document's own sources, so a
+            # re-render of unchanged content keeps the same Rev.
+            out="_site/${doc%.qmd}.docx"
+            if [ -f "$out" ]; then
+              python3 ../scripts/stamp_docx_header.py "$out" --source "$doc" --repo ..
+            else
+              echo "::warning::no DOCX produced for $doc; header not stamped"
+            fi
           done
 
       - name: Upload canon DOCX artifact
@@ -280,6 +317,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # Full history: scripts/stamp_docx_header.py derives each
+          # document's Rev from the last commit touching its own
+          # sources. On a shallow clone `git log -- <file>` returns the
+          # tip for every file, so every document would carry the same
+          # Rev and it would move on every commit. The script refuses
+          # rather than emit that, so this is load-bearing.
+          fetch-depth: 0
 
       - name: Set up Quarto (pinned, resilient install)
         # Version is pinned via QUARTO_VERSION at the top of this file — see the
@@ -319,7 +364,17 @@ jobs:
           mapfile -t all < <(find adr -name '*.qmd' | sort)
           echo "ADR DOCX files: ${#all[@]}"
           for f in "${all[@]}"; do
-            quarto render "$f" --to docx --no-execute-daemon
+            doc="$f"
+            quarto render "$doc" --to docx --no-execute-daemon
+            # Stamp the first-page header: render clock + a Rev derived from
+            # the last commit touching this document's own sources, so a
+            # re-render of unchanged content keeps the same Rev.
+            out="_site/${doc%.qmd}.docx"
+            if [ -f "$out" ]; then
+              python3 ../scripts/stamp_docx_header.py "$out" --source "$doc" --repo ..
+            else
+              echo "::warning::no DOCX produced for $doc; header not stamped"
+            fi
           done
 
       - name: Upload ADR DOCX artifact
@@ -345,6 +400,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # Full history: scripts/stamp_docx_header.py derives each
+          # document's Rev from the last commit touching its own
+          # sources. On a shallow clone `git log -- <file>` returns the
+          # tip for every file, so every document would carry the same
+          # Rev and it would move on every commit. The script refuses
+          # rather than emit that, so this is load-bearing.
+          fetch-depth: 0
 
       - name: Set up Quarto (pinned, resilient install)
         # Version is pinned via QUARTO_VERSION at the top of this file — see the
@@ -384,7 +447,17 @@ jobs:
           mapfile -t all < <(find reference/schemas -name '*.qmd' | sort)
           echo "Schema DOCX files: ${#all[@]}"
           for f in "${all[@]}"; do
-            quarto render "$f" --to docx --no-execute-daemon
+            doc="$f"
+            quarto render "$doc" --to docx --no-execute-daemon
+            # Stamp the first-page header: render clock + a Rev derived from
+            # the last commit touching this document's own sources, so a
+            # re-render of unchanged content keeps the same Rev.
+            out="_site/${doc%.qmd}.docx"
+            if [ -f "$out" ]; then
+              python3 ../scripts/stamp_docx_header.py "$out" --source "$doc" --repo ..
+            else
+              echo "::warning::no DOCX produced for $doc; header not stamped"
+            fi
           done
 
       - name: Upload schemas DOCX artifact
@@ -409,6 +482,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # Full history: scripts/stamp_docx_header.py derives each
+          # document's Rev from the last commit touching its own
+          # sources. On a shallow clone `git log -- <file>` returns the
+          # tip for every file, so every document would carry the same
+          # Rev and it would move on every commit. The script refuses
+          # rather than emit that, so this is load-bearing.
+          fetch-depth: 0
 
       - name: Set up Quarto (pinned, resilient install)
         # Version is pinned via QUARTO_VERSION at the top of this file — see the
@@ -448,7 +529,17 @@ jobs:
           mapfile -t all < <(find academy -name '*.qmd' | sort)
           echo "Academy DOCX files: ${#all[@]}"
           for f in "${all[@]}"; do
-            quarto render "$f" --to docx --no-execute-daemon
+            doc="$f"
+            quarto render "$doc" --to docx --no-execute-daemon
+            # Stamp the first-page header: render clock + a Rev derived from
+            # the last commit touching this document's own sources, so a
+            # re-render of unchanged content keeps the same Rev.
+            out="_site/${doc%.qmd}.docx"
+            if [ -f "$out" ]; then
+              python3 ../scripts/stamp_docx_header.py "$out" --source "$doc" --repo ..
+            else
+              echo "::warning::no DOCX produced for $doc; header not stamped"
+            fi
           done
 
       - name: Upload academy DOCX artifact
@@ -473,6 +564,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # Full history: scripts/stamp_docx_header.py derives each
+          # document's Rev from the last commit touching its own
+          # sources. On a shallow clone `git log -- <file>` returns the
+          # tip for every file, so every document would carry the same
+          # Rev and it would move on every commit. The script refuses
+          # rather than emit that, so this is load-bearing.
+          fetch-depth: 0
 
       - name: Set up Quarto (pinned, resilient install)
         # Version is pinned via QUARTO_VERSION at the top of this file — see the
@@ -512,7 +611,17 @@ jobs:
           mapfile -t all < <(find findings -name '*.qmd' | sort)
           echo "Findings DOCX files: ${#all[@]}"
           for f in "${all[@]}"; do
-            quarto render "$f" --to docx --no-execute-daemon
+            doc="$f"
+            quarto render "$doc" --to docx --no-execute-daemon
+            # Stamp the first-page header: render clock + a Rev derived from
+            # the last commit touching this document's own sources, so a
+            # re-render of unchanged content keeps the same Rev.
+            out="_site/${doc%.qmd}.docx"
+            if [ -f "$out" ]; then
+              python3 ../scripts/stamp_docx_header.py "$out" --source "$doc" --repo ..
+            else
+              echo "::warning::no DOCX produced for $doc; header not stamped"
+            fi
           done
 
       - name: Upload findings DOCX artifact
