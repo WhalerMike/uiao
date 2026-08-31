@@ -38,7 +38,7 @@ For a **synced user** the password is mastered in AD: reset it on the writable D
 sync / writeback. SSPR is the preferred self-service path; this admin path is the
 approver-gated fallback. A **cloud-only** user is reset directly in Entra.
 
-![Password reset current-state write path.](figs/day2kit-task-01-password-reset.png){fig-alt="Password reset task card: split actuation — AD leg Set-ADAccountPassword on the writable DC for a synced user, Graph leg for a cloud-only user; emits NIST IA-5, feeds KSI-IAM." width="100%"}
+![Password reset current-state write path.](servicenow-day2/figs/day2kit-task-01-password-reset.png){fig-alt="Password reset task card: split actuation — AD leg Set-ADAccountPassword on the writable DC for a synced user, Graph leg for a cloud-only user; emits NIST IA-5, feeds KSI-IAM." width="100%"}
 
 ### MFA method reset — `entra.credential.mfa_reset` (IA-5)
 
@@ -46,7 +46,7 @@ MFA methods live in Entra even for a synced user, so this is **cloud-native** �
 there is no AD leg. Identity-proof the requester first, delete the method in Entra,
 require re-enrollment, and **log + alert** (a takeover-adjacent verb).
 
-![MFA method reset current-state write path.](figs/day2kit-task-02-mfa-reset.png){fig-alt="MFA method reset task card: cloud-native only, no AD leg — Graph DELETE of the authentication method, re-enrollment required, log and alert; emits NIST IA-5, feeds KSI-IAM." width="100%"}
+![MFA method reset current-state write path.](servicenow-day2/figs/day2kit-task-02-mfa-reset.png){fig-alt="MFA method reset task card: cloud-native only, no AD leg — Graph DELETE of the authentication method, re-enrollment required, log and alert; emits NIST IA-5, feeds KSI-IAM." width="100%"}
 
 ---
 
@@ -59,7 +59,7 @@ least-privilege baseline) and Entra Connect projects it into Entra. Once the
 synced object appears in Entra, the cloud leg assigns license and cloud-only
 groups **by role** — derived, never hand-picked.
 
-![Joiner current-state write path.](figs/day2kit-task-03-joiner.png){fig-alt="Joiner task card: split actuation — AD leg New-ADUser in the role OU then Entra Connect sync, Graph leg assigns license and cloud groups by role after the object appears; emits NIST AC-2 and IA-4, feeds KSI-IAM." width="100%"}
+![Joiner current-state write path.](servicenow-day2/figs/day2kit-task-03-joiner.png){fig-alt="Joiner task card: split actuation — AD leg New-ADUser in the role OU then Entra Connect sync, Graph leg assigns license and cloud groups by role after the object appears; emits NIST AC-2 and IA-4, feeds KSI-IAM." width="100%"}
 
 ### Role / scope change (mover) — `entra.jml.mover` (AC-6)
 
@@ -68,7 +68,7 @@ groups **by role** — derived, never hand-picked.
 and cloud-only groups in Entra. **Remove the stale grants** — a mover that only
 adds is a finding, because a stale entitlement is standing risk.
 
-![Mover current-state write path.](figs/day2kit-task-04-mover.png){fig-alt="Mover task card: split actuation — AD leg sets attributes, moves OU, adds/removes AD groups; Graph leg re-derives cloud access and removes stale grants; emits NIST AC-6 and AC-2, feeds KSI-IAM." width="100%"}
+![Mover current-state write path.](servicenow-day2/figs/day2kit-task-04-mover.png){fig-alt="Mover task card: split actuation — AD leg sets attributes, moves OU, adds/removes AD groups; Graph leg re-derives cloud access and removes stale grants; emits NIST AC-6 and AC-2, feeds KSI-IAM." width="100%"}
 
 ### De-provision (leaver) — `entra.jml.leaver` (AC-2)
 
@@ -77,7 +77,7 @@ the disabled OU on the writable DC — and sync flows `accountEnabled = false` t
 Entra. Kill the live cloud session directly in Entra (`revokeSignInSessions`) and
 reassign cloud-owned objects. Both legs, evidenced, or it is not closed.
 
-![Leaver current-state write path.](figs/day2kit-task-05-leaver.png){fig-alt="Leaver task card: split actuation — AD leg Disable-ADAccount and move to disabled OU then sync, Graph leg revokes sessions and reassigns cloud-owned objects; emits NIST AC-2, feeds KSI-IAM." width="100%"}
+![Leaver current-state write path.](servicenow-day2/figs/day2kit-task-05-leaver.png){fig-alt="Leaver task card: split actuation — AD leg Disable-ADAccount and move to disabled OU then sync, Graph leg revokes sessions and reassigns cloud-owned objects; emits NIST AC-2, feeds KSI-IAM." width="100%"}
 
 ---
 
@@ -90,7 +90,7 @@ membership in AD (`Add-/Remove-ADGroupMember`) and let it sync; if it is a
 **cloud-only / M365** group, manage it in Entra. The router branches on the group's
 source, not just the user. A privileged grant is time-bound and access-review-linked.
 
-![Group membership current-state write path.](figs/day2kit-task-06-group-membership.png){fig-alt="Group membership task card: split by group source — AD leg for a synced group, Graph leg for a cloud-only group; emits NIST AC-6, feeds KSI-IAM." width="100%"}
+![Group membership current-state write path.](servicenow-day2/figs/day2kit-task-06-group-membership.png){fig-alt="Group membership task card: split by group source — AD leg for a synced group, Graph leg for a cloud-only group; emits NIST AC-6, feeds KSI-IAM." width="100%"}
 
 ### Azure RBAC grant — `azure.rbac.assign` (AC-6)
 
@@ -99,7 +99,7 @@ representation, so `AzureArmClient.assignRbacRole` actuates directly on the
 resource plane — a custom least-privilege role at the tightest scope (resource
 group / resource, never subscription-wide by default).
 
-![Azure RBAC current-state write path.](figs/day2kit-task-07-azure-rbac.png){fig-alt="Azure RBAC task card: cloud-native only, no AD leg — ARM assigns a custom least-privilege role at a scoped level; emits NIST AC-6, feeds KSI-IAM." width="100%"}
+![Azure RBAC current-state write path.](servicenow-day2/figs/day2kit-task-07-azure-rbac.png){fig-alt="Azure RBAC task card: cloud-native only, no AD leg — ARM assigns a custom least-privilege role at a scoped level; emits NIST AC-6, feeds KSI-IAM." width="100%"}
 
 ### License assignment — `entra.access.license_assignment` (AC-2)
 
@@ -108,7 +108,7 @@ group / resource, never subscription-wide by default).
 preferred; the only AD touch is when that delivery group is itself a **synced**
 group, in which case its membership is the AD leg.
 
-![License assignment current-state write path.](figs/day2kit-task-08-license.png){fig-alt="License assignment task card: cloud-native — Graph assignLicense or group-based licensing; the only AD touch is a synced delivery group's membership; emits NIST AC-2, feeds KSI-IAM." width="100%"}
+![License assignment current-state write path.](servicenow-day2/figs/day2kit-task-08-license.png){fig-alt="License assignment task card: cloud-native — Graph assignLicense or group-based licensing; the only AD touch is a synced delivery group's membership; emits NIST AC-2, feeds KSI-IAM." width="100%"}
 
 ### Guest / B2B invite — `entra.access.guest_invite` (AC-2)
 
@@ -116,7 +116,7 @@ group, in which case its membership is the AD leg.
 it is created directly in Entra (`inviteGuest`) with a **sponsor** and an
 **expiry**, governed under the non-employee branch. No perpetual guests.
 
-![Guest invite current-state write path.](figs/day2kit-task-09-guest.png){fig-alt="Guest invite task card: cloud-native only, no AD leg — Graph invitation with sponsor and expiry; emits NIST AC-2, feeds KSI-IAM." width="100%"}
+![Guest invite current-state write path.](servicenow-day2/figs/day2kit-task-09-guest.png){fig-alt="Guest invite task card: cloud-native only, no AD leg — Graph invitation with sponsor and expiry; emits NIST AC-2, feeds KSI-IAM." width="100%"}
 
 ---
 
@@ -130,7 +130,7 @@ it is created directly in Entra (`inviteGuest`) with a **sponsor** and an
 permissions — never blanket Directory admin. The verdict precedes the grant, never
 the reverse.
 
-![SaaS admin consent current-state write path.](figs/day2kit-task-10-admin-consent.png){fig-alt="SaaS admin consent task card: cloud-native only, no AD leg — record the SA-9 authorization verdict before scoping app consent; emits NIST SA-9 and AC-20, feeds KSI-SCR." width="100%"}
+![SaaS admin consent current-state write path.](servicenow-day2/figs/day2kit-task-10-admin-consent.png){fig-alt="SaaS admin consent task card: cloud-native only, no AD leg — record the SA-9 authorization verdict before scoping app consent; emits NIST SA-9 and AC-20, feeds KSI-SCR." width="100%"}
 
 ### Morning check / log review — `saas.audit.review` (CA-7 / AU-6)
 
@@ -140,7 +140,7 @@ estate to the evidence table and the CMDB, and opens tasks / findings from the
 deltas. The check *is* the verification — silence is not assurance until it is
 observed.
 
-![Morning check current-state read path.](figs/day2kit-task-11-morning-check.png){fig-alt="Morning check task card: read-only across AD and Entra, reconcile to the evidence store, open work from deltas; emits NIST CA-7 and AU-6, feeds KSI-MLA." width="100%"}
+![Morning check current-state read path.](servicenow-day2/figs/day2kit-task-11-morning-check.png){fig-alt="Morning check task card: read-only across AD and Entra, reconcile to the evidence store, open work from deltas; emits NIST CA-7 and AU-6, feeds KSI-MLA." width="100%"}
 
 ---
 
