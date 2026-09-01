@@ -734,7 +734,7 @@
 | Document | Lines | Classification | Frontmatter | Images | Notes |
 |---|---:|---|:---:|:---:|---|
 | [`docs/customer-documents/reference-architecture/adapters.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/adapters.qmd) | 239 | Authored | ✅ | — | — |
-| [`docs/customer-documents/reference-architecture/codebook.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/codebook.qmd) | 186 | Authored | ✅ | — | — |
+| [`docs/customer-documents/reference-architecture/codebook.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/codebook.qmd) | 192 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/reference-architecture/delegation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/delegation.qmd) | 134 | Authored | ✅ | — | — |
 | [`docs/customer-documents/reference-architecture/directory-migration.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/directory-migration.qmd) | 142 | Authored | ✅ | 1/1 | — |
 | [`docs/customer-documents/reference-architecture/drift-walkthrough.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/reference-architecture/drift-walkthrough.qmd) | 222 | Authored | ✅ | 1/1 | — |
