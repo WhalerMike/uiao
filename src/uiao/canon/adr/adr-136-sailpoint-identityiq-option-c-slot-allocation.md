@@ -41,7 +41,7 @@ reserved slots. There is no IdentityIQ slot anywhere in either registry.
 ### Thread 2 — the deployment in front of us is Option C
 
 The agency's access-request and certification system is branded **Systems
-Access Manager (SAM)**. SAM is not a SailPoint product name — the SKU list is
+Access Management (SAM)**. SAM is not a SailPoint product name — the SKU list is
 Identity Security Cloud, IdentityIQ, File Access Manager, Cloud Access
 Management, and NERM. SAM is a local brand over a SailPoint deployment, and the
 signals point to IdentityIQ: an internally-branded portal, a customer-hosted

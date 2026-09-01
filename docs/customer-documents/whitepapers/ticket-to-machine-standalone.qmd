@@ -9,7 +9,7 @@ status: Draft
 derived-from: "Standalone edition — self-contained, with no references to companion or internal documents"
 repo-path: docs/customer-documents/whitepapers/ticket-to-machine-standalone.qmd
 created-at: 2026-07-28
-updated-at: 2026-08-06
+updated-at: 2026-09-01
 version: "1.1-standalone"
 format:
   html:
@@ -42,7 +42,7 @@ Across every platform examined in this paper — Microsoft 365, Azure, AWS, and 
 This edition is written for the agency's internal ServiceNow team. The argument below is the *why*; the
 request is in §13. Everything §§3–8 describe depends on ServiceNow being able to reach four native
 surfaces — Entra ID/Azure, AWS, and VMware — under a service identity, with ServiceNow acting as the
-approval front end both for **SAM (Systems Access Manager)** access requests and for configuration,
+approval front end both for **SAM (Systems Access Management)** access requests and for configuration,
 vulnerability, and patch findings. On the ServiceNow side that reach is an **IntegrationHub spoke**, and
 spokes are a licensed entitlement rather than a platform feature. **§13 asks the team to confirm which of
 those spokes the agency's current contract covers, and to name the gaps.**
@@ -155,6 +155,8 @@ From there, the attestation layer lifts the closed task stream into an *assessed
 ## 8. The Adjacent Domain: Access Governance and SailPoint ISC Governance
 
 Everything above concerns configuration, vulnerability, and patch controls (CM-6, RA-5, SI-2) — the domain the ServiceNow-fronting pattern is built and deployed for today. The same structural argument extends to a second domain, **access governance** (AC-2, AC-3, AC-6): a native IAM console can inspect and even remediate Azure RBAC or AWS IAM policy, but a role binding is not, by itself, a record of who requested it, who approved it, and when it was last reviewed. **SailPoint ISC Governance (the CIEM add-on)** supplies that detection function natively across Azure, AWS, and GCP, closing AC-2/AC-3/AC-6 through the same test → detect → raise → actuate-native → close-with-evidence loop used for configuration drift — one front door, not a second SailPoint-fronted coordination layer. VMware/vCenter identity governance remains a genuinely open gap: no evidence was found that SailPoint's CIEM add-on reaches vCenter permissions.
+
+**Two SailPoint products, not one.** The **SAM (Systems Access Management)** portal named in §1 is the agency's internal brand for a **SailPoint IdentityIQ** deployment — a different product from ISC, not the same one under a local name. IdentityIQ is customer-hosted on agency infrastructure, with a versioned on-premises integration surface (SCIM 2.0 plus a core REST API tied to the installed release); ISC is SailPoint-hosted SaaS on a continuously-versioned cloud REST API. That matters to this paper's ask in two concrete ways. First, the two enter ServiceNow from opposite directions: ISC pushes *detection findings* in, as one more engine alongside Security Hub and Defender for Cloud, while SAM pushes an *approved access request* in, correlated to a RITM, with closure written back — so they are not one integration to be scoped once. Second, an integration built against one product's API surface does not transfer to the other. Two products, two directions, one front door — the argument above is unchanged by the distinction, but the build estimate is not.
 
 ## 9. The Certificates Exception — Why PKI Doesn't Take the Same Path
 
