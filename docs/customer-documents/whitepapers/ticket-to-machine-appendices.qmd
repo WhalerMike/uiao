@@ -125,6 +125,79 @@ The core paper's central claim — that a native console cannot be the evidence 
 This appendix names specific, dated vendor capabilities — SmartRAMP 20x, the VMware Aria/ServiceNow connectors, SailPoint CIEM's cloud coverage, Wiz, Vanta, CyberArk/Keyfactor — and this market moves in weeks, not review cycles: this appendix's own findings corrected two assumptions this same series made only days earlier (VMware↔ServiceNow integration; FedRAMP 20x KSI tooling availability). Per the [OrgComp series' Vendor Currency Doctrine](../orgcomp-series/Vol_0_Book_00_OrgComp_Executive_Summary.qmd#vendor-currency), every vendor claim here — and in [Appendix B](#appendix-b-access-governance-and-sailpoint-isc)'s SailPoint coverage and [Appendix C](#appendix-c-the-certificates-exception)'s CyberArk/Keyfactor comparison — is a dated snapshot, not a standing commitment. **Confirming current roadmaps directly with ServiceNow, SailPoint, VMware/Broadcom, and each CSP (Microsoft, AWS, GCP) is essential before this paper's or its appendices' claims become the basis of an implementation Project Plan, procurement action, or acquisition decision.**
 :::
 
+## Appendix E — Authority Mapping and Non-Compliance Exposure {#appendix-e-authority-mapping}
+
+*(New in this edition. The core paper argues from control families throughout; this appendix states the specific guidelines behind those claims in one place, and what an agency is actually exposed to when the remediation obligation goes unclosed.)*
+
+### E.1 NIST SP 800-53 Rev 5 — the controls this loop closes
+
+The catalog is **NIST SP 800-53 Revision 5**, at the **FedRAMP Moderate** baseline. Control titles and KSI bindings below are taken from the OrgComp compliance spine rather than restated from memory.
+
+| Control | Title | What closes it in this paper's loop | FedRAMP 20x KSI |
+|---|---|---|---|
+| **CM-6** | Configuration Settings | Native engine detects baseline drift; ServiceNow supplies owner, clock, approval, re-test evidence | KSI-CMT |
+| **RA-5** | Vulnerability Monitoring and Scanning | Native scanner detects; the SLA clock and owned task live in ServiceNow | KSI-MLA |
+| **SI-2** | Flaw Remediation | Native patch/remediation actuates; closure evidence is the ticket record | KSI-SVC, KSI-MLA |
+| **AC-2** | Account Management | Entitlement detection feeds a governed request-and-approval record | KSI-IAM |
+| **AC-3** | Access Enforcement | Role binding actuated natively, authorized by an approved record | KSI-IAM |
+| **AC-6** | Least Privilege | Over-privilege findings become owned, clocked remediation tasks | KSI-IAM |
+| **CA-2** | Control Assessments | Scheduled control test reads actioned posture, renders pass/fail/partial with evidence | KSI-MLA |
+| **CA-5** | Plan of Action and Milestones | Any fail becomes an owned POA&M item with milestone and closure evidence | KSI-MLA |
+| **CA-7** | Continuous Monitoring | Roll-up emitted as OSCAL assessment-results and KSI evidence | KSI-MLA |
+| **IA-5(2)** | Public Key-Based Authentication | Protocol-enforced issuance, not ticket-per-event — the deliberate exception | KSI-IAM |
+| **SC-17** | PKI Certificates | Same exception path; anomalies route through the front door, routine issuance does not | KSI-IAM |
+
+: Controls this paper's loop closes, and the KSI each feeds {.striped .hover}
+
+**Not tool-attestable alone.** Every row above is marked `Tool-attestable: No` in the platform books' control-closure tables — the structural finding the core paper's §1 states. The native engine is necessary and not sufficient; the ownership/clock/approval/evidence record is what makes the control assessable.
+
+The Rev 5 Moderate baseline enhancements that actually mandate automation for this argument — **CM-3(2), CM-5(1), CM-6(1), SI-2(2)** — are worked control-by-control in [Vol VII Book 07](../orgcomp-series/Vol_VII_Book_07_OrgComp_VMware_Control_Compliance_Automation.qmd), checked against FedRAMP's published baseline profile rather than asserted.
+
+### E.2 FedRAMP 20x — what the loop emits, and on what clock
+
+- **Evidence emission (CA-7).** The closed task stream is lifted into assessed control state and emitted as OSCAL assessment-results plus KSI evidence into the authorization package — the pipeline [Vol VII Book 04](../orgcomp-series/Vol_VII_Book_04_OrgComp_Control_Attestation_Evidence_KSI.qmd) documents.
+- **KSI families touched:** KSI-CMT (change management), KSI-MLA (monitoring, logging, auditing), KSI-IAM (identity and access management), KSI-SVC (service configuration).
+- **KSI-CMT-RMV / VTD / RVP** — redeploy version-controlled resources rather than modify directly. Note the core paper's §4 caveat: RMV is qualified *wherever reasonable*, an engineering preference with a documented-exception path, not a prohibition.
+- **The SLA clock is a published table, not a policy sentiment.** FedRAMP's Vulnerability Detection and Response ruleset (**VDR-TFR-PVR**) sets remediation timeframes by PAIN rating crossed with exploitability and internet-reachability — 4 to 192 days — plus KEV-catalog-driven due dates regardless of PAIN rating. A console has no mechanism to enforce that clock against an owner.
+
+**What 20x obligates is cadence and format, not merely a one-time package.** KSI evidence is a continuous obligation; evidence that was true at authorization and is not refreshed is a ConMon deficiency in its own right, independent of whether the underlying control still holds.
+
+### E.3 CISA BOD 25-01 — the remediation row *is* this paper's loop
+
+::: {.callout-note}
+## Attribution — BOD 25-01 is CISA's, not OPM's
+Binding Operational Directives are issued by **CISA**, under its directive authority over federal civilian executive branch agencies. OPM issues memoranda and HR-domain guidance; it does not issue BODs. This appendix therefore maps to **CISA [BOD 25-01](https://cyber.dhs.gov/bod/25-01/), *Implementing Secure Practices for Cloud Services***, which is the directive that governs the M365/SCuBA scope this paper touches.
+:::
+
+| # | BOD 25-01 obligation | Nature of the work | Does this paper's loop address it? |
+|---|---|---|---|
+| 1 | Report every in-scope M365 tenant and its system-owning component | Administrative, one-time | No — inventory action |
+| 2 | Configure each tenant to the published SCuBA Secure Configuration Baselines | Architectural, ongoing as baselines revise | Partly — the loop closes drift against the baseline |
+| 3 | Deploy SCuBAGear against every in-scope tenant | Mechanical | No — tool install |
+| 4 | Integrate SCuBAGear output with CISA's continuous-monitoring infrastructure | Mechanical, then ongoing | No — feed wiring |
+| 5 | **Remediate deviations from the baselines** | **Architectural, open-ended** | **Yes — this is precisely the loop** |
+
+: BOD 25-01's five obligations, and which one this paper's loop is for {.striped .hover}
+
+Four of the five rows are satisfiable without closing a single finding: report a tenant name, install a PowerShell tool, wire up a feed. **Row 5 is the architectural one, and it is the row the directive is actually for.** A SCuBAGear report that faithfully lists forty deviations every week satisfies rows 1–4 and fails row 5 — the argument [Assessment Tools vs. Closing BOD-25-01 Findings](bod-25-01-close-before-assess.qmd) makes at length, and the reason that paper and this one are companions rather than duplicates.
+
+**Forward-looking — BOD 26-04.** CISA [BOD 26-04](https://cyber.dhs.gov/bod/26-04/) (*Prioritizing Security*) replaces flat remediation clocks with a risk-based SLA and carries a mandatory adoption deadline of **2026-12-07**. Canon's response is [ADR-111](../../../src/uiao/canon/adr/adr-111-bod-26-04-risk-based-vulnerability-sla.md), still **PROPOSED** at this writing — cite it as a direction of travel, not a settled position, and re-check its status before planning against it.
+
+### E.4 What non-compliance actually costs an agency
+
+| Authority | What makes it binding | Who acts on a failure | What actually happens |
+|---|---|---|---|
+| CISA BOD 25-01 | Binding operational directive authority over federal civilian executive branch agencies | CISA, reporting to OMB and the agency head | Status is tracked and reported; unclosed deviations persist as a reported deficiency and accumulate visibly |
+| NIST SP 800-53 Rev 5 | Not self-executing — it binds through FISMA and OMB Circular A-130, which require an authorization built on the catalog | Agency Inspector General; OMB | Control deficiencies become audit findings and POA&M items; sustained failures can be escalated to a material weakness |
+| FedRAMP 20x continuous monitoring | Authorization is conditional on maintained, current evidence | Authorizing Official; FedRAMP PMO | Stale or absent KSI evidence puts authorized status at risk — corrective action, and in the limit suspension or withdrawal |
+| The ATO itself | A revocable risk acceptance, not a permanent grant | The agency's Authorizing Official | An AO can shorten the authorization term, attach conditions, or decline to reauthorize on the strength of an open findings list |
+
+: Non-compliance exposure by authority {.striped .hover}
+
+**The honest shape of the exposure.** None of these authorities carries a fine, and it is worth saying so plainly rather than implying a penalty that does not exist. The consequences are of three kinds: an **authorization** that can be conditioned, shortened, or withdrawn; **audit findings** that persist across reporting cycles and compound; and a **deviation list that grows**, which is itself the documentary evidence that the remediation obligation went unmet. The third is the one that matters most in practice — an assessment tool running faithfully against an unremediated estate produces an accurate, lengthening record of non-closure, and that record is discoverable by every auditor who asks. The operational risk of an unremediated deviation also simply remains: the misconfiguration is still exploitable regardless of how it is reported.
+
+**Currency caveat on this section.** Enforcement mechanics are stated at the level of the governing statute and standing OMB policy as of this document's date. Directive status, deadlines, and reporting regimes change; confirm current CISA directive status and OMB memoranda before this section becomes the basis of a compliance strategy or a remediation-funding argument.
+
 ## References
 
 | Claim | Source |
