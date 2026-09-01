@@ -10,7 +10,7 @@ canon-source: "src/uiao/canon/"
 derived-from: "Extracted from ticket-to-machine-not-ticket-to-human.qmd §5.1/§8/§9/§11 (2026-08-03); carries the same canon anchors and vendor-currency caveats as its parent paper."
 repo-path: docs/customer-documents/whitepapers/ticket-to-machine-appendices.qmd
 created-at: 2026-08-03
-updated-at: 2026-08-06
+updated-at: 2026-09-01
 version: "1.0"
 format:
   html:
@@ -64,6 +64,22 @@ The same structural argument extends cleanly to this domain: Azure RBAC role ass
 ::: {.callout-tip}
 ## Closed, 2026-07-28 — [ADR-135](../../../src/uiao/canon/adr/adr-135-sailpoint-isc-governance-option-b-ratification.md) + [Vol VII Book 08](../orgcomp-series/Vol_VII_Book_08_OrgComp_Native_IAM_RBAC_Access_Governance.qmd)
 This was an open gap as of this paper's first draft, earlier the same day: the series had a reserved SailPoint slot (`sailpoint-isc-governance`, landed in PR #924 citing ADR-059's deferred Option B) but no ADR had ever ratified it, and no book documented the coordination pattern. **ADR-135 ratifies the Option-B decision and binds `sailpoint-isc-governance` to ADR-092's Active Governance identity control-plane slot** at rung L1 (Observe); **Vol VII Book 08 closes AC-2/AC-3/AC-6** for Azure RBAC and AWS IAM entitlements using the identical test → detect drift → raise task → actuate-native → close-with-evidence loop as Books 03/06/07. Consistent with this paper's own [Appendix D finding](#appendix-d-vendor-landscape-and-build-vs-buy) — SailPoint's own architecture routes findings into ServiceNow rather than around it — Book 08 explicitly does **not** stand up a second, SailPoint-fronted coordination layer; SailPoint ISC Governance is one more detection engine feeding the same ServiceNow pipeline every other control family in this paper uses. One front door.
+:::
+
+::: {.callout-important}
+## SAM and ISC are two SailPoint products, not one name for one thing
+Everything above concerns **SailPoint ISC Governance**. The agency separately runs **SAM (Systems Access Management)** — its internal brand for a **SailPoint IdentityIQ** deployment, and the access-request and certification front end its users actually see. Reading the two as one product binds SAM work to the wrong product, the wrong contract, and the wrong boundary value.
+
+| | **SAM** | **SailPoint ISC Governance** |
+|---|---|---|
+| What it is | The agency's internal brand for a SailPoint **IdentityIQ** deployment | SailPoint **Identity Security Cloud** plus the CIEM add-on |
+| Hosting | Customer-hosted, on agency infrastructure | SailPoint-hosted SaaS |
+| Integration surface | SCIM 2.0 plus a core REST API tied to the installed release | Continuously-versioned cloud REST API |
+| Canon slot | `sailpoint-iiq-governance` ([ADR-136](../../../src/uiao/canon/adr/adr-136-sailpoint-identityiq-option-c-slot-allocation.md), contract pinned by [UIAO_210](../../../src/uiao/canon/specs/external/sailpoint-iiq/UIAO_210_identityiq-api-contract-pin.md)) | `sailpoint-isc-governance` ([ADR-135](../../../src/uiao/canon/adr/adr-135-sailpoint-isc-governance-option-b-ratification.md)) |
+| Boundary cost | None — `gcc-moderate` already covers it | A Commercial exception |
+| Role in this argument | **Front end** — pushes an approved access request into ServiceNow, correlated to a RITM, with closure written back | **Detection engine** — pushes cloud-entitlement findings into ServiceNow tasks |
+
+Both are `reserved` read-only observers at ADR-092 rung L1 (Observe); neither is activated, and activation requires a per-adapter ADR in each case. The asymmetry in the boundary row is the general rule ADR-136 states rather than a quirk of these two: the deployment model, not the vendor, determines what a slot costs. None of this weakens the appendix's argument — the detection engine for cloud entitlements is ISC, the request-and-certification front end is SAM, and both converge on the same ServiceNow front door.
 :::
 
 ::: {.callout-caution}
