@@ -36,7 +36,7 @@ This pin closes that gap for IdentityIQ before any adapter code exists:
   model requires and which a doc URL cannot provide.
 
 **Naming note.** The deployment this pin serves is branded locally as
-**Systems Access Manager (SAM)**. SAM is an agency brand, not a SailPoint SKU —
+**Systems Access Management (SAM)**. SAM is an agency brand, not a SailPoint SKU —
 the product beneath it is IdentityIQ. Canon uses the product name; customer-
 facing material may use either, but adapter code, registry entries, and
 evidence records name IdentityIQ so the pinned contract is unambiguous.

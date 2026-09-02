@@ -43,6 +43,8 @@ Dynamic group rules, AU memberships, and CA targeting compose facets via standar
 
 See [Where OrgTree & OrgPath Data Lives](where-data-lives.qmd) for the storage model (Codebook in Git → Entra `extensionAttribute1`–`15` slots → HR authority).
 
+![OrgPath Model C slot map. Fifteen facets, each occupying one Entra ID onPremisesExtensionAttribute slot, arranged in three groups. The hierarchy facets on slots 1 to 3 — Region, Department, Division — are highlighted and marked as the only facets that compose the path. The governance facets on slots 4 to 13 — Role, CostCenter, Classification, HireDate, TermDate, ClearanceLevel, AccountType, AdminTier, DeviceType, Environment — are available to boolean composition only. Slot 14 is reserved for a tenant-declared facet pending a governed PR. An arrow labelled "composed in order" runs from the hierarchy group down to a dark band showing slot 15, the derived OrgPath, carrying the literal value Region=NCR|Department=IT|Division=CyberOps| with its trailing delimiter. Footnotes state that composition truncates at the first unpopulated hierarchy facet and that a stored value differing from the recomputation is flagged DRIFT-SEMANTIC::derived-path.](images/codebook-image-01-model-c-slot-map.png){width="100%"}
+
 ## Canonical Attribute Assignments
 
 | Slot | Facet | Kind | Sample values |
@@ -57,7 +59,11 @@ See [Where OrgTree & OrgPath Data Lives](where-data-lives.qmd) for the storage m
 | `extensionAttribute8` | **TermDate** | typed (ISO date, allow_empty) | `2030-12-31` or `""` for active |
 | `extensionAttribute9` | **ClearanceLevel** | enumerated | `None`, `PublicTrust`, `Secret`, `TopSecret`, `TS_SCI` |
 | `extensionAttribute10` | **AccountType** | enumerated | `Standard`, `Privileged`, `Service`, `SharedMailbox`, `Guest`, `Vendor` |
-| `extensionAttribute11`–`15` | **Reserved** | reserved | Tenant-declared facets (governed PR required) |
+| `extensionAttribute11` | **AdminTier** | enumerated | `Tier0`, `Tier1`, `Tier2` — blast radius, orthogonal to Role (ADR-137) |
+| `extensionAttribute12` | **DeviceType** | enumerated | `Workstation`, `Kiosk`, `Server`, `GitServer` (ADR-137) |
+| `extensionAttribute13` | **Environment** | enumerated | `Production`, `Staging`, `Dev` (ADR-137) |
+| `extensionAttribute14` | **Reserved** | reserved | The last tenant-claimable slot; declare facet semantics via a governed PR before populating |
+| `extensionAttribute15` | **OrgPath** (derived) | typed | `Region=NCR\|Department=IT\|Division=CyberOps\|` — recomputed from the hierarchy facets, never hand-authored (ADR-127) |
 
 ## Facet Kinds
 

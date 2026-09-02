@@ -66,6 +66,10 @@ CURRENT_MD_DOCX = {
     # neither -- and START-HERE pointed at "the tracks below" that were not there.
     "CURRENT-STATE-PDI-VALIDATION": "OrgComp_Day2_Kit_Current_5_PDI_Validation",
     "CURRENT-STATE-AD-LAB-VALIDATION": "OrgComp_Day2_Kit_Current_6_AD_Lab_Validation",
+    # The seam between the two tracks above: a PDI never picks the ECC row up,
+    # the AD lab never writes one, so the transport itself was covered by
+    # neither.
+    "CURRENT-STATE-MID-BRIDGE": "OrgComp_Day2_Kit_Current_7_MID_Bridge",
 }
 
 # --- Numbered docx/ reading-order sets, per edition. ----------------------------
@@ -105,6 +109,10 @@ CURRENT_DOCX_SET = {
     # §0 now requires both tracks before the pilot may start.
     "OrgComp_Day2_Kit_Current_5_PDI_Validation": "10_PDI_Validation.docx",
     "OrgComp_Day2_Kit_Current_6_AD_Lab_Validation": "11_AD_Lab_Validation.docx",
+    # Appended for the same reason as 10 and 11: renumbering to place it beside
+    # them would churn every existing filename. Reading order is carried by
+    # CURRENT-STATE-START-HERE §6, which sequences all three tracks.
+    "OrgComp_Day2_Kit_Current_7_MID_Bridge": "12_MID_Bridge.docx",
 }
 
 
@@ -183,6 +191,30 @@ def rewrite_figure_srcs(text: str, site_base: str) -> tuple[str, int]:
         r"(!\[[^\]]*\]\()(?:\./)?servicenow-day2/figs/",
     ):
         text, n = re.subn(pattern, lambda m, b=site_base: f"{m.group(1)}{b}{FIGS_REL}/", text)
+        n_total += n
+    return text, n_total
+
+
+def strip_figure_prefix(text: str) -> tuple[str, int]:
+    """Rewrite ``servicenow-day2/figs/`` -> ``figs/`` for the main kit zip.
+
+    The source .md files must carry the full ``servicenow-day2/figs/`` prefix,
+    because Quarto's ``include`` shortcode splices them into a wrapper .qmd one
+    directory up and resolves relative paths against the *wrapper's* directory.
+    A bare ``figs/`` there resolves to ``orgcomp-series/figs/``, which holds no
+    kit figures -- so Quarto never copies the PNGs into _site, the site renders
+    broken images, and collect_kit() then finds nothing to ship (the
+    "figure PNGs from _site: 0" warning).
+
+    Inside this zip the same .md sits *beside* figs/, so the prefix has to come
+    back off. Same shape as rewrite_figure_srcs, opposite direction.
+    """
+    n_total = 0
+    for pattern in (
+        r'(<img\s+src=")(?:\./)?servicenow-day2/figs/',
+        r"(!\[[^\]]*\]\()(?:\./)?servicenow-day2/figs/",
+    ):
+        text, n = re.subn(pattern, lambda m: f"{m.group(1)}figs/", text)
         n_total += n
     return text, n_total
 
@@ -630,10 +662,18 @@ def build_one(site_root: Path, src_root: Path, out_dir: Path, date_code: str, ed
     hashes: list[tuple[str, str]] = [(f"{root}/README.txt", hashlib.sha256(readme_bytes).hexdigest())]
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr(f"{root}/README.txt", readme_bytes)
+        n_fig_stripped = 0
         for arc, src in sorted(members.items()):
             arcname = f"{root}/{arc}"
-            z.write(src, arcname)
-            hashes.append((arcname, hashlib.sha256(src.read_bytes()).hexdigest()))
+            if arc.endswith(".md"):
+                body, n_fig = strip_figure_prefix(src.read_text(encoding="utf8"))
+                n_fig_stripped += n_fig
+                data = body.encode("utf-8")
+                z.writestr(arcname, data)
+                hashes.append((arcname, hashlib.sha256(data).hexdigest()))
+            else:
+                z.write(src, arcname)
+                hashes.append((arcname, hashlib.sha256(src.read_bytes()).hexdigest()))
         # Per-file integrity check for this exact build — the kit as a whole has
         # no fixed hash (it's rebuilt on every deploy), but a recipient can verify
         # no individual file was altered after this build produced it.
@@ -648,6 +688,7 @@ def build_one(site_root: Path, src_root: Path, out_dir: Path, date_code: str, ed
         )
         z.writestr(f"{root}/MANIFEST-SHA256.txt", manifest)
 
+    print(f"  figure srcs rebased to figs/ for the zip layout: {n_fig_stripped}")
     size_kb = zip_path.stat().st_size / 1024
     print(f"Wrote {zip_path}  ({len(members) + 2} files, {size_kb:.1f} KB)\n")
     return 0
