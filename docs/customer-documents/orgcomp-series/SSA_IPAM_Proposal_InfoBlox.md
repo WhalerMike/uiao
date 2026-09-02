@@ -193,7 +193,7 @@ OIS, or leadership until it has:
 Vendor authorization and integration facts are drawn from the agency's own analysis and
 must be re-verified at procurement:
 
-- Landing-zone / IPAM analysis and the 16-control mapping: `docs/customer-documents/orgcomp-series/SSA_Landing_Zone_IPAM_FedRAMP.md` and `Vol_I_Book_01_OrgComp_SSA_Landing_Zone_IPAM_FedRAMP.qmd`.
+- Landing-zone / IPAM analysis and the 16-control mapping: `docs/customer-documents/orgcomp-series/SSA_Landing_Zone_IPAM_FedRAMP.md` and `Vol_I_Book_01_OrgComp_Cloud_Landing_Zone_IPAM_FedRAMP.qmd`.
 - Control-closure necessity (SC-20/21/22, CM-8): the series compliance spine, `docs/customer-documents/orgcomp-series/orgcomp-compliance-spine.yml`.
 - Multi-cloud DDI realization: `infoblox-ddi-book/` (series Volume VIII).
 - FedRAMP authorization: **FedRAMP Marketplace** — *Infoblox Government Cloud*, CSO

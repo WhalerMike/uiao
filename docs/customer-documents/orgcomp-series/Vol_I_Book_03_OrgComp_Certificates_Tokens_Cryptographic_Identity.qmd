@@ -41,7 +41,7 @@ This document is a **draft proposal** developed by the **CSI Team (Cloud Service
 :::
 
 ::: {.aan-important}
-**Series Context** — This document is Vol I Book 03 of the Federal Organization Compliance series. [Vol I Book 01](Vol_I_Book_01_OrgComp_SSA_Landing_Zone_IPAM_FedRAMP.qmd) established the naming and addressing plane — authoritative DNS, DHCP, and IPAM as the landing-zone source of truth. [Vol I Book 02](Vol_I_Book_02_OrgComp_Network_Access_Control_802_1X.qmd) established device identity at the network port — 802.1X, EAP-TLS, and the machine certificate as the admission credential. This part completes the identity plane's cryptographic foundation: how certificates are issued, revoked, and automated as a function of the naming plane, and how tokens replace network sessions as the carrier of identity. [Vol II Books 01](Vol_II_Book_01_OrgComp_SQL_Server_Authentication_Modernization.qmd) and [02](Vol_II_Book_02_OrgComp_SQL_Server_Implementation_Guide.qmd) — SQL Server authentication modernization — are direct applications of the doctrine this part establishes.
+**Series Context** — This document is Vol I Book 03 of the Federal Organization Compliance series. [Vol I Book 01](Vol_I_Book_01_OrgComp_Cloud_Landing_Zone_IPAM_FedRAMP.qmd) established the naming and addressing plane — authoritative DNS, DHCP, and IPAM as the landing-zone source of truth. [Vol I Book 02](Vol_I_Book_02_OrgComp_Network_Access_Control_802_1X.qmd) established device identity at the network port — 802.1X, EAP-TLS, and the machine certificate as the admission credential. This part completes the identity plane's cryptographic foundation: how certificates are issued, revoked, and automated as a function of the naming plane, and how tokens replace network sessions as the carrier of identity. [Vol II Books 01](Vol_II_Book_01_OrgComp_SQL_Server_Authentication_Modernization.qmd) and [02](Vol_II_Book_02_OrgComp_SQL_Server_Implementation_Guide.qmd) — SQL Server authentication modernization — are direct applications of the doctrine this part establishes.
 :::
 
 ::: {.exec-summary}
@@ -152,7 +152,7 @@ Strip the ceremony away and an X.509 certificate is one sentence: *the holder of
 
 That verification is a **DNS operation.** This is the fact that makes PKI a naming-plane function rather than a parallel bureaucracy:
 
-- **CAA records (RFC 8659)** publish issuance policy *in the zone itself*. A Certification Authority Authorization record declares which CAs are authorized to issue for a domain, and public CAs are required by the CA/Browser Forum Baseline Requirements to check and honor CAA at issuance time. Issuance policy enforcement is therefore a property of the authoritative DNS zone — the zone [Vol I Book 01](Vol_I_Book_01_OrgComp_SSA_Landing_Zone_IPAM_FedRAMP.qmd) placed under unified DDI control. A policy memo asks CAs nicely; a CAA record is checked by protocol.
+- **CAA records (RFC 8659)** publish issuance policy *in the zone itself*. A Certification Authority Authorization record declares which CAs are authorized to issue for a domain, and public CAs are required by the CA/Browser Forum Baseline Requirements to check and honor CAA at issuance time. Issuance policy enforcement is therefore a property of the authoritative DNS zone — the zone [Vol I Book 01](Vol_I_Book_01_OrgComp_Cloud_Landing_Zone_IPAM_FedRAMP.qmd) placed under unified DDI control. A policy memo asks CAs nicely; a CAA record is checked by protocol.
 - **ACME DNS-01 challenges (RFC 8555)** prove control of a name by provisioning a `_acme-challenge` TXT record that the CA queries before issuing. Only an entity with write access to the authoritative zone can complete the challenge. The authoritative DNS server — the DDI platform — is literally the gate through which automated issuance passes.
 - **Revocation checking is a resolution dependency.** CRL distribution points and OCSP responder addresses are URLs inside the certificate; every validation that checks certificate status begins with a DNS query. An agency whose resolvers fail has not lost name lookup — it has lost the ability to *authenticate anything* whose validation requires a status check. DNSSEC validation on those lookups (Vol I Book 01, SC-20/21) protects the revocation path itself from spoofing.
 
@@ -165,7 +165,7 @@ This framing is not aesthetic — it dictates ownership of function. Because iss
 | Consumer | Certificate Function | Series Home |
 |---|---|---|
 | Device identity at the port | Machine certificates enrolled via SCEP at device provisioning, validated by RADIUS/EAP-TLS | [Vol I Book 02](Vol_I_Book_02_OrgComp_Network_Access_Control_802_1X.qmd) |
-| Workload transport identity | Server and service certificates issued at IP allocation time, revoked atomically at decommission | [Vol I Book 01](Vol_I_Book_01_OrgComp_SSA_Landing_Zone_IPAM_FedRAMP.qmd) |
+| Workload transport identity | Server and service certificates issued at IP allocation time, revoked atomically at decommission | [Vol I Book 01](Vol_I_Book_01_OrgComp_Cloud_Landing_Zone_IPAM_FedRAMP.qmd) |
 | User and application authentication | Certificate-based authentication and token signing keys | This book, applied in [Vol II Books 01](Vol_II_Book_01_OrgComp_SQL_Server_Authentication_Modernization.qmd)–[02](Vol_II_Book_02_OrgComp_SQL_Server_Implementation_Guide.qmd) |
 
 : Certificate consumers across the series {.striped .hover}
@@ -177,7 +177,7 @@ When Vol I Book 01 described a workload spin-up that allocates an IP, creates DN
 The "name, address, and key bound together" compound guarantee applies equally to **NAC-enrolled endpoint devices**:
 
 - [Vol I Book 02](Vol_I_Book_02_OrgComp_Network_Access_Control_802_1X.qmd) covers the machine certificate side — Intune/SCEP enrollment issues a certificate with `CN={{DeviceName}}` at 802.1X admission.
-- [Vol I Book 01](Vol_I_Book_01_OrgComp_SSA_Landing_Zone_IPAM_FedRAMP.qmd) owns the DNS hostname side — the InfoBlox DHCP lease assignment should confirm or create a DNS A/PTR record binding the device's name to its admitted IP.
+- [Vol I Book 01](Vol_I_Book_01_OrgComp_Cloud_Landing_Zone_IPAM_FedRAMP.qmd) owns the DNS hostname side — the InfoBlox DHCP lease assignment should confirm or create a DNS A/PTR record binding the device's name to its admitted IP.
 
 The bridging proposition — that **every NAC-admitted endpoint has both a DNS hostname and a machine certificate, and that InfoBlox holds the authoritative binding record** — is currently a design gap across the series. The intent is that this compound guarantee holds for both cloud workloads (IP allocation → DNS A → SCEP) and for endpoint devices (Intune enrollment → machine cert → DNS A confirmation at DHCP lease). OIS must validate this design and the SCEP-to-DNS linkage implementation before it is treated as a closed control.
 :::
@@ -458,7 +458,7 @@ Per the series' conformance-tooling doctrine (Theme E): the ScuBA-based configur
 
 This part completes the foundation trilogy:
 
-- **[Vol I Book 01](Vol_I_Book_01_OrgComp_SSA_Landing_Zone_IPAM_FedRAMP.qmd)** — the naming and addressing plane: authoritative DNS, DHCP, IPAM, and the landing zone that makes every workload enumerable.
+- **[Vol I Book 01](Vol_I_Book_01_OrgComp_Cloud_Landing_Zone_IPAM_FedRAMP.qmd)** — the naming and addressing plane: authoritative DNS, DHCP, IPAM, and the landing zone that makes every workload enumerable.
 - **[Vol I Book 02](Vol_I_Book_02_OrgComp_Network_Access_Control_802_1X.qmd)** — device identity at the port: the machine certificate as the admission credential, quarantine as the default.
 - **Vol I Book 03 (this document)** — cryptographic identity as a whole: certificates as naming-plane artifacts, lifecycle automation as the only sustainable operating model, tokens as the path-independent carrier of user and workload identity.
 

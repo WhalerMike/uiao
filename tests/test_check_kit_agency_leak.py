@@ -90,9 +90,24 @@ def test_a_false_positive_does_not_mask_a_real_hit_on_the_same_line() -> None:
     assert [k for _, k, _ in gate.scan_one("x.md", body)] == ["agency.short"]
 
 
-def test_allowlisted_path_is_skipped() -> None:
-    """Book 01's filename is a tracked, named exception — not a silent hole."""
-    assert gate.scan_one("Vol_I/Vol_I_Book_01_OrgComp_SSA_Landing_Zone_IPAM_FedRAMP.md", b"SSA") == []
+def test_allowlist_is_empty() -> None:
+    """Every allowlist entry is a hole in the gate. There should be none."""
+    assert gate.PATH_ALLOWLIST == ()
+
+
+def test_allowlist_mechanism_still_works() -> None:
+    """Kept honest: the skip path is exercised even while the list is empty."""
+    original = gate.PATH_ALLOWLIST
+    gate.PATH_ALLOWLIST = ("Some_Exempt_Doc",)
+    try:
+        assert gate.scan_one("Vol_I/Some_Exempt_Doc_SSA.md", b"SSA") == []
+    finally:
+        gate.PATH_ALLOWLIST = original
+
+
+def test_the_renamed_book01_no_longer_needs_an_exemption() -> None:
+    """The rename is what removed the allowlist entry; prove the new name is clean."""
+    assert gate.scan_one("Vol_I/Vol_I_Book_01_OrgComp_Cloud_Landing_Zone_IPAM_FedRAMP.md", b"Agency") == []
 
 
 def test_clean_members_pass() -> None:

@@ -83,17 +83,17 @@
 
 ### Vol I
 
-#### H-010 — `Vol_I_Book_01_OrgComp_SSA_Landing_Zone_IPAM_FedRAMP.qmd:281` — scope-violation
+#### H-010 — `Vol_I_Book_01_OrgComp_Cloud_Landing_Zone_IPAM_FedRAMP.qmd:281` — scope-violation
 - **Claim:** "SSA inherits both the InfoBlox CSO (FR2017257053) and the AWS GovCloud infrastructure authorization — layered FedRAMP coverage" (High cited).
 - **Problem:** An agency consuming a SaaS CSO does not separately inherit the underlying IaaS authorization; AWS GovCloud is a leveraged authorization inside InfoBlox's package and its High baseline confers nothing to SSA's Moderate boundary. Shared-responsibility misstatement a 3PAO rejects.
 - **Fix:** Under Path A SSA inherits only from the InfoBlox CSO at Moderate; note InfoBlox leverages AWS GovCloud within its own package — no second inheritance.
 
-#### H-011 — `Vol_I_Book_01_OrgComp_SSA_Landing_Zone_IPAM_FedRAMP.qmd:615` — internal-contradiction
+#### H-011 — `Vol_I_Book_01_OrgComp_Cloud_Landing_Zone_IPAM_FedRAMP.qmd:615` — internal-contradiction
 - **Claim:** "The FedRAMP authorization boundary is defined by IP address ranges... The CM-8 IP inventory export *is* the boundary IP list — no separate reconciliation required."
 - **Problem:** Factually wrong (boundaries are components/services/interconnections/data flows, not IP ranges) and contradicted by the file's own CMDB section (line 709 "does not satisfy the full control"; R-04; Phase 1 at 824 explicitly reconciles against the CMDB).
 - **Fix:** Restate Layer 1 as the authoritative address-layer *input* to the boundary inventory, reconciled with the CMDB; drop "no separate reconciliation required".
 
-#### H-012 — `Vol_I_Book_01_OrgComp_SSA_Landing_Zone_IPAM_FedRAMP.qmd:549` — control-id
+#### H-012 — `Vol_I_Book_01_OrgComp_Cloud_Landing_Zone_IPAM_FedRAMP.qmd:549` — control-id
 - **Claim:** SI-3(1) (line 549) and SC-20(1) (line 536) cited as satisfied enhancements.
 - **Problem:** Both are **withdrawn** in Rev 5 (SI-3(1) → PL-9; SC-20(1) → SC-20). Withdrawn enhancements cannot be "satisfied".
 - **Fix:** Cite SI-3 and SC-20 base only; consider extending the reference JSON with withdrawn status so a gate catches this class.
