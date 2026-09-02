@@ -50,6 +50,24 @@ jobs:
     # accepting them repo-wide beats accumulating per-URL `.lycheeignore`
     # entries that each need their own justification. A genuinely dead link
     # answers 404/410, which is still a failure.
+    #
+    # 522 joins them for the same reason. It is a Cloudflare EDGE status --
+    # the CDN reached its own network but the origin never answered -- so it
+    # reports the publisher's server being down, not the URL being wrong. It
+    # turned every PR touching the Ticket-to-Machine set red on 2026-09-01
+    # when keyfactor.com's origin timed out; the same two URLs answered 200
+    # from a workstation minutes later. `--max-retries 3 --retry-wait-time 5`
+    # cannot ride that out: a 15-second budget against an origin outage that
+    # lasts minutes, and raising it would spend CI time without changing the
+    # outcome. lychee has no per-host retry or accept setting, so the status
+    # is the only lever.
+    #
+    # 520, 521, 523, and 524 are the same Cloudflare origin-failure class and
+    # are deliberately NOT accepted yet -- add one only when it actually
+    # breaks a run, so this list stays evidence-driven rather than
+    # speculative. The cost of accepting a 52x is narrow: a site that dies
+    # permanently behind Cloudflare stops being reported, but such a site
+    # normally ends up 404ing or failing DNS, both still failures here.
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -75,6 +93,27 @@ jobs:
             [ -e "$p" ] || : > "$p"
           done
 
+      # The `servicenow-day2/servicenow-day2/figs/` exclude below suppresses a
+      # resolution artifact, not a broken link. Quarto's `{{< include >}}`
+      # splices a fragment into the including document, so a relative path
+      # inside the fragment resolves against the INCLUDER's directory, not the
+      # fragment's own -- verified against quarto 1.10.18, which emits the
+      # fragment's path string into `<img src>` verbatim. The day-2 kit
+      # fragments live in orgcomp-series/servicenow-day2/ and are included from
+      # wrappers in orgcomp-series/, so their figure refs must read
+      # `servicenow-day2/figs/...` to render at all. lychee checks each file
+      # standalone and resolves that against the fragment's own directory,
+      # looking for a doubled `servicenow-day2/servicenow-day2/figs/...` that
+      # cannot exist.
+      #
+      # That doubled segment is reachable only through the mis-resolution, so
+      # the exclude hides the artifact and nothing real: the same figures cited
+      # from the wrappers resolve correctly and stay checked. Figure existence
+      # is enforced more strictly than lychee could manage anyway by
+      # tests/test_day2_kit_figure_paths.py, which demands a committed .svg
+      # source per reference -- lychee only ever sees the zero-byte PNG
+      # stand-ins materialized above. tests/test_link_check_excludes.py pins
+      # the exclude narrow so it cannot be widened into a real suppression.
       - name: Run lychee link checker
         if: steps.changes.outputs.relevant == 'true'
         uses: lycheeverse/lychee-action@v2
@@ -85,7 +124,7 @@ jobs:
             --max-retries 3
             --retry-wait-time 5
             --timeout 20
-            --accept 200,206,403,406,429,503
+            --accept 200,206,403,406,429,503,522
             --exclude '^https?://(www\.)?onedrive\.com(/|$)'
             --exclude '^https?://onedrive\.live\.com(/|$)'
             --exclude '^https?://download\.microsoft\.com/download/'
@@ -96,6 +135,7 @@ jobs:
             --exclude-path docs/publications
             --exclude-path inbox/wiki
             --exclude-path 'docs/customer-documents/orgcomp-series/OrgComp-Training-Program'
+            --exclude 'servicenow-day2/servicenow-day2/figs/'
             --exclude '^https://example\.com'
             --exclude '^https://your-tenant'
             --exclude '^https://uiao\.gov/'
