@@ -44,6 +44,9 @@ import sys
 import zipfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from check_kit_agency_leak import format_findings, scan_members  # noqa: E402
+
 SERIES_SITE_REL = "customer-documents/orgcomp-series"
 ZIP_NAME = "orgcomp-federal-series-markdown-latest.zip"
 
@@ -236,9 +239,19 @@ def build(site_root: Path, out_dir: Path, date_code: str) -> int:
         "A master index of every volume and doc is in INDEX.md.\n\n"
         "Rebuilt from source on every site deploy — no fixed SHA-256 is published.\n"
     )
+    index_md = _index_md(files, generated, date_code)
+
+    # Same gate as build_orgcomp_download.py — see check_kit_agency_leak. The
+    # concatenated volume bundles live in ``generated`` and never touch disk,
+    # so they go through ``extra`` or they would ship unscanned.
+    findings = scan_members(files, extra={**generated, "README.txt": readme, "INDEX.md": index_md})
+    if findings:
+        print(format_findings(findings))
+        return 1
+
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("README.txt", readme)
-        z.writestr("INDEX.md", _index_md(files, generated, date_code))
+        z.writestr("INDEX.md", index_md)
         for arc, src in sorted(files.items()):
             z.write(src, arc)
         for arc, text in sorted(generated.items()):

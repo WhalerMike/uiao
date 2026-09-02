@@ -399,7 +399,7 @@
 - [OrgComp Vendor Training Catalog](customer-documents/orgcomp-series/OrgComp-Training-Program/vendor-training-catalog.html)
 - **Courseware — per book**
   - [Book 00 — Executive Summary](customer-documents/orgcomp-series/OrgComp-Training-Program/books/book-00.html)
-  - [Book 01 — SSA Landing Zone, IPAM & FedRAMP](customer-documents/orgcomp-series/OrgComp-Training-Program/books/book-01.html)
+  - [Book 01 — Cloud Landing Zone, IPAM & FedRAMP](customer-documents/orgcomp-series/OrgComp-Training-Program/books/book-01.html)
   - [Book 02 — Network Access Control: 802.1X](customer-documents/orgcomp-series/OrgComp-Training-Program/books/book-02.html)
   - [Book 03 — Certificates, Tokens & Cryptographic Identity](customer-documents/orgcomp-series/OrgComp-Training-Program/books/book-03.html)
   - [Book 04 — HRIT Identity & Organizational SSOT](customer-documents/orgcomp-series/OrgComp-Training-Program/books/book-04.html)
