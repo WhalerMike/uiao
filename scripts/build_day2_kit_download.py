@@ -30,8 +30,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import re
+import sys
 import zipfile
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from check_kit_agency_leak import format_findings, scan_members  # noqa: E402
 
 SERIES = "customer-documents/orgcomp-series"
 KIT_SRC_REL = f"docs/{SERIES}/servicenow-day2"
@@ -609,6 +613,11 @@ def build_markdown_one(site_root: Path, out_dir: Path, date_code: str, edition: 
     zip_path = out_dir / ZIP_NAMES_MD[edition]
     readme = README_MD[edition].format(date=date_code, doc_map=doc_map_lines(edition))
 
+    findings = scan_members(members, extra={"README.txt": readme})
+    if findings:
+        print(format_findings(findings))
+        return 1
+
     # Every doc is renumbered on the way in, so rewrite the by-name
     # cross-references in each body to match -- otherwise they all point at
     # repo filenames that do not exist in this bundle.
@@ -659,6 +668,15 @@ def build_one(site_root: Path, src_root: Path, out_dir: Path, date_code: str, ed
     root = ROOTS[edition]
     zip_path = out_dir / ZIP_NAMES[edition]
     readme_bytes = READMES[edition].format(date=date_code, doc_map=doc_map_lines(edition)).encode("utf-8")
+
+    # Same gate as the OrgComp kits — see check_kit_agency_leak. This kit's
+    # source tree (servicenow-day2/) is swept with rglob too, so it is exposed
+    # to exactly the committed-binary blind spot that leaked the OrgComp kit.
+    findings = scan_members(members, extra={"README.txt": readme_bytes.decode("utf-8")})
+    if findings:
+        print(format_findings(findings))
+        return 1
+
     hashes: list[tuple[str, str]] = [(f"{root}/README.txt", hashlib.sha256(readme_bytes).hexdigest())]
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr(f"{root}/README.txt", readme_bytes)

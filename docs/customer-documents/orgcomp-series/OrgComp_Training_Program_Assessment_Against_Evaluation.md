@@ -82,9 +82,10 @@ and covers both capstone surfaces — and nothing at HEAD offers it.
 The series-level entry point already does this: the series index
 (`index.qmd:25-27`) — "Start with the **two-page Executive Brief**, then
 the Executive Summary" — and both `Vol_0_Book_00a_OrgComp_Executive_Brief.qmd`
-and its dollar-savings docx variant exist
-(`OrgComp-Training-Program/OrgComp_Executive_At_A_Glance.docx`,
-`Vol_0_Book_00a_OrgComp_Executive_Brief_with_Dollar_Savings.docx`). The
+exists. Its two dollar-savings docx variants were the agency edition,
+not the federal one, and now live segregated in
+`inbox/aan-ssa-edition/ssa-addon/` — they are not published and not
+shipped in any kit. The
 evaluation's Next-Step 4 ("a Book 00 one-pager for leadership buy-in") is
 therefore already shipped. What does **not** exist is the practitioner-side
 quick start — a "just the labs + mappings" page that takes an engineer

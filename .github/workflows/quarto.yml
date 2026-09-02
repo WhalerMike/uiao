@@ -15,6 +15,7 @@ on:
       - 'scripts/build_orgcomp_markdown_download.py'
       - 'scripts/build_day2_kit_download.py'
       - 'scripts/build_org_family_download.py'
+      - 'scripts/check_kit_agency_leak.py'
       - 'scripts/stamp_docx_header.py'
       - 'scripts/publish_release_assets.py'
       - 'tools/scubadrift/**'
@@ -877,6 +878,13 @@ jobs:
             scripts/build_orgcomp_markdown_download.py
             scripts/build_day2_kit_download.py
             scripts/build_org_family_download.py
+            # Imported by the three OrgComp kit builders above (sibling-path
+            # import) and invoked directly by the "Gate published kits" step --
+            # so it must be on disk even though no build step names it on a
+            # command line. build_org_family_download.py does not import it:
+            # neither of its families carries agency metadata, and the gate step
+            # scans its output zips anyway.
+            scripts/check_kit_agency_leak.py
             # Every script this job invokes must be listed here: the checkout is
             # sparse and non-cone, so an unlisted path simply is not on disk and
             # the step dies with "can't open file" the first time it runs on
@@ -1041,7 +1049,36 @@ jobs:
         # build above.
         if: env.MAINTENANCE_MODE != 'true'
         run: |
-          python _repo/scripts/build_org_family_download.py               --family all               --site-root _site               --src-root _repo               --out _site/download               --date-code "$(date -u +%Y-%m-%d)"             || echo "::warning::OrgPath/OrgMod kit build failed (non-fatal)"
+          python _repo/scripts/build_org_family_download.py \
+              --family all \
+              --site-root _site \
+              --src-root _repo \
+              --out _site/download \
+              --date-code "$(date -u +%Y-%m-%d)" \
+            || echo "::warning::OrgPath/OrgMod kit build failed (non-fatal)"
+
+      - name: Gate published kits on agency identity
+        # BLOCKING, unlike the builds above. Each build script already refuses to
+        # write a leaking zip (check_kit_agency_leak.scan_members), but those steps
+        # are non-fatal -- a refusal there would only drop the download silently,
+        # with one ::warning:: in a very long log. This step re-scans whatever
+        # actually landed in _site/download and fails the deploy, so the leak that
+        # shipped two agency-edition .docx in every orgcomp-federal-series-latest.zip
+        # can never again be a quiet build artifact. Also covers zips written by
+        # builders that predate the in-script gate -- and the OrgPath/OrgMod kits
+        # built by the step above, which carry no in-script gate of their own.
+        #
+        # Must stay AFTER every kit-build step: it gates what actually landed in
+        # _site/download, so a build added below it would ship ungated.
+        if: env.MAINTENANCE_MODE != 'true'
+        run: |
+          shopt -s nullglob
+          zips=(_site/download/*.zip)
+          if [ ${#zips[@]} -eq 0 ]; then
+            echo "::warning::no download zips to gate"
+            exit 0
+          fi
+          python _repo/scripts/check_kit_agency_leak.py "${zips[@]}"
 
       - name: Stage per-book and per-section .docx bundles for GitHub Release
         # Every *-bundle.docx built above (the "Build per-section .docx

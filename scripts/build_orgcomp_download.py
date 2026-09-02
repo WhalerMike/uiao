@@ -25,9 +25,16 @@ Produces, into ``--out`` (the deploy calls it with ``--out _site/download``):
     plus the operator kits, plus a README stating the edition and build date.
     Individual per-book .docx are not shipped — the site offers those per page.
 
-Federal edition ONLY. This script never reads inbox/aan-ssa-edition/; the .docx it
-collects are the federal renders and the .pptx/kits carry no agency facts, so the
-download cannot leak the agency edition.
+Federal edition ONLY. This script never reads inbox/aan-ssa-edition/, and the .docx
+it collects are the federal renders (Quarto resolved the agency metadata).
+
+That is NOT sufficient on its own, and this script used to claim it was. KIT_DIRS
+sweeps operator-kit directories with rglob("*"), which picks up whatever is on
+disk — including committed .docx that never went through a Quarto render. Two of
+them were the agency edition and shipped in every build until the leak gate below
+was added. Nothing about the collection paths guarantees a de-branded kit; only
+check_kit_agency_leak.scan_members, run over the ASSEMBLED member list before the
+zip is written, does. Do not remove that call.
 
 Local preview:
     python scripts/build_orgcomp_download.py --site-root _site --src-root . --out /tmp/dl
@@ -42,6 +49,9 @@ import re
 import sys
 import zipfile
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from check_kit_agency_leak import format_findings, scan_members  # noqa: E402
 
 # The series sits at different relative paths in the two trees: docs/ is the
 # Quarto project root, so _site strips it, but the source checkout keeps it. A
@@ -243,16 +253,30 @@ def build(site_root: Path, src_root: Path, out_dir: Path, date_code: str) -> int
         "FEDERAL EDITION. Written for any federal agency; no agency is named. The\n"
         "agency-specific edition is not distributed here.\n\n"
         "Contents: one Word file per volume (.docx volume bundles, per-volume\n"
-        "folders) and every book as PowerPoint (.pptx), plus the deployable\n"
+        "folders) and the per-book PowerPoint (.pptx) briefings that exist so\n"
+        "far — Volumes VII and IX; the other volumes have no decks yet — plus\n"
+        "the deployable\n"
         "operator kits (ServiceNow day-2 catalog, the compliance scoped app,\n"
         "detection rules, the multi-cloud DDI landing-zone automation, and the\n"
         "training academy).\n\n"
         "A master index of every volume, book, and kit is in INDEX.md.\n\n"
         "Rebuilt from source on every site deploy — no fixed SHA-256 is published.\n"
     )
+    index_md = _index_md(members, date_code)
+
+    # The README above promises "no agency is named". Prove it before writing,
+    # over the assembled member list — the .docx from _site, the .pptx, and
+    # everything KIT_DIRS swept — plus the two members generated in memory.
+    # INDEX.md matters here specifically because it reproduces every archive
+    # path, which is how a leaking FILENAME reaches a reader.
+    findings = scan_members(members, extra={"README.txt": readme, "INDEX.md": index_md})
+    if findings:
+        print(format_findings(findings))
+        return 1
+
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("README.txt", readme)
-        z.writestr("INDEX.md", _index_md(members, date_code))
+        z.writestr("INDEX.md", index_md)
         for arc, src in sorted(members.items()):
             z.write(src, arc)
 
