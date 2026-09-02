@@ -307,30 +307,30 @@ def test_the_downloads_page_links_both_kits_by_their_real_asset_names() -> None:
         )
 
 
-def test_the_lycheeignore_bootstrap_stays_one_url_per_line() -> None:
-    # Both kits are linked before they exist: the release assets appear on the
-    # first deploy after this merges, so the links 404 for as long as the PR is
-    # open. The .lycheeignore entries that cover that window must each name one
-    # file and be anchored at both ends. The adjacent NOTE in .lycheeignore is
-    # the reason this is pinned: a suppression there was once widened past its
-    # subject and went on to mask 11 genuinely broken release links.
+def test_both_kit_links_are_checked_not_suppressed() -> None:
+    # Inverted from the bootstrap guard this replaces. Both kits were linked
+    # before they existed -- the release assets only appear on the first deploy
+    # after the PR merges -- so .lycheeignore briefly carried a two-line, one-
+    # file-per-line suppression to cover that window. The deploy on d7150c256
+    # published both (2026-09-02, 37.1 MB / 116 MB), the links resolve, and the
+    # suppression is gone.
+    #
+    # What stays is the assertion that it does not come back. The NOTE beside
+    # those entries in .lycheeignore records why: a suppression there was added
+    # for a real reason, silently outlived it, and went on to mask 11 genuinely
+    # broken release links -- because GitHub rewrites spaces, commas and
+    # ampersands in asset names, so a link can rot while the file exists. A kit
+    # link that stops being checked is exactly how that repeats.
     base = "https://github.com/WhalerMike/uiao/releases/download/downloads-latest/"
-    lines = [
-        line.strip()
+    patterns = [
+        re.compile(line.strip())
         for line in (_REPO / ".lycheeignore").read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.startswith("#")
     ]
-    all_zips = {f.zip_name for f in bofd.FAMILIES.values()}
 
-    for zip_name in all_zips:
-        covering = [ln for ln in lines if re.compile(ln).search(base + zip_name)]
-        assert covering, f"{zip_name} is linked but not suppressed; link-check will 404 until the first deploy"
-        for line in covering:
-            assert line.startswith("^") and line.endswith("$"), (
-                f"{line!r} is not anchored at both ends — it can drift into a prefix suppression"
-            )
-            # Anything else on that release must still be checked by this line.
-            for other in ("orgcomp-federal-series-latest.zip", "scubadrift-latest.zip", *(all_zips - {zip_name})):
-                assert not re.compile(line).search(base + other), (
-                    f"{line!r} suppresses {other} as well — it is no longer a one-file bootstrap"
-                )
+    for family in bofd.FAMILIES.values():
+        url = base + family.zip_name
+        masking = [p.pattern for p in patterns if p.search(url)]
+        assert not masking, (
+            f"{family.zip_name} is published and must stay link-checked, but .lycheeignore suppresses it via {masking}"
+        )
