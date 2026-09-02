@@ -55,7 +55,12 @@ def downloads_release_tag() -> str:
         text = QUARTO_WORKFLOW.read_text(encoding="utf-8")
     except OSError:
         return DOWNLOADS_RELEASE_TAG_FALLBACK
-    match = re.search(r"^\s*tag_name:\s*(\S+)\s*$", text, re.M)
+    # Reads the workflow-level `DOWNLOADS_RELEASE_TAG` constant. It used to
+    # read the `tag_name:` input of softprops/action-gh-release; that input
+    # went away when the publish step moved to a paced uploader to stay inside
+    # GitHub's secondary rate limits, so the tag was given an explicit named
+    # home rather than being left implicit in whatever publishes it.
+    match = re.search(r"""^\s*DOWNLOADS_RELEASE_TAG:\s*["']?([^"'\s]+)["']?\s*$""", text, re.M)
     return match.group(1) if match else DOWNLOADS_RELEASE_TAG_FALLBACK
 
 

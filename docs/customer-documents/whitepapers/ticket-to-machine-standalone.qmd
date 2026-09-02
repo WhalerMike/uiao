@@ -9,8 +9,8 @@ status: Draft
 derived-from: "Standalone edition — self-contained, with no references to companion or internal documents"
 repo-path: docs/customer-documents/whitepapers/ticket-to-machine-standalone.qmd
 created-at: 2026-07-28
-updated-at: 2026-08-06
-version: "1.1-standalone"
+updated-at: 2026-09-01
+version: "1.2-standalone"
 format:
   html:
     toc: true
@@ -42,7 +42,7 @@ Across every platform examined in this paper — Microsoft 365, Azure, AWS, and 
 This edition is written for the agency's internal ServiceNow team. The argument below is the *why*; the
 request is in §13. Everything §§3–8 describe depends on ServiceNow being able to reach four native
 surfaces — Entra ID/Azure, AWS, and VMware — under a service identity, with ServiceNow acting as the
-approval front end both for **SAM (Systems Access Manager)** access requests and for configuration,
+approval front end both for **SAM (Systems Access Management)** access requests and for configuration,
 vulnerability, and patch findings. On the ServiceNow side that reach is an **IntegrationHub spoke**, and
 spokes are a licensed entitlement rather than a platform feature. **§13 asks the team to confirm which of
 those spokes the agency's current contract covers, and to name the gaps.**
@@ -156,6 +156,8 @@ From there, the attestation layer lifts the closed task stream into an *assessed
 
 Everything above concerns configuration, vulnerability, and patch controls (CM-6, RA-5, SI-2) — the domain the ServiceNow-fronting pattern is built and deployed for today. The same structural argument extends to a second domain, **access governance** (AC-2, AC-3, AC-6): a native IAM console can inspect and even remediate Azure RBAC or AWS IAM policy, but a role binding is not, by itself, a record of who requested it, who approved it, and when it was last reviewed. **SailPoint ISC Governance (the CIEM add-on)** supplies that detection function natively across Azure, AWS, and GCP, closing AC-2/AC-3/AC-6 through the same test → detect → raise → actuate-native → close-with-evidence loop used for configuration drift — one front door, not a second SailPoint-fronted coordination layer. VMware/vCenter identity governance remains a genuinely open gap: no evidence was found that SailPoint's CIEM add-on reaches vCenter permissions.
 
+**Two SailPoint products, not one.** The **SAM (Systems Access Management)** portal named in §1 is the agency's internal brand for a **SailPoint IdentityIQ** deployment — a different product from ISC, not the same one under a local name. IdentityIQ is customer-hosted on agency infrastructure, with a versioned on-premises integration surface (SCIM 2.0 plus a core REST API tied to the installed release); ISC is SailPoint-hosted SaaS on a continuously-versioned cloud REST API. That matters to this paper's ask in two concrete ways. First, the two enter ServiceNow from opposite directions: ISC pushes *detection findings* in, as one more engine alongside Security Hub and Defender for Cloud, while SAM pushes an *approved access request* in, correlated to a RITM, with closure written back — so they are not one integration to be scoped once. Second, an integration built against one product's API surface does not transfer to the other. Two products, two directions, one front door — the argument above is unchanged by the distinction, but the build estimate is not.
+
 ## 9. The Certificates Exception — Why PKI Doesn't Take the Same Path
 
 Certificates are a large share of the actual operational work in this estate, which makes it tempting to assume they belong on the same ServiceNow-fronted path as everything else in this paper. They don't — not for the routine lifecycle, and the reason is a deliberate doctrine call, not an oversight. IA-5(2)/SC-12/SC-17 close with **protocol-enforced automation** instead — ACME/SCEP/EST issuance gates, CAA records, and short-lived certificates with non-renewal replacing revocation — because the volume (thousands of issuance/renewal events a week) rules out ticket-per-event without making the ServiceNow queue meaningless. Exceptions and anomalies — a new CA, a non-standard certificate lifetime, a trust-anchor change, or a drift finding from the certificate inventory — still route through the same front door as everything else in this paper; routine issuance within policy does not.
@@ -222,6 +224,27 @@ that confirmation, not as a statement of what the agency already owns. §14 appl
 ## Vendor currency caveat — read before building a Project Plan on this paper
 This paper's dated vendor claims — SmartRAMP 20x, the VMware Aria/ServiceNow connectors, SailPoint CIEM's cloud coverage, Wiz, Vanta, CyberArk/Keyfactor — describe a market that moves in weeks, not review cycles. Every vendor claim in this paper is a dated snapshot, not a standing commitment. **Confirm current roadmaps directly with ServiceNow, SailPoint, VMware/Broadcom, and each CSP before any claim here becomes the basis of an implementation Project Plan, procurement action, or acquisition decision.**
 :::
+
+## 15. Authority Mapping and Non-Compliance Exposure
+
+This paper argues from control families throughout. The specific guidelines behind those claims, and the exposure the agency carries when they go unmet, are collected here.
+
+| Authority | What it obligates here | Where the loop meets it |
+|---|---|---|
+| **NIST SP 800-53 Rev 5**, FedRAMP Moderate baseline | CM-6, RA-5, SI-2 (configuration, vulnerability, patch); AC-2/AC-3/AC-6 (access governance); CA-2/CA-5/CA-7 (assessment, POA&M, continuous monitoring); IA-5(2)/SC-17 (the PKI exception) | None of these close on a native console alone — the console actuates, the coordination layer makes the control assessable |
+| **FedRAMP 20x** | Continuous KSI evidence (KSI-CMT, KSI-MLA, KSI-IAM, KSI-SVC); KSI-CMT-RMV/VTD/RVP; the VDR-TFR-PVR remediation-timeframe table (4–192 days by PAIN rating, plus KEV due dates) | CA-7 emit of OSCAL assessment-results plus KSI evidence; the SLA clock enforced against a named owner |
+| **CISA BOD 25-01** | Five obligations; four are administrative, the fifth — *remediate deviations from the SCuBA baselines* — is open-ended and architectural | Row 5 **is** this paper's loop: detect natively, own and clock in ServiceNow, actuate natively, close with evidence |
+
+: The three authorities this paper answers to {.striped .hover}
+
+::: {.callout-note}
+## Attribution — BOD 25-01 is CISA's, not OPM's
+Binding Operational Directives are issued by **CISA**, under its directive authority over federal civilian executive branch agencies. OPM issues memoranda and HR-domain guidance; it does not issue BODs. The directive governing the M365/SCuBA scope this document touches is CISA [BOD 25-01](https://cyber.dhs.gov/bod/25-01/), *Implementing Secure Practices for Cloud Services*.
+:::
+
+**What non-compliance actually costs.** None of these authorities carries a fine. The exposure is an **authorization** that can be conditioned, shortened, or withdrawn by the Authorizing Official; **audit findings** that persist across FISMA reporting cycles and compound; and a **deviation list that grows**, which is itself the documentary evidence that the remediation obligation went unmet. The last is the one that bites: an assessment tool running faithfully against an unremediated estate produces an accurate, lengthening record of non-closure. The operational risk is unchanged by any of it — the misconfiguration remains exploitable regardless of how well it is reported.
+
+**Why this belongs next to §13's ask.** Each spoke the agency cannot reach is a control family whose closure stays manual, and a manual closure is the one that silently misses the VDR-TFR-PVR clock. The spoke-coverage answer §13 requests is therefore not a licensing detail — it determines which of the rows above the agency can actually evidence.
 
 ## References
 
