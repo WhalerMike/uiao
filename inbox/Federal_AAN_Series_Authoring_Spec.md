@@ -27,11 +27,30 @@ YYYY-MM-DD HH:MM ET
 
 | Artifact | Where the Date Code lives |
 |---|---|
-| `.qmd` source | Frontmatter `date:` field set to the full code (Quarto accepts the string verbatim), **and** a visible `Date Code:` line inside the Draft Proposal callout at the top of the document |
+| `.qmd` source | Frontmatter `date:` field set to the code as **ISO-8601 with the Eastern offset** — `"2026-07-08T16:07:00-04:00"` — **and** a visible `Date Code:` line inside the Draft Proposal callout at the top of the document |
 | `.docx` (rendered) | Inherited from the `.qmd` render — verify the title block shows the full code after each render |
 | `.html` (rendered) | Inherited from the `.qmd` `date:` field |
 | `.pptx` briefing | Visible `Date Code:` line on the title slide (inside or beside the draft-proposal disclaimer) |
 | `.zip` kit archive | Date Code **in the filename**, filename-safe form `YYYY-MM-DD_HHMMET` (e.g., `AAN_Federal_Series_Complete_2026-07-07_1202ET.zip`). Individual files inside keep plain names — their codes live in their content. Exactly one zip is kept per location; the rebuild deletes the previously-coded zip (newest code wins) |
+
+> **Why `date:` is ISO-8601 and not the display string.** This spec previously
+> said the field takes the code verbatim, "Quarto accepts the string verbatim".
+> It does not: Quarto parses `date:` before rendering, `YYYY-MM-DD HH:MM ET` is
+> not one of its accepted input formats, and every book's title block rendered
+> the literal text **"Invalid Date"** — on all 63 published HTML pages, in the
+> `.docx` volume bundles, and on line 3 of every file in the markdown kit. The
+> `.docx` and `.html` rows below say to "verify the title block shows the full
+> code after each render"; that verification would have caught it and evidently
+> never ran.
+>
+> The **displayed** Date Code is unchanged. `date-format: "YYYY-MM-DD HH:mm [ET]"`
+> in `docs/customer-documents/orgcomp-series/_metadata.yml` renders the ISO value
+> back to the canonical spelling, so readers and the derivative-freshness gate
+> both still see `2026-07-08 16:07 ET`. Only the storage form changed.
+>
+> Use `-04:00` for Eastern Daylight Time (second Sunday in March to first Sunday
+> in November) and `-05:00` for Eastern Standard Time. The offset is part of the
+> value, not derived, so it has to be right.
 
 ### Update discipline
 

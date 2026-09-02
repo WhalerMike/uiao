@@ -29,6 +29,25 @@ DC_RE = re.compile(r"Date Code:\s*(\d{4}-\d{2}-\d{2} \d{2}:\d{2} ET)")
 QMD_DATE_RE = re.compile(r'^date:\s*"([^"]+)"', re.M)
 YAML_DC_RE = re.compile(r'date_code:\s*"([^"]+)"')
 
+# The .qmd `date:` field holds the Date Code as ISO-8601 with the Eastern
+# offset, because Quarto rejects the "YYYY-MM-DD HH:MM ET" spelling and renders
+# a literal "Invalid Date" into every title block (_metadata.yml explains the
+# whole thing). Everything this gate compares against — the Date Code stamped
+# inside a .docx or .pptx, and decks/*.yaml `date_code:` — still uses the
+# canonical display spelling, so the frontmatter value is normalised back to it
+# before comparison. The legacy branch is kept so a .qmd that still carries the
+# plain string compares correctly rather than silently failing.
+_ISO_DATE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2})?(?:[+-]\d{2}:?\d{2}|Z)?$")
+_PLAIN_DC_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2} ET$")
+
+
+def date_code(raw: str) -> str:
+    """Return the canonical ``YYYY-MM-DD HH:MM ET`` form of a qmd `date:` value."""
+    if _PLAIN_DC_RE.match(raw):
+        return raw
+    m = _ISO_DATE_RE.match(raw)
+    return f"{m.group(1)} {m.group(2)} ET" if m else raw
+
 
 def tracked(ext: str) -> list[Path]:
     out = subprocess.run(["git", "ls-files", f"*{ext}"], capture_output=True, text=True, cwd=HERE).stdout.splitlines()
@@ -78,8 +97,8 @@ def main() -> int:
         code = docx_code(docx)
         if code is None:
             errors.append(f"{docx.name}: tracked docx carries no extractable Date Code")
-        elif code != src.group(1):
-            errors.append(f"{docx.name}: docx Date Code {code} != qmd date {src.group(1)} — re-render")
+        elif code != date_code(src.group(1)):
+            errors.append(f"{docx.name}: docx Date Code {code} != qmd date {date_code(src.group(1))} — re-render")
 
     for pptx in tracked(".pptx"):
         base = pptx.stem
@@ -101,9 +120,10 @@ def main() -> int:
         qmd = next(iter(HERE.glob(m.group(1) + "_OrgComp_*.qmd")), None)
         if qmd:
             qd = QMD_DATE_RE.search(qmd.read_text(encoding="utf-8", errors="replace"))
-            if qd and qd.group(1) != sd.group(1):
+            if qd and date_code(qd.group(1)) != sd.group(1):
                 errors.append(
-                    f"{spec.name}: deck date_code {sd.group(1)} != book qmd date {qd.group(1)} — sync per spec §1"
+                    f"{spec.name}: deck date_code {sd.group(1)} != book qmd date "
+                    f"{date_code(qd.group(1))} — sync per spec §1"
                 )
 
     print("AAN derivative-freshness check")
