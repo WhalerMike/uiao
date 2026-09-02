@@ -1058,24 +1058,40 @@ jobs:
             || echo "::warning::OrgPath/OrgMod kit build failed (non-fatal)"
 
       - name: Gate published kits on agency identity
-        # BLOCKING, unlike the builds above. Each build script already refuses to
-        # write a leaking zip (check_kit_agency_leak.scan_members), but those steps
-        # are non-fatal -- a refusal there would only drop the download silently,
-        # with one ::warning:: in a very long log. This step re-scans whatever
-        # actually landed in _site/download and fails the deploy, so the leak that
-        # shipped two agency-edition .docx in every orgcomp-federal-series-latest.zip
-        # can never again be a quiet build artifact. Also covers zips written by
-        # builders that predate the in-script gate -- and the OrgPath/OrgMod kits
-        # built by the step above, which carry no in-script gate of their own.
+        # BLOCKING, unlike the builds above. Each OrgComp build script already
+        # refuses to write a leaking zip (check_kit_agency_leak.scan_members), but
+        # those steps are non-fatal -- a refusal there would only drop the download
+        # silently, with one ::warning:: in a very long log. This step re-scans what
+        # actually landed and fails the deploy, so the leak that shipped two
+        # agency-edition .docx in every orgcomp-federal-series-latest.zip can never
+        # again be a quiet build artifact.
         #
-        # Must stay AFTER every kit-build step: it gates what actually landed in
-        # _site/download, so a build added below it would ship ungated.
+        # Must stay AFTER every OrgComp kit-build step: it gates what actually
+        # landed in _site/download.
+        #
+        # SCOPED TO orgcomp-* DELIBERATELY. This first shipped as a bare *.zip glob
+        # and broke the deploy on its first run (33660820485). It flagged
+        # orgpath-governance-series-latest.zip and uiao-all-docx-bundles.zip, where
+        # "SSA" appears as ONE EXAMPLE AGENCY among IRS / USCIS / DHS / GSA in
+        # federal-identity scholarship ("SSA beneficiaries, IRS taxpayers, USCIS
+        # petitioners"), and in the published OMB HR 2.0 Wave 2 agency roster. None
+        # of that is agency-edition leakage; sweeping it would gut the scholarship,
+        # and holding those kits to this guarantee was simply the wrong scope.
+        #
+        # The guarantee is a property of specific kits, not of the download
+        # directory. Only build_orgcomp_download.py and
+        # build_orgcomp_markdown_download.py print "no agency is named" into their
+        # READMEs; the day-2 kits are built federal-edition-only from that same
+        # de-branded source. Those are the orgcomp-* zips, and they are exactly the
+        # ones whose builders call the gate in-process. A kit that never claimed
+        # the guarantee must not be failed for not meeting it. Widening this glob
+        # means first de-branding the new kit at its source.
         if: env.MAINTENANCE_MODE != 'true'
         run: |
           shopt -s nullglob
-          zips=(_site/download/*.zip)
+          zips=(_site/download/orgcomp-*.zip)
           if [ ${#zips[@]} -eq 0 ]; then
-            echo "::warning::no download zips to gate"
+            echo "::warning::no OrgComp download zips to gate"
             exit 0
           fi
           python _repo/scripts/check_kit_agency_leak.py "${zips[@]}"
