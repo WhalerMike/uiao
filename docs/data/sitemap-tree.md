@@ -321,7 +321,7 @@
   - [Federal Organization Compliance — Series Control Crosswalk](customer-documents/orgcomp-series/Vol_0_Book_02_OrgComp_Control_Crosswalk.html)
 - **Vol I — Foundation & Transport**
   - [Vol I Book 00 — Federal Organization Compliance — Volume I Overview: Foundation & Transport](customer-documents/orgcomp-series/Vol_I_Book_00_OrgComp_Foundation_Transport_Overview.html)
-  - [Vol I Book 01 — Federal Agency Cloud Landing Zone](customer-documents/orgcomp-series/Vol_I_Book_01_OrgComp_SSA_Landing_Zone_IPAM_FedRAMP.html)
+  - [Vol I Book 01 — Federal Agency Cloud Landing Zone](customer-documents/orgcomp-series/Vol_I_Book_01_OrgComp_Cloud_Landing_Zone_IPAM_FedRAMP.html)
   - [Vol I Book 02 — Federal Organization Compliance — Network Access Control: 802.1X and Device Identity](customer-documents/orgcomp-series/Vol_I_Book_02_OrgComp_Network_Access_Control_802_1X.html)
   - [Vol I Book 03 — Federal Organization Compliance — Certificates & Tokens: Cryptographic Identity](customer-documents/orgcomp-series/Vol_I_Book_03_OrgComp_Certificates_Tokens_Cryptographic_Identity.html)
   - [Vol I Book 04 — Federal Organization Compliance — OPM HRIT and the Identity & Organizational SSOT](customer-documents/orgcomp-series/Vol_I_Book_04_OrgComp_HRIT_Identity_Org_SSOT.html)

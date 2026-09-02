@@ -81,18 +81,14 @@ FALSE_POSITIVES = re.compile(
     r"\bSocial Security (?:Number|Numbers|Act|number|numbers)\b|\bSSN\b",
 )
 
-# Paths inside the kit that are known to carry the token and are NOT fixed here.
+# Paths inside the kit that are known to carry the token and are NOT fixed.
 #
-# Vol I Book 01's FILENAME still reads ..._OrgComp_SSA_Landing_Zone_... . The
-# rename is mechanical but touches 21 files and 54 references, including the
-# compliance spine, the high-claim baseline, an adapter mapping, and the three
-# derived docs/data tables behind blocking drift gates — too much to carry in
-# the change that closes the leak. It is a PUBLIC filename, not agency prose,
-# and it is tracked for its own change. Listing it here rather than weakening
-# the patterns keeps the exception visible and countable.
-#
-# Anything added to this list needs a reason and a plan to remove it.
-PATH_ALLOWLIST: tuple[str, ...] = ("Vol_I_Book_01_OrgComp_SSA_Landing_Zone_IPAM_FedRAMP",)
+# EMPTY, and it should stay that way. It briefly held Vol I Book 01's filename,
+# ..._OrgComp_SSA_Landing_Zone_..., while the rename was pending; that rename
+# has landed and the entry is gone. An entry here is a hole in the gate, so it
+# needs a reason, a plan to remove it, and a reviewer who agrees the path is
+# genuinely not a leak. Never add one to make a failing build pass.
+PATH_ALLOWLIST: tuple[str, ...] = ()
 
 # Members whose bytes are scanned. Office formats are unzipped and their text
 # parts read; everything else in this set is decoded as UTF-8. Binaries not
