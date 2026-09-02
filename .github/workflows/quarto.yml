@@ -14,6 +14,7 @@ on:
       - 'scripts/build_orgcomp_download.py'
       - 'scripts/build_orgcomp_markdown_download.py'
       - 'scripts/build_day2_kit_download.py'
+      - 'scripts/build_org_family_download.py'
       - 'scripts/stamp_docx_header.py'
       - 'scripts/publish_release_assets.py'
       - 'tools/scubadrift/**'
@@ -875,6 +876,7 @@ jobs:
             scripts/build_orgcomp_download.py
             scripts/build_orgcomp_markdown_download.py
             scripts/build_day2_kit_download.py
+            scripts/build_org_family_download.py
             # Every script this job invokes must be listed here: the checkout is
             # sparse and non-cone, so an unlisted path simply is not on disk and
             # the step dies with "can't open file" the first time it runs on
@@ -1023,6 +1025,23 @@ jobs:
               --out _site/download \
               --date-code "$(date -u +%Y-%m-%d)" \
             || echo "::warning::OrgComp markdown kit build failed (non-fatal)"
+
+      - name: Build OrgPath and OrgMod series download kits
+        # The Org-family siblings of the OrgComp kit above: OrgComp already had
+        # a one-click "whole series" download and the other two published
+        # families did not. Both are assembled entirely from _site -- every
+        # page in customer-documents renders to .docx in the render_docx
+        # matrix, and the per-book Book_NN-bundle.docx files were written by
+        # the "Build per-section .docx bundles" step earlier in this job, so
+        # both classes of input are already on disk here. Nothing is read from
+        # source, so --src-root is passed only for CLI symmetry. Ordering
+        # matters in one direction: this must stay AFTER the bundler step and
+        # BEFORE "Remove published download kits ..." strips *-bundle.docx from
+        # _site. Non-fatal, and skipped in maintenance mode, like every kit
+        # build above.
+        if: env.MAINTENANCE_MODE != 'true'
+        run: |
+          python _repo/scripts/build_org_family_download.py               --family all               --site-root _site               --src-root _repo               --out _site/download               --date-code "$(date -u +%Y-%m-%d)"             || echo "::warning::OrgPath/OrgMod kit build failed (non-fatal)"
 
       - name: Stage per-book and per-section .docx bundles for GitHub Release
         # Every *-bundle.docx built above (the "Build per-section .docx
