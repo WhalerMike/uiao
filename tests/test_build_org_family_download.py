@@ -113,6 +113,72 @@ def test_orgpath_implementation_belongs_to_orgpath_only() -> None:
     assert "orgpath-implementation" in guides.exclude_dirs
 
 
+def _orgmod_guides() -> object:
+    return next(
+        g for g in bofd.FAMILIES["orgmod"].groups if g.site_rel == "operational-guides" and g.folder == "Guides"
+    )
+
+
+def test_the_governance_subsections_moved_to_orgpath_and_left_orgmod() -> None:
+    # The triage that split steady-state governance out of the modernization
+    # kit. Both halves must read the same constant: an exclusion that drifts
+    # from the inclusion ships a page twice, or drops it from both kits.
+    gov = next(g for g in bofd.FAMILIES["orgpath"].groups if g.folder == "Governance_Operations")
+    assert gov.include_dirs == bofd.ORGPATH_GOVERNANCE_OPS
+    assert set(bofd.ORGPATH_GOVERNANCE_OPS) <= set(_orgmod_guides().exclude_dirs)
+
+    for name in bofd.ORGPATH_GOVERNANCE_OPS:
+        assert (_DOCS / "operational-guides" / name).is_dir(), f"{name} no longer exists — the split is a no-op"
+
+
+def test_the_shared_operational_guides_tree_is_partitioned_not_sampled() -> None:
+    # Closed world in both directions over the tree the two families share:
+    # every page reaches exactly one kit. A one-way "nothing new leaked in"
+    # check would pass while a whole sub-section silently stopped shipping.
+    og = _DOCS / "operational-guides"
+    on_disk = {q.relative_to(og).with_suffix("").as_posix() for q in og.rglob("*.qmd")}
+
+    claimed: dict[str, list[str]] = {}
+    for key, folder, prefix in (
+        ("orgmod", "Guides", ""),
+        ("orgmod", "Transformation_Narrative", bofd.ORGMOD_PROMOTED_DIR + "/"),
+        ("orgpath", "Implementation", bofd.ORGPATH_IMPLEMENTATION_DIR + "/"),
+        ("orgpath", "Governance_Operations", ""),
+    ):
+        group = next(g for g in bofd.FAMILIES[key].groups if g.folder == folder)
+        src = _DOCS / group.site_rel
+        for q in src.rglob("*.qmd"):
+            rel = q.relative_to(src)
+            if group.include_dirs and rel.parts[0] not in group.include_dirs:
+                continue
+            if rel.parts[0] in group.exclude_dirs:
+                continue
+            claimed.setdefault(prefix + rel.with_suffix("").as_posix(), []).append(f"{key}/{folder}")
+
+    assert not sorted(on_disk - set(claimed)), "pages that reach neither kit"
+    assert not sorted(set(claimed) - on_disk), "pages claimed by a kit that are not on disk"
+    assert not sorted(k for k, v in claimed.items() if len(v) > 1), "pages shipped by both kits"
+
+
+def test_orgmod_whitepapers_are_the_reading_guides_modernization_tracks() -> None:
+    # The whitepaper section serves all four pillars, so the OrgMod selection
+    # is editorial unless it tracks something published. It tracks
+    # reading-guide.qmd: every paper named here must still be linked from that
+    # guide, so a renamed or retired paper fails here rather than vanishing
+    # from the kit at deploy time.
+    guide = (_DOCS / "whitepapers" / "reading-guide.qmd").read_text(encoding="utf-8")
+    for name in bofd.ORGMOD_WHITEPAPERS:
+        slug = Path(name).stem
+        assert f"({slug}.qmd)" in guide, f"{slug} is in the OrgMod kit but no longer in the reading guide"
+
+    # Papers whose tracks are explicitly not OrgMod's must stay out.
+    for slug in ("orgpath-composability-matrix", "uiao-governance-os-whitepaper", "scubagear-integration-whitepaper"):
+        assert f"{slug}.docx" not in bofd.ORGMOD_WHITEPAPERS, f"{slug} is not a modernization-track paper"
+
+    wp = next(g for g in bofd.FAMILIES["orgmod"].groups if g.folder == "Whitepapers")
+    assert len(set(wp.only)) == len(wp.only), "duplicate paper in the OrgMod whitepaper selection"
+
+
 # --------------------------------------------------------------------------
 # Selection over a fake _site
 # --------------------------------------------------------------------------
@@ -150,6 +216,15 @@ def _fake_site(tmp_path: Path) -> Path:
     _touch(og / "target-surface" / "target-surface-bundle.docx")
     _touch(og / "orgpath-implementation" / "01-prerequisites.docx")
     _touch(og / "client-server-to-hybrid-cloud" / "01-ad-governance-surface.docx")
+    # The three governance sub-sections that are OrgPath's, not OrgMod's.
+    _touch(og / "active-governance-directory" / "index.docx")
+    _touch(og / "ai-identity-governance" / "governed-path.docx")
+    _touch(og / "helpdesk-entra-operations" / "helpdesk-flow.docx")
+
+    # whitepapers: a flat section the OrgMod kit takes named papers out of.
+    wp = docs / "whitepapers"
+    _touch(wp / bofd.ORGMOD_WHITEPAPERS[0])
+    _touch(wp / "orgpath-composability-matrix.docx")
 
     _touch(docs / "orgpath-multicloud" / "01-the-substrate.docx")
     _touch(docs / "modernization-specs" / "identity" / "spec.docx")
@@ -170,7 +245,14 @@ def test_orgpath_collect_takes_book_bundles_and_pages_not_section_bundles(tmp_pa
         "Reference_Architecture/adapters.docx",
         "Implementation/01-prerequisites.docx",
         "Multi_Cloud/01-the-substrate.docx",
+        "Governance_Operations/active-governance-directory/index.docx",
+        "Governance_Operations/ai-identity-governance/governed-path.docx",
+        "Governance_Operations/helpdesk-entra-operations/helpdesk-flow.docx",
     }
+    # include_dirs takes only what it names: the rest of the shared
+    # operational-guides tree must not leak into the OrgPath kit.
+    assert not any(arc.startswith("Governance_Operations/pki-modernization") for arc in members)
+    assert not any("target-surface" in arc for arc in members)
 
 
 def test_orgmod_collect_excludes_orgpath_implementation_and_the_promoted_narrative(tmp_path: Path) -> None:
@@ -183,6 +265,7 @@ def test_orgmod_collect_excludes_orgpath_implementation_and_the_promoted_narrati
         "Modernization_Specs/identity/spec.docx",
         "Directory_Migration_Bridge/directory-migration.docx",
         "Directory_Migration_Bridge/adapters.docx",
+        f"Whitepapers/{bofd.ORGMOD_WHITEPAPERS[0]}",
         "SQL_Server_Transformation/Narrative/Book_01-bundle.docx",
         "SQL_Server_Transformation/Implementation/Book_01.docx",
     }
@@ -190,6 +273,11 @@ def test_orgmod_collect_excludes_orgpath_implementation_and_the_promoted_narrati
     # in their own homes — never swept a second time by the Guides group.
     assert not any(arc.startswith("Guides/orgpath-implementation/") for arc in members)
     assert not any(arc.startswith("Guides/client-server-to-hybrid-cloud/") for arc in members)
+    # ...and the three governance sub-sections left the OrgMod kit entirely.
+    for name in bofd.ORGPATH_GOVERNANCE_OPS:
+        assert not any(arc.startswith(f"Guides/{name}/") for arc in members)
+    # The whitepapers group is a named selection, never the whole section.
+    assert "Whitepapers/orgpath-composability-matrix.docx" not in members
 
 
 def test_collect_reports_a_gap_instead_of_shipping_quietly(tmp_path: Path) -> None:
