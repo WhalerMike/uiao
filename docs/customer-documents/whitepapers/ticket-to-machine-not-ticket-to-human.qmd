@@ -221,7 +221,41 @@ The full vendor-by-vendor findings, the build-vs-buy analysis, and the sourcing 
 - [Vol III Book 01 — Privileged Access Management](../orgcomp-series/Vol_III_Book_01_OrgComp_Privileged_Access_Management.qmd) — the CyberArk PSM session-recording capability §4's vCenter compensating control relies on.
 - [OrgComp Day-2 Automation Kit](../orgcomp-series/servicenow-day2/README.md) — §4's working reference implementation of ticket-to-machine actuation for the AD/Entra surface.
 
-## 14. Authority Mapping and Non-Compliance Exposure
+## 14. The Ask — Spoke Coverage Under the Agency Contract
+
+*This section was written for the agency's internal ServiceNow team and was
+previously carried only by the standalone edition. It is folded in here so the
+ask survives in the paper that remains.*
+
+The architecture in §§3–8 only works if ServiceNow can actually reach each native surface under a service
+identity. §4 is explicit that the ticket must authorize a *machine*, not a person; a ServiceNow that can
+raise a task but cannot reach the platform is exactly the ticket-to-human anti-pattern that section
+describes. On the ServiceNow side, that reach is an IntegrationHub spoke — and because spokes are a
+licensed entitlement, this is a contract question before it is an engineering one.
+
+**The request:** for each row below, confirm whether the agency's current ServiceNow contract entitles the
+integration, and where it does not, say so explicitly so the gap can be booked rather than discovered
+during implementation.
+
+| Platform | What this paper needs ServiceNow to reach | Integration to confirm | Status to confirm |
+|---|---|---|---|
+| **Entra ID** (AC-2/AC-3/AC-6 identity lifecycle; the SAM approval front end) | User, group, license, service-principal, password, and device actions under a delegated service account | **Microsoft Entra ID Spoke** (formerly the Microsoft Azure Active Directory Spoke) | Documented by ServiceNow — confirm it is entitled, and confirm the delegated account's scope |
+| **Azure** (CM-6, RA-5, SI-2) | Read Azure Policy, Defender for Cloud, and Update Manager state; raise and close typed tasks against the reconciled CI | Microsoft Azure spokes — the **Virtual Machine** and **Virtual Network** spokes are documented; which spoke, if any, covers Policy / Defender / Update Manager is the open question | Confirm both *coverage* and entitlement |
+| **AWS** (CM-2/CM-6, RA-5, SI-2) | Read AWS Config, Security Hub, and Inspector findings and Systems Manager Patch Manager state | **AWS IAM Spoke** is documented; the **ServiceNow AWS Integration for Security Exposure Management** store app covers Inspector + Security Hub | Confirm entitlement for both, and whether Config and Patch Manager are covered |
+| **VMware** (CM-2/CM-6, RA-5, SI-2) | Read vSphere Configuration Profiles / VCF Operations / vLCM state, and actuate under a service identity | No vCenter IntegrationHub spoke was found. The documented connectors are the **VMware Aria Operations Management Pack for ServiceNow** and the **VCF Automation ITSM plugin** | Confirm what the contract covers; until a machine actuator exists, the PSM exception in §4 applies |
+
+Two notes on how to read the table. The VMware row is the one this paper already flags as genuinely open
+(§4, §8): it is not an oversight in the table but the same gap stated in contract terms, and the honest
+answer may be "no spoke exists," in which case the CyberArk PSM compensating control in §4 is the closure path
+rather than a workaround. And where a spoke turns out not to be entitled, the answer is *not* to route the
+work through a human at the console — that is precisely the anti-pattern §4 rejects. It is either to
+license the integration, or to book the gap as a declared exception with a named compensating control.
+
+Spoke names and packaging move between ServiceNow releases, and IntegrationHub entitlement is set by
+subscription terms rather than by the platform; treat every product name above as a starting point for
+that confirmation, not as a statement of what the agency already owns. The vendor-currency caveat below applies here in full.
+
+## 15. Authority Mapping and Non-Compliance Exposure
 
 This paper argues from control families throughout; the specific guidelines behind those claims, and the exposure an agency carries when they go unmet, are collected in one place rather than scattered.
 

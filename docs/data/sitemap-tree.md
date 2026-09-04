@@ -1012,8 +1012,6 @@
   - [UIAO vs Microsoft Native Tools — Gap Analysis](customer-documents/whitepapers/uiao-vs-native-tools.html)
   - [Ticket-to-Machine, Not Ticket-to-Human: Why Changing State Isn't Compliance Evidence](customer-documents/whitepapers/ticket-to-machine-not-ticket-to-human.html)
   - [Ticket-to-Machine Appendices — Code Review, Access Governance, PKI, and Vendor Landscape](customer-documents/whitepapers/ticket-to-machine-appendices.html)
-  - [Ticket-to-Machine, Not Ticket-to-Human: Why Changing State Isn't Compliance Evidence (Standalone Edition)](customer-documents/whitepapers/ticket-to-machine-standalone.html)
-  - [Ticket-to-Machine — Supporting Technical Detail (Standalone Edition)](customer-documents/whitepapers/ticket-to-machine-appendices-standalone.html)
   - [Snowflake Key-Pair Conversion — the UIAO and OrgPath Reading](customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.html)
   - [Choose Your Partners — The OrgPath Composability Matrix](customer-documents/whitepapers/orgpath-composability-matrix.html)
   - [ScubaGear Integration — Whitepaper](customer-documents/whitepapers/scubagear-integration-whitepaper.html)
