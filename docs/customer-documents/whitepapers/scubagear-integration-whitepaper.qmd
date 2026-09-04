@@ -1,6 +1,6 @@
 ---
-title: "SCuBAGear Integration — Whitepaper"
-subtitle: "Connecting CISA SCuBAGear outputs to UIAO's evidence pipeline"
+title: "ScubaGear Integration — Whitepaper"
+subtitle: "Connecting CISA ScubaGear outputs to UIAO's evidence pipeline"
 doc-type: whitepaper
 audience: [Customer, Assessor, Architect]
 status: Active
@@ -23,41 +23,41 @@ tiers_adopted: [1]
 lifecycle_review: 2026-11-22
 ---
 
-# SCuBAGear Integration
+# ScubaGear Integration
 
-## Connecting CISA SCuBAGear outputs to UIAO's evidence pipeline
+## Connecting CISA ScubaGear outputs to UIAO's evidence pipeline
 
 ### Executive summary
 
-CISA SCuBAGear is the federal community's PowerShell-based assessor that
+CISA ScubaGear is the federal community's PowerShell-based assessor that
 evaluates Microsoft 365 tenant state against the **Secure Cloud Business
 Applications (SCuBA)** baseline. It is widely deployed but is typically
 operated as a **point assessor**: someone runs it, archives the report,
 and revisits it at audit time.
 
-UIAO's substrate treats SCuBAGear differently. Per
+UIAO's substrate treats ScubaGear differently. Per
 [`adapter-registry.yaml`](../../../src/uiao/canon/adapter-registry.yaml),
-SCuBAGear is registered as the canonical **Phase-1 conformance / policy
+ScubaGear is registered as the canonical **Phase-1 conformance / policy
 adapter** for M365 — meaning its outputs flow through the canonical
 evidence chain, its findings carry the canonical drift taxonomy, and its
 report is one input to a continuous evidence pipeline rather than a
 freestanding document.
 
-This whitepaper explains the structural integration: what the SCuBAGear
+This whitepaper explains the structural integration: what the ScubaGear
 adapter provides, how its OPA/Rego policy evaluations map onto UIAO's
 canonical claims, and what an agency can do today versus what extends
 the integration into target maturity.
 
 The companion technical surface is the
-[SCuBAGear Adapter Spec](../adapter-specs/scubagear/scubagear.qmd), which
+[ScubaGear Adapter Spec](../adapter-specs/scubagear/scubagear.qmd), which
 documents the runtime contract, configuration, and outputs in adapter-
 implementer terms.
 
-![SCuBAGear-as-registered-adapter diagram](images/scubagear-integration-whitepaper-image-01-scubagear-as-registered-adapter.png){#fig-scubagear-integration-whitepaper-image-01 fig-alt="Center shows the SCuBAGear adapter as a labeled rounded rectangle with its canonical metadata (class: conformance, mission-class: policy, runtime: powershell-7.4). Above the adapter, a teal arrow flowing in from \"M365 GCC-Moderate Tenant State\" represents read-only observation. Below the adapter, a teal arrow flowing out to \"Canonical Claims (provenance envelope)\" shows emitted findings. Surrounding the adapter, four canon invariants are labeled as small badges: gcc-boundary: gcc-moderate, ssot-mutation: never, certificate-anchored: true, object-identity-only: true. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic." width="100%"}
+![ScubaGear-as-registered-adapter diagram](images/scubagear-integration-whitepaper-image-01-scubagear-as-registered-adapter.png){#fig-scubagear-integration-whitepaper-image-01 fig-alt="Center shows the ScubaGear adapter as a labeled rounded rectangle with its canonical metadata (class: conformance, mission-class: policy, runtime: powershell-7.4). Above the adapter, a teal arrow flowing in from \"M365 GCC-Moderate Tenant State\" represents read-only observation. Below the adapter, a teal arrow flowing out to \"Canonical Claims (provenance envelope)\" shows emitted findings. Surrounding the adapter, four canon invariants are labeled as small badges: gcc-boundary: gcc-moderate, ssot-mutation: never, certificate-anchored: true, object-identity-only: true. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic." width="100%"}
 
-### 1. SCuBAGear as a registered adapter
+### 1. ScubaGear as a registered adapter
 
-The SCuBAGear adapter's canonical declaration (excerpt — the full entry
+The ScubaGear adapter's canonical declaration (excerpt — the full entry
 adds policy-engine/pin, scope, outputs, controls, and invariants):
 
 ```yaml
@@ -69,7 +69,7 @@ adds policy-engine/pin, scope, outputs, controls, and invariants):
   phase: phase-1
   vendor: CISA
   license: CC0-1.0
-  runtime: powershell-7.4
+  runtime: windows-powershell-5.1
   runtime-version: "1.8.0"
   runner-class: github-hosted
   tenancy: per-customer
@@ -79,9 +79,14 @@ adds policy-engine/pin, scope, outputs, controls, and invariants):
 
 Source: [`adapter-registry.yaml`](../../../src/uiao/canon/adapter-registry.yaml).
 
+The `runtime` value is not cosmetic. ScubaGear requires **Windows
+PowerShell 5.1** and does not support PowerShell 7, so the adapter runs
+only on Windows. The Phase-1 `runner-class: github-hosted` therefore means
+`windows-latest`; a default Ubuntu runner cannot execute it at all.
+
 Five canonical properties matter for an authorizing official:
 
-1. **`class: conformance`** — SCuBAGear observes; it does not mutate
+1. **`class: conformance`** — ScubaGear observes; it does not mutate
    tenant state. Evidence emitted is read-only.
 2. **`mission-class: policy`** — it evaluates state against canonical
    policies (the SCuBA OPA/Rego baselines), distinguishing it from
@@ -95,13 +100,13 @@ Five canonical properties matter for an authorizing official:
    chosen.
 
 Registration in canon means the adapter's behavior is governed by the
-substrate's drift engine: a SCuBAGear configuration that emits outside
+substrate's drift engine: a ScubaGear configuration that emits outside
 its declared envelope is a `DRIFT-AUTHZ` finding, and a registry edit
 that breaks the schema is a `DRIFT-SCHEMA` finding caught in CI.
 
 ### 2. From OPA/Rego policies to canonical claims
 
-SCuBAGear's evaluation engine produces per-policy results: pass / fail /
+ScubaGear's evaluation engine produces per-policy results: pass / fail /
 manual / not-applicable, plus narrative detail. The UIAO adapter wraps
 each result in the canonical provenance envelope (per
 [`15_ProvenanceProfile.qmd`](../../docs/15_ProvenanceProfile.qmd)) and
@@ -112,7 +117,7 @@ The mapping yields three structural properties:
 
 **Property 1 — every SCuBA policy result is a canonical claim.** Each
 finding carries `claim_id`, `issuer_identity`, `source_classification`,
-`extraction_timestamp`, `lineage_hash`. There is no "raw SCuBAGear
+`extraction_timestamp`, `lineage_hash`. There is no "raw ScubaGear
 result" floating outside canon — every emission is structured.
 
 **Property 2 — KSI mapping is canon-anchored.** The translation from a
@@ -120,7 +125,7 @@ SCuBA policy to a KSI rule is in canon, not in the adapter code. Adapter
 authors cannot silently re-map a policy; mapping changes go through
 schema-validated registry edits.
 
-**Property 3 — interval evidence is preserved.** SCuBAGear runs on an
+**Property 3 — interval evidence is preserved.** ScubaGear runs on an
 interval (workflow_dispatch, scheduled, or repository_dispatch). Each
 run's claims carry the interval explicitly, and the bundle assembly
 respects that — `evidence-class: interval` is not a hint, it is a
@@ -128,16 +133,16 @@ canonical attribute that the OSCAL emission consumes.
 
 ![SCuBA-policy-to-canonical-claim mapping diagram](images/scubagear-integration-whitepaper-image-02-scuba-policy-to-canonical-claim.png){#fig-scubagear-integration-whitepaper-image-02 fig-alt="Left side shows a stack of SCuBA OPA/Rego policy files (small Rego icon). Center shows a \"KSI Mapping (canon)\" registry box with arrows linking each SCuBA policy to one or more canonical KSI rules. Right side shows the canonical claim emerging with the full provenance envelope (claim_id, issuer_identity, source_classification: authoritative, extraction_timestamp, lineage_hash). Below the flow, an interval bar labeled \"evidence-class: interval\" shows time-windowed evidence emissions across multiple runs. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic." width="100%"}
 
-### 3. Where SCuBAGear lands in the evidence chain
+### 3. Where ScubaGear lands in the evidence chain
 
 The four-stage evidence pipeline (see
 [Evidence Chain](../architecture-series/evidence-chain.qmd)):
 
 ```
-SCuBAGear run → claim normalization → bundle assembly+seal → OSCAL artifact
+ScubaGear run → claim normalization → bundle assembly+seal → OSCAL artifact
 ```
 
-For a UIAO-anchored M365 deployment, SCuBAGear is one of the canonical
+For a UIAO-anchored M365 deployment, ScubaGear is one of the canonical
 inputs at stage 1. Its findings:
 
 - Feed the **KSI dashboard** for the M365 controls SCuBA covers.
@@ -151,22 +156,22 @@ tenant state plus the same SCuBA policy version plus the same canon
 version yields a byte-identical bundle. A 3PAO can re-run the assembly
 months after the original audit and verify the bundle hash.
 
-![SCuBAGear-in-GCC-Moderate boundary diagram](images/scubagear-integration-whitepaper-image-03-scubagear-in-gcc-moderate-bounda.png){#fig-scubagear-integration-whitepaper-image-03 fig-alt="Vertical \"Authorization Boundary\" line splits the page; SCuBAGear adapter is positioned inside the boundary on the right side. Inside the boundary: SCuBAGear reads tenant configuration via in-boundary APIs (small API icon). Outside the boundary: greyed-out commercial-only telemetry features that SCuBA does not evaluate (small disabled-feature icons). The adapter's emitted claims flow downward across all four impact dimensions (telemetry fidelity, identity authority, enforcement responsibility, provenance classification) labeled as four colored lanes, with SCuBAGear's coverage shown in teal and uncovered gaps shown as dashed amber. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) primary, with amber for uncovered gaps. No photographs, purely diagrammatic." width="100%"}
+![ScubaGear-in-GCC-Moderate boundary diagram](images/scubagear-integration-whitepaper-image-03-scubagear-in-gcc-moderate-bounda.png){#fig-scubagear-integration-whitepaper-image-03 fig-alt="Vertical \"Authorization Boundary\" line splits the page; ScubaGear adapter is positioned inside the boundary on the right side. Inside the boundary: ScubaGear reads tenant configuration via in-boundary APIs (small API icon). Outside the boundary: greyed-out commercial-only telemetry features that SCuBA does not evaluate (small disabled-feature icons). The adapter's emitted claims flow downward across all four impact dimensions (telemetry fidelity, identity authority, enforcement responsibility, provenance classification) labeled as four colored lanes, with ScubaGear's coverage shown in teal and uncovered gaps shown as dashed amber. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) primary, with amber for uncovered gaps. No photographs, purely diagrammatic." width="100%"}
 
 ### 4. The GCC-Moderate boundary case
 
-SCuBAGear is interesting in GCC-Moderate because it sits **inside the
+ScubaGear is interesting in GCC-Moderate because it sits **inside the
 boundary** and reads tenant state via in-boundary APIs. Per the
 [Boundary Impact Model](../architecture-series/boundary-impact-model.qmd),
 this means:
 
-- **Telemetry fidelity:** SCuBAGear can read the configuration state
+- **Telemetry fidelity:** ScubaGear can read the configuration state
   the boundary actually exposes — which is *most* of what its policies
   evaluate, since the SCuBA baselines target configuration rather than
   the cloud-only telemetry features that GCC-Moderate attenuates.
 - **Identity authority:** issuer identity for SCuBA findings is the
   tenant identity plane; resolution is in-boundary.
-- **Enforcement responsibility:** SCuBAGear is conformance, not
+- **Enforcement responsibility:** ScubaGear is conformance, not
   enforcement — it observes. Compensating enforcement adapters (where
   needed) are separate registry entries.
 - **Provenance classification:** SCuBA findings are `authoritative` for
@@ -182,18 +187,18 @@ named and treated as a separate boundary finding.
 
 ### 5. SCuBA in the Federal SSOT story
 
-SCuBAGear is one input to a larger compliance posture. UIAO's canon
+ScubaGear is one input to a larger compliance posture. UIAO's canon
 frames the identity layer as the SSOT root that federal
 data-governance mandates sit on top of, and positions every adapter —
-including SCuBAGear — as a node in a continuously-verified evidence
+including ScubaGear — as a node in a continuously-verified evidence
 chain rather than a freestanding tool.[^scuba-ssot-provenance] This
-section maps SCuBAGear into that larger frame so an authorizing
+section maps ScubaGear into that larger frame so an authorizing
 official can see where the adapter fits in the Federal SSOT posture,
 not just in M365 configuration assessment, then walks one illustrative
 finding through the full pipeline so the "canonical claim" abstraction
 is legible rather than asserted.
 
-**What SCuBAGear sees, and what it does not.** SCuBAGear evaluates
+**What ScubaGear sees, and what it does not.** ScubaGear evaluates
 configuration state in the M365 tenant — the cloud half of the
 identity-and-data picture. The substrate's *on-premises half* is the
 AD survey adapter at
@@ -210,30 +215,30 @@ not just the cloud baseline at a moment in time.
 [Federal SSOT Alignment whitepaper](federal-ssot-alignment.qmd)
 catalogues the federal mandates that the substrate as a whole supports
 (Evidence Act, Federal Data Strategy, OMB M-22-09, FedRAMP 20x, NIST
-800-63 AAL, DAMA-DMBOK, CDO Data Governance Board). SCuBAGear's role in
+800-63 AAL, DAMA-DMBOK, CDO Data Governance Board). ScubaGear's role in
 that catalogue is specific and bounded: it is the canonical
 **configuration-conformance evidence source** for the M365 components
 inside the GCC-Moderate boundary. CISA [BOD 25-01](https://cyber.dhs.gov/bod/25-01/)'s "core logging" intent
 is satisfied directly by SCuBA configuration findings; CISA BOD 25-01's
 "rapid detection and investigation" intent is *not* satisfied by
-SCuBAGear alone — that requires the substrate's drift engine running
+ScubaGear alone — that requires the substrate's drift engine running
 across SCuBA evidence plus the AD-side spn_inventory and the Purview
-data-map state. SCuBAGear's `evidence-class: interval` and its
+data-map state. ScubaGear's `evidence-class: interval` and its
 deterministic OSCAL emission are what make this drift comparison
 mechanically possible.
 
 **The GCC-Moderate three-way compliance conflict.** As §4 above notes,
-SCuBAGear operates inside the GCC-Moderate boundary and its policies
+ScubaGear operates inside the GCC-Moderate boundary and its policies
 were authored against features the boundary actually exposes. The
 boundary itself, however, produces a structural compliance conflict
 catalogued as a first-class finding in
 [B.1.1 The Three-Way GCC-Moderate Compliance Conflict](../orgcomp-series/boundary/B1-1-gcc-moderate-three-way-conflict.qmd)
-(TIC 3.0 × Zero Trust × FedRAMP 20x). SCuBAGear does not surface this
+(TIC 3.0 × Zero Trust × FedRAMP 20x). ScubaGear does not surface this
 conflict directly — it is structural, not a per-policy finding — but
-SCuBAGear's evidence is one of the artifacts the agency uses to
+ScubaGear's evidence is one of the artifacts the agency uses to
 document compensating controls (B.1.1 §4 defers the catalogue itself to
 B.1 §5). The B.1.1 finding (`GCC-BOUNDARY-3WAY-001`) defines a generic
-`compensating_controls` array for agency-side controls; SCuBAGear's
+`compensating_controls` array for agency-side controls; ScubaGear's
 conformance evidence is the natural artifact an agency attaches there
 to demonstrate the boundary's risk is being continuously verified. The
 operating model that turns SCuBA baseline drift into typed remediation
@@ -241,7 +246,7 @@ tasks with closure evidence is developed in
 [Vol VII Book 02 — M365 Control & Compliance Automation](../orgcomp-series/Vol_VII_Book_02_OrgComp_M365_Control_Compliance_Automation.qmd)
 of the Federal Organization Compliance series.
 
-**Drift taxonomy cross-walk.** SCuBAGear findings map onto the
+**Drift taxonomy cross-walk.** ScubaGear findings map onto the
 substrate's drift classes per the standard formalized in
 [`docs/docs/16_DriftDetectionStandard.qmd`](../../docs/16_DriftDetectionStandard.qmd)
 §2:
@@ -256,7 +261,7 @@ substrate's drift classes per the standard formalized in
 §7 of the drift standard maps these classes to the federal mandates
 each supports; §7.1 catalogues the four SPN-specific drift conditions
 that surface when the AD-side `spn_inventory` is compared across
-migration phases. SCuBAGear evidence joins the
+migration phases. ScubaGear evidence joins the
 spn_inventory evidence in the same Evidence Bundle the 3PAO consumes —
 neither alone is sufficient for the federal SSOT posture; together
 they are continuous.
@@ -267,9 +272,9 @@ with a concrete walk-through than with another cross-reference. What
 follows is an **illustrative, worked example**, not a specific
 historical finding: a representative SCuBA/M365 baseline check, traced
 through the four-stage pipeline named in §3
-(`SCuBAGear run → claim normalization → bundle assembly+seal → OSCAL artifact`).
+(`ScubaGear run → claim normalization → bundle assembly+seal → OSCAL artifact`).
 
-1. **Rego policy result.** A SCuBAGear run evaluates baseline policy
+1. **Rego policy result.** A ScubaGear run evaluates baseline policy
    `MS.AAD.1.1v1` — "Legacy authentication SHALL be blocked" (mapped to
    NIST control `IA-2(1)` per the canonical 143-policy table in
    [`UIAO_002`](../../../src/uiao/canon/UIAO_002_SCuBA_Technical_Specification_v1.0.md)).
@@ -282,7 +287,7 @@ through the four-stage pipeline named in §3
    (per §4, SCuBA findings are authoritative for configuration state),
    an `extraction_timestamp` for the run, and a `lineage_hash` — a
    SHA-256 over the raw `MS.AAD.1.1v1` result — so the claim is
-   traceable back to the exact SCuBAGear output it came from.
+   traceable back to the exact ScubaGear output it came from.
 3. **Evidence bundle.** The claim lands in `findings.json` for that
    run's interval, joins the KSI dashboard entry that `IA-2(1)` maps to
    via the KSI mapping table, and — because it is a fail outside any
@@ -295,7 +300,7 @@ through the four-stage pipeline named in §3
    the SSP months later can re-run the assembly for that interval and
    verify the same bundle hash, with the `lineage_hash` letting them
    walk back from the OSCAL observation to the original Rego result
-   without re-running SCuBAGear.
+   without re-running ScubaGear.
 
 That is the full round trip for one finding. Every SCuBA policy result
 in a real run — pass, fail, manual, or not-applicable — takes the same
@@ -304,22 +309,22 @@ four hops; `MS.AAD.1.1v1` is simply a concrete stand-in for the class.
 **Identity foundation beneath the Azure SSOT stack.** The
 [UIAO OrgPath chapter 07a — UIAO Beneath the Azure SSOT Stack](../orgpath-narrative/Book_07a.qmd)
 positions the identity-governance substrate beneath the Microsoft
-Fabric + OneLake + Purview Azure SSOT stack. SCuBAGear is the
+Fabric + OneLake + Purview Azure SSOT stack. ScubaGear is the
 configuration-baseline assessor for the Entra ID identity plane that
 chapter 07a depends on. When chapter 07a says "the Azure SSOT stack
 assumes a trusted, consistent, continuously-verified Entra ID identity
-plane," SCuBAGear's interval-evidence emission is one of the substrate
+plane," ScubaGear's interval-evidence emission is one of the substrate
 mechanisms that produces that continuous verification.
 
 **Reference deployment.** For a synthetic end-to-end engagement that
 exercises the AD survey adapter, the spn_inventory artifact, the
 OrgTree readiness bundle, the B.1.1 three-way conflict finding, the SQL
 Server adapter, and the Azure SSOT bridge — the deployment pattern
-whose Evidence Bundle SCuBAGear's conformance output slots into as the
+whose Evidence Bundle ScubaGear's conformance output slots into as the
 M365 layer — see
 [Federal Civilian AD → Entra ID + SQL Estate — Reference Deployment Pattern](../case-studies/reference-deployment-fedciv-ad-to-entra.qmd).
-(The case study itself does not run SCuBAGear; it walks the bundle
-SCuBAGear's output joins.)
+(The case study itself does not run ScubaGear; it walks the bundle
+ScubaGear's output joins.)
 
 ### 6. Why "interval" matters
 
@@ -336,7 +341,7 @@ from a `point-in-time` adapter:
 - Determinism applies per interval: re-running for a specific interval
   produces the same bundle for that interval.
 
-This is the structural reason SCuBAGear-anchored ATO packages can
+This is the structural reason ScubaGear-anchored ATO packages can
 carry continuous-conformance language honestly — the substrate
 supports it.
 
@@ -352,7 +357,7 @@ For an agency operating M365 today, the integration is incremental:
    exception declarations, not in a Word document. The schema gate
    catches dangling exceptions automatically.
 3. **Pair with compensating-enforcement adapters where needed.**
-   SCuBAGear observes but does not enforce. Where the agency needs
+   ScubaGear observes but does not enforce. Where the agency needs
    enforcement for findings SCuBA reports, register the
    compensating adapter and let its evidence flow alongside.
 4. **Surface drift findings to the AO, not just to the security
@@ -363,14 +368,14 @@ For an agency operating M365 today, the integration is incremental:
 
 ### 8. Honest limits
 
-- SCuBAGear's coverage is per-policy. It evaluates the SCuBA baselines;
+- ScubaGear's coverage is per-policy. It evaluates the SCuBA baselines;
   it does not evaluate every M365 control. UIAO's adapter taxonomy
   includes additional Phase-1+ slots (`vuln-scan`, `stig-compliance`,
-  `patch-state`) that round out coverage; SCuBAGear is the policy
+  `patch-state`) that round out coverage; ScubaGear is the policy
   adapter, not the universal adapter.
 - The adapter runs on an interval, not in continuous event-time mode.
   Continuous capture across all adapters is TARGET maturity for the
-  substrate; SCuBAGear's interval mode is appropriate for its
+  substrate; ScubaGear's interval mode is appropriate for its
   evaluation model.
 - The canonical KSI mapping is curated. Mapping new SCuBA policies
   onto KSI rules is a canon-change operation, not an adapter-side
@@ -378,15 +383,15 @@ For an agency operating M365 today, the integration is incremental:
 
 ### 9. Conclusion
 
-CISA SCuBAGear is, in UIAO's substrate, **a canonical adapter, not a
+CISA ScubaGear is, in UIAO's substrate, **a canonical adapter, not a
 freestanding tool.** Its findings carry full provenance, map onto KSI
 rules through canon, flow through deterministic OSCAL emission, and
 participate in the substrate-wide drift engine. For an agency operating
-M365 in GCC-Moderate, SCuBAGear under UIAO is the most direct path
-from "we run SCuBAGear periodically" to "we emit continuous, reproducibly
+M365 in GCC-Moderate, ScubaGear under UIAO is the most direct path
+from "we run ScubaGear periodically" to "we emit continuous, reproducibly
 verifiable conformance evidence into our ATO package."
 
-The substrate is what makes SCuBAGear's output assessable rather than
+The substrate is what makes ScubaGear's output assessable rather than
 archived.
 
 [^scuba-ssot-provenance]: This framing synthesizes canon work landed

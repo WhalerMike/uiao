@@ -176,7 +176,7 @@ photographs, purely diagrammatic.
 
 <!-- companion: scubagear-integration-whitepaper.qmd -->
 
-SCuBAGear-as-registered-adapter diagram. Center shows the SCuBAGear
+ScubaGear-as-registered-adapter diagram. Center shows the ScubaGear
 adapter as a labeled rounded rectangle with its canonical metadata
 (class: conformance, mission-class: policy, runtime: powershell-7.4).
 Above the adapter, a teal arrow flowing in from "M365 GCC-Moderate Tenant
@@ -207,15 +207,15 @@ background. No photographs, purely diagrammatic.
 
 <!-- companion: scubagear-integration-whitepaper.qmd -->
 
-SCuBAGear-in-GCC-Moderate boundary diagram. Vertical "Authorization
-Boundary" line splits the page; SCuBAGear adapter is positioned inside
-the boundary on the right side. Inside the boundary: SCuBAGear reads
+ScubaGear-in-GCC-Moderate boundary diagram. Vertical "Authorization
+Boundary" line splits the page; ScubaGear adapter is positioned inside
+the boundary on the right side. Inside the boundary: ScubaGear reads
 tenant configuration via in-boundary APIs (small API icon). Outside the
 boundary: greyed-out commercial-only telemetry features that SCuBA does
 not evaluate (small disabled-feature icons). The adapter's emitted claims
 flow downward across all four impact dimensions (telemetry fidelity,
 identity authority, enforcement responsibility, provenance
-classification) labeled as four colored lanes, with SCuBAGear's coverage
+classification) labeled as four colored lanes, with ScubaGear's coverage
 shown in teal and uncovered gaps shown as dashed amber. Clean engineering
 blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) primary, with
 amber for uncovered gaps. No photographs, purely diagrammatic.

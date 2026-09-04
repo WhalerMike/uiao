@@ -125,7 +125,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [From Mainframe to Application-Aware Modernization](whitepapers/modernization-journey.html) | Draft | Executive, Architect, Engineer, Assessor, Technical-Lead |
 | [Choose Your Partners — The OrgPath Composability Matrix](whitepapers/orgpath-composability-matrix.html) | Active | Executive, Customer, Technical |
 | [Whitepaper Reading Guide](whitepapers/reading-guide.html) | Active | Federal CIO/CISO · assessors · architects · engineers · research audience |
-| [SCuBAGear Integration — Whitepaper](whitepapers/scubagear-integration-whitepaper.html) | Active | Customer, Assessor, Architect |
+| [ScubaGear Integration — Whitepaper](whitepapers/scubagear-integration-whitepaper.html) | Active | Customer, Assessor, Architect |
 | [The Session vs. Telemetry Divide — Why Identity Architecture Splits at the FedRAMP Boundary](whitepapers/session-vs-telemetry-identity.html) | Active | Executive, Architect, Assessor, Technical-Lead |
 | [Snowflake Key-Pair Conversion — the UIAO and OrgPath Reading](whitepapers/snowflake-keypair-vs-uiao-orgpath.html) | Draft | Executive, Technical, Customer |
 | [SD-WAN vs. DIA Under TIC 3.0](whitepapers/tic3-sdwan-vs-dia.html) | Draft | Executive, Architect, Engineer, Technical-Lead |
