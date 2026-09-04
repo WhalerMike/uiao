@@ -36,8 +36,55 @@ architecture, the OrgPath implementation guides, and the multi-cloud series.
 specs, the AD infrastructure bridge, and the SQL Server transformation as its
 worked consumer — and ``operational-guides/index.qmd`` states outright that
 that section is "the operational home of OrgMod", with the OrgPath
-implementation guides as the one sub-section that belongs to the sibling. That
-single exclusion is why ``Guides`` carries ``exclude_dirs``.
+implementation guides as the one sub-section that belongs to the sibling.
+
+THE TEST APPLIED TO THE SHARED ``operational-guides`` TREE.
+"Operational home of OrgMod" is a statement about where the directory lives,
+not a claim on every sub-section inside it. The dividing question is whether a
+page's deliverable exists because an estate is *moving* (OrgMod) or because an
+estate is *governed in steady state* (OrgPath). A modernization runbook that
+happens to bind OrgPath — ``intune-arc-modernization/governed-path`` is the
+clearest case — is still OrgMod: the deliverable is the move, and the
+governance is how the move is bound. Three sub-sections fail that test in the
+other direction and are listed in ``ORGPATH_GOVERNANCE_OPS``:
+
+* ``active-governance-directory`` — stands up the in-path LDAP projection *of
+  the OrgPath governance substrate* (ADR-092). Nothing in it migrates anything.
+* ``ai-identity-governance`` — its own index says it applies "OrgPath identity
+  governance" to the M-25-21 AI inventory. It governs a class of identities; no
+  legacy estate is being retired.
+* ``helpdesk-entra-operations`` — the steady-state authority model (SAM governs,
+  ServiceNow routes) for an estate that is *already* hybrid, and one of its five
+  pages is titled "OrgPath Identity Governance Structure" outright.
+
+That constant is the single source for the split: the OrgPath kit uses it as
+``include_dirs`` and the OrgMod ``Guides`` sweep folds it into ``exclude_dirs``,
+so the two sides cannot drift apart into a page that ships twice or not at all.
+
+HOW THE WHITEPAPER CORPUS IS SPLIT BETWEEN THE TWO KITS.
+The whitepaper corpus is one flat section serving all four Org-family pillars,
+so it cannot be swept wholesale into any one kit. ``reading-guide.qmd`` already
+partitions it — six tracks, "grouped by the question they answer" — and the two
+selections below follow that published grouping rather than an editorial call,
+which keeps them auditable and gives a renamed paper somewhere to fail loudly:
+
+* ``ORGMOD_WHITEPAPERS`` — Track 2 (Identity & Directory Modernization) and
+  Track 4 (Network & Infrastructure Modernization), plus the one Track 1 paper
+  that guide itself calls "the bridge into Track 2".
+* ``ORGPATH_WHITEPAPERS`` — the rest of Track 1 (Governance Foundations) and
+  Track 6 (Positioning, Comparison & Vendor Reads).
+
+Two papers are cross-listed in the guide across a Track 2/4 and a Track 1/6
+row. Each is single-homed here, in its primary track's kit:
+``modernization-governance-whitepaper`` and ``uiao-vs-native-tools`` both ship
+in the OrgMod kit only. A test asserts the two selections stay disjoint.
+
+Tracks 3 (Zero Trust Assessment & Compliance Closure) and 5 (Federal
+Program-Specific Alignment) reach neither kit, and neither do the two papers
+the guide files outside the six tracks (``federal-compliance-for-moderate-
+agencies`` and ``event-logging-fedramp-boundary-limitations``). All of those
+are compliance material — OrgComp's, and OrgComp builds its kit elsewhere. The
+whitepapers section publishes its own complete zip regardless.
 
 Local preview (needs a rendered _site):
     python scripts/build_org_family_download.py --family all --site-root _site --out /tmp/dl
@@ -68,6 +115,59 @@ DOCS_SITE_REL = "customer-documents"
 #                  named pages out of a larger section rather than the section.
 MODES = ("pages", "book-bundles", "files")
 
+# The sub-sections of ``operational-guides`` that are OrgPath's, not OrgMod's —
+# see "THE TEST APPLIED TO THE SHARED operational-guides TREE" above. Declared
+# once and consumed from both sides of the split.
+ORGPATH_GOVERNANCE_OPS = (
+    "active-governance-directory",
+    "ai-identity-governance",
+    "helpdesk-entra-operations",
+)
+
+# The OrgPath sub-section of the same tree, which has always shipped in the
+# OrgPath kit's Implementation folder instead.
+ORGPATH_IMPLEMENTATION_DIR = "orgpath-implementation"
+
+# Promoted out of the Guides sweep into its own top-level archive folder rather
+# than reassigned — it is OrgMod's, just not filed under Guides.
+ORGMOD_PROMOTED_DIR = "client-server-to-hybrid-cloud"
+
+# Track 2 + Track 4 of docs/customer-documents/whitepapers/reading-guide.qmd,
+# plus the Track 1 paper that guide names as "the bridge into Track 2". Order
+# is reading order within each track, not alphabetical.
+ORGMOD_WHITEPAPERS = (
+    # Track 1 — the bridge into the modernization arc.
+    "modernization-governance-whitepaper.docx",
+    # Track 2 — Identity & Directory Modernization: the AD to Entra ID arc.
+    "ad-to-entraid-migration-problem.docx",
+    "session-vs-telemetry-identity.docx",
+    "aodim-executive-whitepaper.docx",
+    "modernization-journey.docx",
+    "hybrid-join-without-governance.docx",
+    "federal-ssot-alignment.docx",
+    "uiao-vs-native-tools.docx",
+    # Track 4 — Network & Infrastructure Modernization.
+    "federal-application-aware-networking-architecture.docx",
+    "tic3-sdwan-vs-dia.docx",
+    "infoblox-hybrid-dns-unified-ddi.docx",
+    "infoblox-dns-reference.docx",
+    "field-office-wan-transformation-dp-consolidation.docx",
+    "git-server-interfaces-whitepaper.docx",
+)
+
+# Track 1 + Track 6 of the same reading guide, less the two papers cross-listed
+# into ORGMOD_WHITEPAPERS above. Order is reading order within each track.
+ORGPATH_WHITEPAPERS = (
+    # Track 1 — Governance Foundations: what UIAO is.
+    "uiao-governance-os-whitepaper.docx",
+    "zero-trust-governance-whitepaper.docx",
+    "zero-trust-governance-principles.docx",
+    "zero-trust-whole-agency-unification.docx",
+    # Track 6 — Positioning, Comparison & Vendor Reads.
+    "orgpath-composability-matrix.docx",
+    "snowflake-keypair-vs-uiao-orgpath.docx",
+)
+
 
 @dataclass(frozen=True)
 class Group:
@@ -80,6 +180,10 @@ class Group:
     only: tuple[str, ...] = ()
     #: mode "pages" — immediate sub-directory names to skip entirely.
     exclude_dirs: tuple[str, ...] = ()
+    #: mode "pages" — if set, take *only* these immediate sub-directories.
+    #: The inverse of exclude_dirs, for a group that is a few named
+    #: sub-sections carved out of a larger shared tree.
+    include_dirs: tuple[str, ...] = ()
     #: Loud-gap floor. A group that collects fewer files than this reports a
     #: WARNING in the build log rather than silently shrinking the kit — the
     #: failure mode where a renamed section quietly drops out of the download.
@@ -136,6 +240,37 @@ FAMILIES: dict[str, Family] = {
                 min_expected=5,
                 blurb="OrgPath beyond Microsoft — binding profiles, the other identity planes, VMware, zero trust.",
             ),
+            Group(
+                folder="Governance_Operations",
+                site_rel="operational-guides",
+                mode="pages",
+                # The three sub-sections of OrgMod's operational home that are
+                # steady-state governance rather than migration — see
+                # ORGPATH_GOVERNANCE_OPS. They shipped in the OrgMod kit until
+                # this triage; the OrgMod Guides sweep now excludes them from
+                # the same constant.
+                include_dirs=ORGPATH_GOVERNANCE_OPS,
+                min_expected=8,
+                blurb=(
+                    "Steady-state governance operations — the Active Governance Directory LDAP "
+                    "projection, federal AI identity governance, and the Help Desk / Cloud Services "
+                    "authority model for an already-hybrid estate."
+                ),
+            ),
+            Group(
+                folder="Whitepapers",
+                site_rel="whitepapers",
+                mode="files",
+                # Not the whole section: see ORGPATH_WHITEPAPERS. The
+                # modernization tracks of the same guide ship in the OrgMod kit.
+                only=ORGPATH_WHITEPAPERS,
+                min_expected=6,
+                blurb=(
+                    "The governance papers — governance foundations (Track 1) and positioning and "
+                    "vendor reads (Track 6) from the whitepaper reading guide. The modernization "
+                    "tracks ship in the OrgMod kit; the compliance tracks in neither."
+                ),
+            ),
         ),
     ),
     "orgmod": Family(
@@ -159,11 +294,13 @@ FAMILIES: dict[str, Family] = {
                 folder="Guides",
                 site_rel="operational-guides",
                 mode="pages",
-                # orgpath-implementation is the one sub-section of the OrgMod
-                # operational home that belongs to OrgPath, and ships in that
-                # kit instead; client-server-to-hybrid-cloud is promoted to its
-                # own top-level folder above rather than duplicated here.
-                exclude_dirs=("orgpath-implementation", "client-server-to-hybrid-cloud"),
+                # orgpath-implementation and the three ORGPATH_GOVERNANCE_OPS
+                # sub-sections belong to OrgPath and ship in that kit instead;
+                # client-server-to-hybrid-cloud is promoted to its own
+                # top-level folder above rather than duplicated here.
+                exclude_dirs=(ORGPATH_IMPLEMENTATION_DIR, ORGMOD_PROMOTED_DIR, *ORGPATH_GOVERNANCE_OPS),
+                # 44 pages after the governance sub-sections left; the floor
+                # stays well under that so a real gap is still loud.
                 min_expected=25,
                 blurb=(
                     "The modernization guide shelf — platform substrate, transformation engine, "
@@ -188,6 +325,22 @@ FAMILIES: dict[str, Family] = {
                 only=("directory-migration.docx", "adapters.docx"),
                 min_expected=2,
                 blurb="The AD infrastructure bridge — what replaces AD's implicit roles, and the adapter interfaces.",
+            ),
+            Group(
+                folder="Whitepapers",
+                site_rel="whitepapers",
+                mode="files",
+                # Not the whole section: the whitepaper corpus serves all four
+                # pillars. These are the Track 2 + Track 4 papers of
+                # whitepapers/reading-guide.qmd plus its named Track 1 bridge —
+                # see ORGMOD_WHITEPAPERS.
+                only=ORGMOD_WHITEPAPERS,
+                min_expected=14,
+                blurb=(
+                    "The modernization papers — the AD to Entra ID arc (Track 2) and network and "
+                    "infrastructure modernization (Track 4) from the whitepaper reading guide. The "
+                    "rest of that section is OrgPath, compliance, and positioning material."
+                ),
             ),
             Group(
                 folder="SQL_Server_Transformation/Narrative",
@@ -241,8 +394,11 @@ def _collect_group(docs_site: Path, group: Group) -> tuple[dict[str, Path], list
             members[f"{group.folder}/{f.name}"] = f
     elif group.mode == "pages":
         excluded = set(group.exclude_dirs)
+        included = set(group.include_dirs)
         for f in sorted(src.rglob("*.docx")):
             rel = f.relative_to(src)
+            if included and rel.parts[0] not in included:
+                continue
             if rel.parts[0] in excluded:
                 continue
             if _is_bundle(f.name):
