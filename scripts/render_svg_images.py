@@ -77,6 +77,64 @@ def find_svgs(roots: list[Path]) -> list[Path]:
     return sorted(set(out))
 
 
+GITIGNORE_BEGIN = "# BEGIN render_svg_images.py - derived figure artifacts (do not edit by hand)"
+GITIGNORE_END = "# END render_svg_images.py"
+ALLOWLIST = REPO_ROOT / "scripts" / "svg-derived-png-allowlist.txt"
+
+
+def _allowlist_patterns() -> list[re.Pattern[str]]:
+    """Grandfathered tracked PNGs from the ADR-093 derived-binary gate.
+
+    These are tracked on purpose, so they must NOT be listed as ignored: a path
+    that is both tracked and gitignored is a trap for the next reader.
+    """
+    if not ALLOWLIST.exists():
+        return []
+    pats: list[re.Pattern[str]] = []
+    for line in ALLOWLIST.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            pats.append(re.compile(line))
+    return pats
+
+
+def refresh_gitignore(svgs: list[Path]) -> int:
+    """Rewrite the managed .gitignore block to name exactly what we render.
+
+    "Is this PNG derived?" is a RELATIONAL property - a PNG is a build artifact
+    iff a sibling .svg exists - and .gitignore cannot express that. A pattern
+    approximation (``*.png``) would also swallow the 500+ legitimately tracked
+    PNGs that have no SVG source, so a genuinely new figure could go missing
+    from ``git status`` unnoticed. This writes explicit paths instead: precise
+    by construction, and refreshed on every render so it cannot drift from the
+    SVG set.
+    """
+    allow = _allowlist_patterns()
+    entries: list[str] = []
+    for svg in svgs:
+        base = svg.with_suffix("").relative_to(REPO_ROOT).as_posix()
+        if any(pat.search(base) for pat in allow):
+            continue
+        entries.append("/" + base + ".png")
+        entries.append("/" + base + ".png.json")
+    entries.sort()
+
+    gi = REPO_ROOT / ".gitignore"
+    text = gi.read_text(encoding="utf-8") if gi.exists() else ""
+    block = "\n".join([GITIGNORE_BEGIN, *entries, GITIGNORE_END]) + "\n"
+
+    if GITIGNORE_BEGIN in text and GITIGNORE_END in text:
+        head = text[: text.index(GITIGNORE_BEGIN)]
+        tail = text[text.index(GITIGNORE_END) + len(GITIGNORE_END) :].lstrip("\n")
+        new = head + block + tail
+    else:
+        new = text.rstrip("\n") + "\n\n" + block
+
+    if new != text:
+        gi.write_text(new, encoding="utf-8")
+    return len(entries)
+
+
 def viewbox_dims(svg_text: str) -> tuple[float, float]:
     m = re.search(r'viewBox\s*=\s*["\']\s*[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)', svg_text)
     if m:
@@ -149,6 +207,11 @@ def main() -> int:
     ap.add_argument("--force", action="store_true", help="Re-render even if the cache matches")
     ap.add_argument("--dry-run", action="store_true", help="Report only; no rendering")
     ap.add_argument("--scale", type=float, default=DEFAULT_SCALE, help="Rasterize at N x viewBox")
+    ap.add_argument(
+        "--no-gitignore",
+        action="store_true",
+        help="Skip refreshing the managed .gitignore block for derived artifacts",
+    )
     args = ap.parse_args()
 
     if args.paths:
@@ -225,6 +288,13 @@ def main() -> int:
         except Exception as e:  # noqa: BLE001
             print(f"  FAILED {rel}: {e}")
             failed += 1
+
+    # Always computed from the FULL scan, never from `paths`: a targeted
+    # render (`render_svg_images.py one.svg`) must not shrink the block to a
+    # single entry and silently un-ignore every other derived artifact.
+    if not args.dry_run and not args.no_gitignore:
+        n = refresh_gitignore(find_svgs(SCAN_ROOTS))
+        print(f"gitignore: {n} derived artifact path(s) in the managed block")
 
     print(f"\nDone. rendered={rendered} skipped={skipped} failed={failed}")
     return 1 if failed else 0
