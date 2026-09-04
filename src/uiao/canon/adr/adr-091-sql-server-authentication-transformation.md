@@ -46,7 +46,9 @@ The SQL Server estate that has accumulated across an Active Directory forest ove
 
 ### 2. The canonical login migration is a three-phase parallel-run; existing logins are disabled, not dropped, until validated
 
-For every instance classified **retain** or **target**, Windows logins (type-W users, type-G groups) and SQL Authentication service-account logins (type-S) are migrated to Entra ID external-provider logins (`CREATE LOGIN [principal] FROM EXTERNAL PROVIDER`, type-E) across three principal types — Entra user, Entra security group, and Entra service principal / Managed Identity.
+Principal-type letters throughout this ADR are the values of `sys.server_principals.type`, not mnemonics: **S** SQL login, **U** Windows login, **G** Windows group, **E** external (Entra) login, **X** external (Entra) group, **C** certificate-mapped login. There is no type `W`; a discovery query written against one returns zero rows and reports a clean instance, which would satisfy the §5 closure condition below falsely.
+
+For every instance classified **retain** or **target**, Windows logins (type-U users, type-G groups) and SQL Authentication service-account logins (type-S) are migrated to Entra ID external-provider logins (`CREATE LOGIN [principal] FROM EXTERNAL PROVIDER`, type-E) across three principal types — Entra user, Entra security group, and Entra service principal / Managed Identity.
 
 - **Phase 1 (create):** A type-E equivalent is created for every migrating login. The Entra-to-AD principal mapping (UPN-to-SAMAccountName for users, display name for groups, application ID for service principals) is verified before each `CREATE LOGIN`; any principal with no confirmable Entra equivalent is a blocking finding.
 - **Phase 2 (validate):** Each type-E login is exercised with a real Entra-credentialed test authentication. Validation must succeed before the corresponding legacy login is touched.
@@ -68,7 +70,7 @@ The parallel-run pattern is **required** for production instances. Non-productio
 
 ### 5. The CCM-BIR per-instance record is the closure artifact for Transformation #7
 
-Transformation #7 is closed for an instance when its CCM-BIR record simultaneously shows: `LoginMode = 1` (Windows Authentication Only); zero active type-S logins outside the exception registry; zero active type-W / type-G logins; `sa` disabled and renamed; the Arc Connected Machine agent enrolled and healthy; the Azure extension for SQL Server deployed with the Managed Identity active; and — for human principals — Conditional Access MFA enforcement satisfied for SQL Server resource sign-ins over a defined validation period. Closure is **continuously verified**, not a point-in-time claim: `Spec3-D1.8` runs on a recurring schedule, and CCM-BIR drift events (LoginMode reverting to Mixed Mode, a new type-S/W/G login appearing, the Arc agent going offline) are compliance violations that trigger the remediation workflow.
+Transformation #7 is closed for an instance when its CCM-BIR record simultaneously shows: `LoginMode = 1` (Windows Authentication Only); zero active type-S logins outside the exception registry; zero active type-U / type-G logins; `sa` disabled and renamed; the Arc Connected Machine agent enrolled and healthy; the Azure extension for SQL Server deployed with the Managed Identity active; and — for human principals — Conditional Access MFA enforcement satisfied for SQL Server resource sign-ins over a defined validation period. Closure is **continuously verified**, not a point-in-time claim: `Spec3-D1.8` runs on a recurring schedule, and CCM-BIR drift events (LoginMode reverting to Mixed Mode, a new type-S/U/G login appearing, the Arc agent going offline) are compliance violations that trigger the remediation workflow.
 
 ## Rationale
 
