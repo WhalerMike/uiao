@@ -145,7 +145,7 @@
 | [`docs/customer-documents/executive-governance-series/ch07-operational-tempo/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/ch07-operational-tempo/index.qmd) | 163 | Navigation hub | ✅ | 2/2 | — |
 | [`docs/customer-documents/executive-governance-series/ch08-governance-at-scale/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/ch08-governance-at-scale/index.qmd) | 197 | Navigation hub | ✅ | 3/3 | — |
 | [`docs/customer-documents/executive-governance-series/ch09-governance-operating-system/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/ch09-governance-operating-system/index.qmd) | 194 | Navigation hub | ✅ | 3/3 | — |
-| [`docs/customer-documents/executive-governance-series/governance-os-canonical-suite.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/governance-os-canonical-suite.qmd) | 2894 | Substantial | ✅ | 6/6 | — |
+| [`docs/customer-documents/executive-governance-series/governance-os-canonical-suite.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/governance-os-canonical-suite.qmd) | 2915 | Substantial | ✅ | 6/6 | — |
 | [`docs/customer-documents/executive-governance-series/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/executive-governance-series/index.qmd) | 51 | Navigation hub | ✅ | — | aspirational |
 
 ### `learning/`
@@ -967,8 +967,8 @@
 
 | Document | Lines | Classification | Frontmatter | Images | Notes |
 |---|---:|---|:---:|:---:|---|
-| [`docs/customer-documents/whitepapers/ad-to-entraid-migration-problem.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/ad-to-entraid-migration-problem.qmd) | 129 | Authored | ✅ | 1/1 | — |
-| [`docs/customer-documents/whitepapers/aodim-executive-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/aodim-executive-whitepaper.qmd) | 182 | Authored | ✅ | — | — |
+| [`docs/customer-documents/whitepapers/ad-to-entraid-migration-problem.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/ad-to-entraid-migration-problem.qmd) | 149 | Authored | ✅ | 1/1 | — |
+| [`docs/customer-documents/whitepapers/aodim-executive-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/aodim-executive-whitepaper.qmd) | 206 | Authored | ✅ | — | — |
 | [`docs/customer-documents/whitepapers/bod-25-01-close-before-assess.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/bod-25-01-close-before-assess.qmd) | 292 | Substantial | ✅ | 1/1 | — |
 | [`docs/customer-documents/whitepapers/event-logging-fedramp-boundary-limitations.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/event-logging-fedramp-boundary-limitations.qmd) | 459 | Substantial | ✅ | — | — |
 | [`docs/customer-documents/whitepapers/federal-ai-governance-submission-readiness.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-ai-governance-submission-readiness.qmd) | 136 | Authored | ✅ | 2/2 | — |
@@ -977,7 +977,7 @@
 | [`docs/customer-documents/whitepapers/federal-hrit-productization.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-hrit-productization.qmd) | 380 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/federal-ssot-alignment.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/federal-ssot-alignment.qmd) | 375 | Substantial | ✅ | 3/3 | — |
 | [`docs/customer-documents/whitepapers/field-office-wan-transformation-dp-consolidation.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/field-office-wan-transformation-dp-consolidation.qmd) | 1048 | Substantial | ✅ | 2/2 | — |
-| [`docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd) | 801 | Substantial | ✅ | 4/4 | — |
+| [`docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/git-server-interfaces-whitepaper.qmd) | 814 | Substantial | ✅ | 4/4 | — |
 | [`docs/customer-documents/whitepapers/hybrid-join-without-governance.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/hybrid-join-without-governance.qmd) | 337 | Substantial | ✅ | 4/4 | — |
 | [`docs/customer-documents/whitepapers/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/index.qmd) | 108 | Navigation hub | ✅ | — | — |
 | [`docs/customer-documents/whitepapers/infoblox-dns-reference.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/infoblox-dns-reference.qmd) | 296 | Substantial | ✅ | — | — |
