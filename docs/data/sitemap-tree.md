@@ -1015,7 +1015,7 @@
   - [Ticket-to-Machine — Supporting Technical Detail (Standalone Edition)](customer-documents/whitepapers/ticket-to-machine-appendices-standalone.html)
   - [Snowflake Key-Pair Conversion — the UIAO and OrgPath Reading](customer-documents/whitepapers/snowflake-keypair-vs-uiao-orgpath.html)
   - [Choose Your Partners — The OrgPath Composability Matrix](customer-documents/whitepapers/orgpath-composability-matrix.html)
-  - [SCuBAGear Integration — Whitepaper](customer-documents/whitepapers/scubagear-integration-whitepaper.html)
+  - [ScubaGear Integration — Whitepaper](customer-documents/whitepapers/scubagear-integration-whitepaper.html)
   - [Microsoft Zero Trust Assessment and CISA SCuBA — How They Relate](customer-documents/whitepapers/zta-scuba-relationship.html)
   - [Assessment Tools vs. Closing BOD-25-01 Findings](customer-documents/whitepapers/bod-25-01-close-before-assess.html)
   - [Zero Trust Governance Principles](customer-documents/whitepapers/zero-trust-governance-principles.html)
