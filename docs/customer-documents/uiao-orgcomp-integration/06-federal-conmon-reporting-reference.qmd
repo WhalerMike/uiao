@@ -57,12 +57,12 @@ CISA and as the FedRAMP 20x aspiration.
 | **FISMA CIO / IG / SAOP Metrics** | CIO metrics (ZT, MFA, logging, asset coverage), IG maturity, privacy | **OMB**, via the **CISA-operated CyberScope** application | Periodic — **quarterly + annual** | CyberScope web app: live data feeds *or* OMB-template **XML upload** | TLS to CyberScope; FIPS 140 |
 | **FISMA incident reporting** | Incident details; major-incident determination | **CISA** (and OMB OFCIO for major) | **Event — ≤1 hour** to CISA; major incident ≤1 h to CISA+OMB; Congress ≤7 days | CISA incident reporting portal / Federal Incident Notification Guidelines | TLS; FIPS 140 |
 | **TIC 3.0 telemetry** | Network/security logs; EINSTEIN sensor data | **CISA NCPS → CLAW** (Cloud Log Aggregation Warehouse) | Near-real-time streaming (**≈15-min** windows) | **Push model** — cloud-native (e.g., S3 push, Dataflow sink) to CLAW | **FIPS 140-2 in transit *and* at rest** (mandated) |
-| **OMB M-21-31** (event logging) | Event logs at maturity tiers EL0–EL3 | Retained at agency; **available to CISA/FBI on request** | Retention + on-request; advanced tiers enable sharing | Centralized log store; log formats per tier | FIPS 140 at rest; TLS in transit |
+| **OMB M-26-14** (event logging) | Event logs at maturity levels 0–4, scored to the lowest watermark (rescinded M-21-31 and its EL0–EL3 tiers, 22 May 2026) | Retained at agency; **available to CISA/FBI on request** | Retention + on-request; advanced tiers enable sharing | Centralized log store; log formats per tier | FIPS 140 at rest; TLS in transit |
 | **FedRAMP traditional ConMon** | Monthly vuln scans (raw + POA&M), updated inventory, deviation requests | **Authorizing agency** (and FedRAMP repository) | Periodic — **monthly** | Deliverable package to the agency / FedRAMP repository | TLS 1.2+; FIPS 140 |
 | **FedRAMP 20x / CR26** (M-24-15 §V–VI) | Machine-readable **KSI** validations; POA&M; inventory | **FedRAMP** + authorizing agency | Near-real-time — **API-served latest status**; Moderate machine validation **≤3 days** | **API** (or static-URL status endpoint); **OSCAL / JSON**, "3PAO-validated" assertion | TLS 1.2+; FIPS 140-validated modules |
 | **BOD 25-01** (SCuBA) | Secure-cloud-baseline configuration assessment; deviations | **CISA** (+ agency governance) | Periodic + automated config assessment | ScubaGear/automated assessment output; config-deviation reporting | TLS; FIPS 140 |
 | **BOD 26-04** (VDR/VER) | SBOM (component inventory) + VEX (exploitability) | **CISA** (`sbom@cisa.dhs.gov`) | Event/periodic — by **Dec 7, 2026**, then continuous SBOM monitoring | Email/portal submission; **CycloneDX 1.6** SBOM + **OpenVEX** JSON | TLS in transit; FIPS 140 |
-| **BOD 22-01** (KEV) | Remediation status of Known Exploited Vulnerabilities | **CISA**, via CDM / agency | Near-real-time via CDM; KEV due dates | CDM vulnerability feed | Same as CDM |
+| **BOD 26-04** (risk-based remediation; revoked BOD 22-01 and BOD 19-02, 2026-06-10) | Remediation status, risk-scored — KEV listing is one of four variables | **CISA**, via CDM / agency | Near-real-time via CDM; KEV due dates | CDM vulnerability feed | Same as CDM |
 
 *Cell brevity is deliberate — the detail notes in §2 expand the load-bearing rows.*
 
@@ -74,7 +74,7 @@ CISA and as the FedRAMP 20x aspiration.
 (Elastic-based) dashboard that holds *object-level* records near-real-time; the
 agency dashboard then pushes **summarized** data to CISA's **Federal Dashboard**
 for government-wide situational awareness. This is the backbone most other
-obligations ride on — BOD 23-01 asset/vuln data and BOD 22-01 KEV status both land
+obligations ride on — BOD 23-01 asset/vuln data and BOD 26-04 risk-scored remediation status both land
 here, and CDM now also feeds FISMA metrics.
 
 **CyberScope (FISMA).** A CISA-operated web application collecting each agency's
@@ -144,12 +144,12 @@ data-plane act, UIAO *governs and emits* but does not perform it — noted in it
 | **FISMA / CyberScope** | Produces the underlying facts (ZT, MFA, logging, asset coverage) | Slot evidence + KSI verdicts supply the metric inputs continuously — *the quarterly/annual CyberScope submission stays an agency act* |
 | **FISMA incident (≤1 h)** | SIEM/XDR detection + IR playbooks (Vol III Bk 06; IR book) | Captures IR-drill + detection posture as slot-07/04 evidence — *UIAO is not in the notification path; the 1-hour report is a human SOC action* |
 | **TIC 3.0 / CLAW** | SD-WAN / SASE / SIEM generate the telemetry and TIC-3.0 PEP logs | Governs + attests the telemetry feed's config and health as evidence — *does not stream; the CLAW push is agency cloud-native tooling (ADR-066 lane discipline)* |
-| **M-21-31 logging** | Logging maturity (EL1–EL3) + retention architecture | Attests logging coverage/maturity as slot-04 evidence — *the logs live in the SIEM, not UIAO* |
+| **M-26-14 logging** | Logging maturity (levels 0–4, lowest watermark) + retention architecture (6 months actively searchable, 1 year retrievable) | Attests logging coverage/maturity as slot-04 evidence — *the logs live in the SIEM, not UIAO* |
 | **FedRAMP traditional ConMon** | Defines the monthly deliverables (vuln scans, POA&M, inventory) | Auto-produces the monthly POA&M / inventory / scan roll-up from evidence — *submission to the agency / repository stays a human act* |
 | **FedRAMP 20x / CR26** | KSI evidence model + rule set defined | **UIAO's core competency**: emits machine-readable KSI AR (OSCAL/JSON) servable via API / static URL; ≤3-day drift validation; + the CR26 46-indicator reconciliation (companion #3) |
 | **BOD 25-01 (SCuBA)** | SCuBA baseline defined; a ScubaGear scan is point-in-time | **ScubaDrift** dispositions (governed-exception / actionable / lapsed, with expiry), deterministic `--as-of` verdicts, gate semantics |
 | **BOD 26-04 (VDR/VER)** | SBOM pipeline defined (Vol IV Bk 02) | Syft → Grype → OpenVEX chain + `vdr-submission-record` auto-generated — *submission to CISA stays a human act* |
-| **BOD 22-01 (KEV)** | KEV remediation mapping (vulnerability-management book) | Reconciles KEV hits + computes remediation SLA aging, feeds CDM — *the remediation itself is gated at L3* |
+| **BOD 26-04 (risk-based remediation)** | KEV remediation mapping, risk-scored (vulnerability-management book) | Reconciles KEV hits + computes remediation SLA aging, feeds CDM — *the remediation itself is gated at L3* |
 
 **The two honest patterns in this table:**
 

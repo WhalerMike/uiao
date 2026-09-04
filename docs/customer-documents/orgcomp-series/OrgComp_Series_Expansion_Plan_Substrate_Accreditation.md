@@ -315,8 +315,8 @@ Authority set the spine must cover completely:
 |---|---|
 | **NIST** | SP 800-53 Rev 5 (+800-53B Moderate baseline), 800-207 (Zero Trust), 800-137 (ISCM), 800-37 (RMF), CSF 2.0, 800-171/172 (CUI), 800-63 (digital identity), 800-218 (SSDF), 800-122 (PII) |
 | **FedRAMP 20x** | KSIs (the assertion/attestation layer over the NIST closure) |
-| **CISA** | BOD 22-01 (KEV), **BOD 23-01 (asset visibility & vuln enumeration)**, BOD 18-01, ZTMM v2, SCuBA, TIC 3.0, CDM |
-| **EO / OMB** | EO 14028 → M-22-09 (Federal ZT Strategy), M-21-31 (event logging), M-22-18 / M-23-16 + SSDF attestation (software supply chain), OMB A-130, M-24-04 (FY24 FISMA) |
+| **CISA** | BOD 26-04 (risk-based remediation; revoked BOD 22-01/19-02), **BOD 23-01 (asset visibility & vuln enumeration)**, BOD 18-01, ZTMM v2, SCuBA, TIC 3.0, CDM |
+| **EO / OMB** | EO 14028 → M-22-09 (Federal ZT Strategy), M-26-14 (event logging), M-22-18 / M-23-16 + SSDF attestation (software supply chain), OMB A-130, M-24-04 (FY24 FISMA) |
 | **Statute** | FISMA; Privacy Act (PII book) |
 
 Every book gains a short **"Authorities Closed Here"** header table generated

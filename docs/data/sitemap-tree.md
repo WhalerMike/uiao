@@ -236,6 +236,7 @@
 - [Tenant-extension facets — admin tier, device type, and environment on slots 11-13](adr/adr-137-tenant-extension-facets.html)
 - [Ephemeral Governance Engine — decompose the substrate by lifetime, not by function](adr/adr-138-ephemeral-governance-engine.html)
 - [Coverage-and-gap doctrine is per-plane — allocate UIAO_015 for the governance plane](adr/adr-139-governance-plane-coverage-doctrine.html)
+- [OMB M-26-14 Event-Logging Supersession — Retiring the M-21-31 EL0–EL3 Tiers from Live Claims](adr/adr-140-m-26-14-event-logging-supersession.html)
 
 ## Schema Reference
 

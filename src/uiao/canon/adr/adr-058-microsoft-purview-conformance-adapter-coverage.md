@@ -70,7 +70,7 @@ Concretely:
 | Surface | Why UIAO needs to observe it |
 |---|---|
 | **Unified-audit retention tier** (Standard 180d / Premium 1y / 10-year add-on) | Drives the FINDING-008 retention cliff. Today this is detected by static finding; a conformance adapter converts it to a continuous drift signal. |
-| **Audit-event coverage** (which UAL workloads enabled per tenant) | OMB M-21-31 Tier 3 logging compliance is workload-scoped — a tenant can be on Premium and still have UAL coverage gaps. |
+| **Audit-event coverage** (which UAL workloads enabled per tenant) | OMB M-26-14 maturity Level 3 logging compliance is workload-scoped — a tenant can be on Premium and still have UAL coverage gaps. |
 | **DLP policy state** (SC-4 evidence) | Control-library entry `data/control-library/sc/SC-4.yml` already names Purview DLP as the SC-4 evidence source; no adapter currently produces that evidence. |
 | **Sensitivity-label policy state and coverage** (MP-3, RA-2 evidence) | Control-library entries `mp/MP-3.yml` and `ra/RA-2.yml` name Purview Information Protection as the evidence source for media labeling and information classification — same gap as SC-4. |
 | **Litigation-hold state** | Spec2-D2.3 (leaver workflow) names litigation-hold orchestration as a Purview reference (D2.3 §4 step 9, §6.2, §11). With no observation surface, the leaver workflow cannot verify the hold actually applied. |
@@ -82,7 +82,7 @@ Three concrete consequences of leaving the Purview conformance surface
 undeclared:
 
 1. **FINDING-008 stays static.** The 180-day retention cliff is a
-   measurable, agency-side control gap with named OMB M-21-31, CISA BOD
+   measurable, agency-side control gap with named OMB M-26-14, CISA BOD
    25-01, and ZTMM v2.0 implications. Without a conformance adapter,
    each agency's posture against the cliff is checked once at
    onboarding and not continuously. The ConMon program (ADR-047,
