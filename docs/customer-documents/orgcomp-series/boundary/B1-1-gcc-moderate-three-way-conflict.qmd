@@ -1,6 +1,6 @@
 ---
 title: "B.1.1 The Three-Way GCC-Moderate Compliance Conflict (TIC 3.0 × Zero Trust × FedRAMP 20x)"
-subtitle: "Why GCC-Moderate cannot simultaneously satisfy CASB inspection, continuous device-posture verification, and clean-boundary continuous monitoring — and what the substrate surfaces about it"
+subtitle: "Why GCC-Moderate cannot simultaneously satisfy TIC-point inspection, continuous device-posture verification, and clean-boundary continuous monitoring — and what the substrate surfaces about it"
 doc-type: leaf
 audience: [Executive, Customer, Architect, Assessor]
 author: Michael Stratton
@@ -62,7 +62,7 @@ The conflict is not a Microsoft product defect. It is a direct consequence
 of M365 GCC-Moderate running on Azure Commercial infrastructure: telemetry
 and diagnostic data flow to Azure Commercial endpoints, Entra ID tenant
 control planes are shared with non-GovCloud tenants, and the location
-services TIC 3.0 CASB enforcement assumes are not present at the
+services TIC 3.0's inspection model assumes are not present at the
 GCC-Moderate boundary. Each of the three federal mandates was designed
 against a clean cloud boundary assumption that GCC-Moderate, by
 architecture, does not provide.
@@ -84,7 +84,7 @@ and no single compensating control resolves all three simultaneously.
 
 | Mandate axis | Requires | GCC-Moderate provides | Structural conflict |
 |---|---|---|---|
-| **TIC 3.0** | CASB inspection of all cloud service traffic with policy decisions referencing source/destination identity, geolocation, and device posture | Telemetry routes to Azure Commercial multi-tenant analytics endpoints that bypass the agency's TIC inspection point; geolocation signal fidelity reduced; CASB enforcement at the boundary cannot inspect what the boundary forwards to commercial endpoints | The inspection point exists, but the data flow that would feed it is structurally routed around it |
+| **TIC 3.0** (guidance, not a directive; prescribes no product class) | Inspection of cloud service traffic at the TIC, with policy decisions referencing source/destination identity, geolocation, and device posture | Telemetry routes to Azure Commercial multi-tenant analytics endpoints that bypass the agency's TIC inspection point; geolocation signal fidelity reduced; CASB enforcement at the boundary cannot inspect what the boundary forwards to commercial endpoints | The inspection point exists, but the data flow that would feed it is structurally routed around it |
 | **CISA Zero Trust Maturity Model** | Continuous verified device posture as input to every access decision; real-time identity risk signals from ML-driven analytics | Hybrid-joined devices in GCC-Moderate tenants have degraded posture-signal fidelity (Adoption Score unavailable; Endpoint Analytics Advanced and Intune behavioral signals reduced — see [B.1 §3](B1-gcc-moderate-boundary-model.qmd)); real-time Identity Protection ML risk gated by the same boundary | Initial-tier Identity and Devices pillars without significant agency analytics — see [B.1 §4](B1-gcc-moderate-boundary-model.qmd) |
 | **FedRAMP 20x continuous monitoring** | Continuous evidence of control effectiveness across a coherent authorization boundary; rapid-detection assumptions assume the boundary is observable | The boundary is observable for control logging but not for the higher-order behavioral analytics that "rapid detection and investigation" requires (CISA [BOD 25-01](https://cyber.dhs.gov/bod/25-01/) intent — see [B.1 §5](B1-gcc-moderate-boundary-model.qmd)); FedRAMP 20x's Minimum Assessment Scope rules are now live (required since 2026-07-04) but have not yet been shown to reposition the specific pipelines this conflict depends on | Core logging meets the letter; observability for rapid detection requires agency-built analytics that themselves require export the boundary constrains |
 
@@ -95,18 +95,25 @@ does not close the other two.
 
 ### 2.1 TIC 3.0 — Inspection Point Without Inspectable Flow
 
-TIC 3.0 explicitly models cloud service consumption as a flow that the
-agency's Trusted Internet Connection provider must inspect, classify, and
-make policy decisions against. The architecture assumes the flow is
-observable at the TIC point. In GCC-Moderate, a meaningful fraction of the
+TIC 3.0 models cloud service consumption as a flow the agency's Trusted
+Internet Connection is positioned to inspect, classify, and make policy
+decisions against, and the architecture assumes that flow is observable at the
+TIC point. Two qualifications matter before the conflict is stated, because
+overstating them is what would make this finding easy to dismiss: **TIC 3.0 is
+guidance, not a binding directive with its own remediation clock**, and it
+**prescribes no product class** — no CASB, no specific inspection technology.
+What it publishes is a Security Capabilities Catalog (v3.2, remapped to NIST
+CSF 2.0 on 26 Nov 2024) and four use cases: Traditional TIC, Branch Office,
+Remote User and Cloud. The conflict below is therefore a **capability gap
+against what that catalog describes**, not an agency failing a directive. In GCC-Moderate, a meaningful fraction of the
 telemetry the agency would want to inspect — diagnostic data, audit
 signal, Entra ID risk-evaluation traffic — does not transit the TIC
 boundary in inspectable form because it routes from the Microsoft tenant
 control plane to Microsoft's commercial multi-tenant analytics pipelines
 through Microsoft-controlled paths that are not the agency's TIC.
 
-The TIC 3.0 CASB use-case library describes the policy actions an agency
-should be able to take on inspectable cloud traffic. Many of those actions
+The TIC 3.0 Security Capabilities Catalog describes the policy actions an
+agency should be able to take on inspectable cloud traffic. Many of those actions
 remain available against the traffic GCC-Moderate does route through the
 agency network. The conflict is that the policy decisions an agency wants
 to make on the basis of identity risk, behavioral anomaly, or
