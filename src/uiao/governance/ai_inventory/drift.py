@@ -35,7 +35,10 @@ Posture:  PER_POLICY (may be auto-stamped once bureau is confirmed)
 DRIFT_AI_ATO_GAP = "DRIFT-COMPLIANCE::ai-ato-gap"
 """Deployed/piloted AI system has no Authorization to Operate.
 
-M-25-21 §IV requires an ATO before operational use. A system operating
+M-25-21 imposes no AI-specific ATO gate; it directs agencies to keep applying
+their EXISTING authorization requirements to AI systems. This finding is raised
+against that existing agency policy, using the OMB inventory's have_ato field as
+the enumeration source. A system operating
 without one is non-compliant with the federal mandate.
 
 Severity: P2 (compliance gap — material but not auth-breaking today)
@@ -80,7 +83,8 @@ Posture:  NEVER_AUTOFIX
 DRIFT_AI_PII_NO_PIA = "DRIFT-COMPLIANCE::ai-pii-no-pia"
 """AI system handles PII but has no Privacy Impact Assessment URL.
 
-M-25-21 §IV requires a PIA for AI systems that process PII.  Absence of
+A PIA is required for a PII-processing system under the Privacy Act and
+E-Government Act; the OMB inventory reports it through pia_url. Absence of
 a PIA URL is a documentation gap that blocks evidence-bundle production
 for IA-8 and AR-2.
 
@@ -114,7 +118,12 @@ def finding_ato_gap(record: AISystemRecord, evidence_ref: str = "omg-inventory")
         drift_class=DRIFT_AI_ATO_GAP,
         severity=Severity.P2,
         posture=Posture.NEVER_AUTOFIX,
-        intended="have_ato=Yes per M-25-21 §IV for any deployed/pilot AI system",
+        intended=(
+            "have_ato=Yes for any deployed/pilot AI system, per the agency's "
+            "existing authorization requirements — M-25-21 imposes no AI-specific "
+            "ATO gate and have_ato is the inventory's reporting field for that "
+            "existing posture"
+        ),
         observed=f"have_ato={record.ato_status.value}  stage={record.development_stage.value}",
         evidence_ref=evidence_ref,
     )
@@ -167,7 +176,7 @@ def finding_pii_no_pia(record: AISystemRecord, evidence_ref: str = "omg-inventor
         drift_class=DRIFT_AI_PII_NO_PIA,
         severity=Severity.P2,
         posture=Posture.NEVER_AUTOFIX,
-        intended="has_pii=Yes → pia_url present per M-25-21 §IV",
+        intended="has_pii=Yes → pia_url present (inventory PIA reporting field)",
         observed="has_pii=Yes  pia_url: None",
         evidence_ref=evidence_ref,
     )

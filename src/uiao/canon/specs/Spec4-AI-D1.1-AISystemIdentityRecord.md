@@ -54,7 +54,7 @@ detail that ADR-112's doctrine section leaves implicit.
 | `has_pii` | OMB `has_pii` | bool | Triggers PIA check |
 | `pia_url` | OMB `pia_url` | str \| None | `has_pii=True` + blank → `DRIFT-COMPLIANCE::ai-pii-no-pia` |
 | `is_high_impact` | OMB `is_high_impact` | bool | Enables `hi_*` checklist evidence ingestion |
-| `hi_*` (6 fields) | OMB `hi_*` | str \| None | M-25-21 §V governance checklist evidence targets |
+| `hi_*` (6 fields) | OMB `hi_*` | str \| None | Evidence targets reporting against M-25-21 §4(b)'s seven minimum risk-management practices; these six cover five of the seven (human training and public feedback have no inventory field) |
 | `orgpath` | derived | str \| None | Populated from `agency + agency_bureau`; None → `DRIFT-IDENTITY::ai-no-orgpath` |
 
 ---
