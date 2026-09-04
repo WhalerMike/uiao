@@ -1876,7 +1876,7 @@ function New-UIAOClosureRecord {
         closure fields from the audit output:
           - Windows Authentication Only (LoginMode = 1 / AuthenticationMode).
           - zero active type-S (SQL-auth) logins outside the exception registry.
-          - zero active type-W/G (Windows) logins.
+          - zero active type-U/G (Windows) logins.
           - sa disabled.
           - Arc agent enrolled/healthy and the SQL extension / Managed Identity
             active (EntraIDReady).
@@ -1986,7 +1986,7 @@ function Compare-UIAOClosureRun {
         a current D1.8 run by instance and surfaces each ADR-091 §5 regression:
           - mixed_mode_enabled    — LoginMode 1 -> 2 (Windows-Only -> Mixed Mode).
           - new_sql_auth_login    — a type-S login present now but not in baseline.
-          - new_windows_login     — a type-W/G login reintroduced on a previously
+          - new_windows_login     — a type-U/G login reintroduced on a previously
                                     Entra-only instance.
           - arc_agent_offline     — Arc/extension healthy in baseline, not now.
         Instances that appeared (a possible discovery gap) or disappeared are
