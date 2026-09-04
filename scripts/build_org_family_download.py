@@ -61,6 +61,17 @@ That constant is the single source for the split: the OrgPath kit uses it as
 ``include_dirs`` and the OrgMod ``Guides`` sweep folds it into ``exclude_dirs``,
 so the two sides cannot drift apart into a page that ships twice or not at all.
 
+A fourth sub-section leaves the tree entirely. ``siem-telemetry-emission`` is
+the *emission* side of the evidence pipeline whose *consumption* side is OrgComp
+Vol III Book 06 — ``operational-guides/index.qmd`` says so outright — so it is
+neither a move nor steady-state addressing governance; it is compliance
+evidence. It ships in the OrgComp kit, which
+``scripts/build_orgcomp_download.py`` builds from its own collector, and is
+excluded here via ``ORGCOMP_EVIDENCE_EMISSION_DIR``. That constant is declared
+in both scripts and a test asserts they still name the same directory: this is
+the one split whose halves live in different files, so nothing but that test
+keeps them together.
+
 HOW THE WHITEPAPER CORPUS IS SPLIT BETWEEN THE TWO KITS.
 The whitepaper corpus is one flat section serving all four Org-family pillars,
 so it cannot be swept wholesale into any one kit. ``reading-guide.qmd`` already
@@ -131,6 +142,11 @@ ORGPATH_IMPLEMENTATION_DIR = "orgpath-implementation"
 # Promoted out of the Guides sweep into its own top-level archive folder rather
 # than reassigned — it is OrgMod's, just not filed under Guides.
 ORGMOD_PROMOTED_DIR = "client-server-to-hybrid-cloud"
+
+# OrgComp's, and shipped by scripts/build_orgcomp_download.py rather than by
+# either kit here — see the docstring. Kept in step with that script's
+# EVIDENCE_EMISSION_SITE_REL by a test.
+ORGCOMP_EVIDENCE_EMISSION_DIR = "siem-telemetry-emission"
 
 # Track 2 + Track 4 of docs/customer-documents/whitepapers/reading-guide.qmd,
 # plus the Track 1 paper that guide names as "the bridge into Track 2". Order
@@ -296,11 +312,17 @@ FAMILIES: dict[str, Family] = {
                 mode="pages",
                 # orgpath-implementation and the three ORGPATH_GOVERNANCE_OPS
                 # sub-sections belong to OrgPath and ship in that kit instead;
-                # client-server-to-hybrid-cloud is promoted to its own
+                # siem-telemetry-emission is OrgComp's and ships in the OrgComp
+                # kit; client-server-to-hybrid-cloud is promoted to its own
                 # top-level folder above rather than duplicated here.
-                exclude_dirs=(ORGPATH_IMPLEMENTATION_DIR, ORGMOD_PROMOTED_DIR, *ORGPATH_GOVERNANCE_OPS),
-                # 44 pages after the governance sub-sections left; the floor
-                # stays well under that so a real gap is still loud.
+                exclude_dirs=(
+                    ORGPATH_IMPLEMENTATION_DIR,
+                    ORGMOD_PROMOTED_DIR,
+                    ORGCOMP_EVIDENCE_EMISSION_DIR,
+                    *ORGPATH_GOVERNANCE_OPS,
+                ),
+                # 39 pages after the governance and evidence sub-sections left;
+                # the floor stays well under that so a real gap is still loud.
                 min_expected=25,
                 blurb=(
                     "The modernization guide shelf — platform substrate, transformation engine, "
