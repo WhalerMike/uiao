@@ -5,6 +5,7 @@ doc-type: whitepaper
 audience: [Executive, Architect, Engineer, Assessor, Technical-Lead]
 status: Draft
 author: Michael Stratton
+date: "July 2026"
 derived-from: "Narrative synthesis of a federal agency modernization arc. Principle 5 and the mainframe-access section draw on Ahmed Khamari's technical position paper, 'Application–Data Separation and Cloud Migration Readiness: Architectural Considerations for Hybrid Environments' (SSA Systems Operations & Engineering, July 28, 2026, shared publicly on LinkedIn), together with mature IBM z/OS Connect / RACF PassTicket product capability. Vendor- and product-neutral: cites only NIST, OMB, CISA, and FedRAMP — carries no UIAO-specific claims and is not reconciled to any UIAO ADR."
 repo-path: docs/customer-documents/whitepapers/federal-application-aware-networking-architecture.qmd
 created-at: 2026-07-31
@@ -211,12 +212,39 @@ firewalls. Every packet from a field office to a regional data center had to
 traverse security devices designed to *break* sessions — to inspect, decrypt,
 re-encrypt, verify, block.
 
+::: {.callout-warning}
+## Figure correction pending
+The figure below renders a “Kerberos timeout limit: 5ms” and a “16x OVER
+limit” comparison. **There is no 5 ms Kerberos limit** — that number conflates
+the five-*minute* clock-skew tolerance with a latency budget, a factor of
+60,000. The alt text below describes the image as it currently stands rather
+than contradicting it; the figure is queued for regeneration against the
+corrected mechanism above.
+:::
+
 ![Act 2 — When Security Ate the Architecture: a branch-office request traverses five stacked security devices (firewall, NAT, IDS, proxy/DLP, compliance scanner), each adding latency, arriving at 80ms total against a 5ms Kerberos timeout, with the expired ticket and broken session called out on the right](images/federal-application-aware-networking-architecture-image-04-security-stacking.png){#fig-security-stacking fig-alt="A flow diagram on a white background titled 'Act 2 — When Security Ate the Architecture: Stacked Defense Broke Sessions'. A branch-office laptop icon on the left sends a 'Request' down through five stacked navy boxes — Firewall (Brick wall inspection, +15ms), NAT Box (Address translation, +8ms), IDS Inline Probe (Deep packet inspection, +12ms), Proxy/DLP (Content scanning, +20ms), and Compliance Scanner (Audit logging, +25ms) — each paired with an orange latency tag. To the right, a bordered box reads 'Total Latency Added: 80ms' with 'Kerberos timeout limit: 5ms' and '16x OVER limit' in red beneath a divider line. Above it, a 'Kerberos Ticket' box shows a red X through a pink circle labeled EXPIRED. Below that, a red-bordered box headed '✕ Session Broken' explains that Kerberos assumed LAN-speed round trips, and every inline security device added latency the protocol was never designed to survive." width="100%"}
 
-Active Directory Kerberos tickets have a lifespan. They are bound to a
-specific session. When a packet gets intercepted, decrypted, re-encrypted,
-and NATted three times, the session breaks. The Kerberos ticket becomes
-invalid. The application loses trust in where the request came from.
+Active Directory Kerberos tickets have a lifespan — a default TGT lives ten
+hours with seven-day renewal, and service tickets 600 minutes. They are **not**
+bound to a network path. Windows KILE ships `ClientIpAddresses = 0`, so client
+addresses are not written into the ticket at all, and Microsoft's stated reason
+is verbatim *"because of Dynamic Host Configuration Protocol and network address
+translation issues"* — tolerating a changed source address is a design property
+of the deployed protocol. Where RFC 4120's optional `caddr` field *is* populated,
+it carries addresses the **client** supplies in the AS-REQ rather than the source
+IP the KDC observes, and the check is performed by the **application server**
+(`KRB_AP_ERR_BADADDR`), not by the KDC on a TGS-REQ. SNAT at a PoP writes
+nothing into a ticket, and Kerberos FAST (RFC 6113) is pre-authentication
+armouring, unrelated to source-IP binding.
+
+What distance actually costs is narrower, and the argument is stronger for being
+stated correctly: the **DC-dependent operations**. Initial TGT acquisition at
+logon, SYSVOL/GPO retrieval, password changes, and hybrid Entra join
+registration all require reaching a domain controller, and Microsoft documents
+the last of these as needing line-of-sight to an on-premises DC. Stack enough
+inline latency in front of those and logons crawl, GPO processing stalls, and
+the estate feels exactly the pain this paper describes — without any ticket
+being invalidated by NAT.
 
 > **The physics that cannot be negotiated:** Portland to Washington is
 > approximately 4,500 km in a straight line. Actual fiber routing adds
@@ -224,8 +252,13 @@ invalid. The application loses trust in where the request came from.
 > At 200,000 km/second — the speed of light through glass fiber — that
 > distance sets an unavoidable propagation floor of 27 ms one-way, 54 ms
 > round-trip minimum, before any queue delay, security inspection, or
-> application processing. Active Directory authentication expects sub-5 ms
-> round-trip to a domain controller. **No amount of bandwidth changes this.
+> application processing. Active Directory has **no millisecond latency
+> requirement** — the widely-quoted five-minute Kerberos figure is clock-skew
+> tolerance, not a latency budget — but the DC-dependent operations are the ones
+> that feel this distance: initial TGT acquisition at logon, SYSVOL/GPO
+> retrieval, password changes, and hybrid Entra join registration, each of which
+> Microsoft documents as requiring line-of-sight to an on-premises domain
+> controller. **No amount of bandwidth changes this.
 > Bandwidth is volume. Latency is distance. You cannot buy your way out of
 > geography.**
 

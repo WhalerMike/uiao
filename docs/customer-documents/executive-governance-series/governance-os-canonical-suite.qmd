@@ -421,9 +421,9 @@ Each dynamic group has a deterministic membership rule that evaluates user.exten
 
 ## Technical Scaffolding
 
-  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   **Group Name**            **Type**  **Membership Rule**                                                                     **Scope**              **Purpose**
-  ------------------------  --------  --------------------------------------------------------------------------------------  ---------------------  ----------------------------------------------------- 
+  ------------------------  --------  --------------------------------------------------------------------------------------  ---------------------  -----------------------------------------------------
   OrgTree-ORG-AllEmployees  Security  (user.extensionAttribute15 -ne null) and (user.accountEnabled -eq true)                 All                    Every active employee carrying a derived OrgPath
 
   OrgTree-FIN-All           Security  (user.extensionAttribute2 -eq \"Finance\")                                              Department=Finance     All Finance members, in every region and division
@@ -453,7 +453,7 @@ Each dynamic group has a deterministic membership rule that evaluates user.exten
   OrgTree-Cleared-TS        Security  (user.extensionAttribute9 -eq \"TopSecret\")                                            Cross-cutting          All Top Secret cleared personnel, any department
 
   OrgTree-M365-FIN-Collab   M365      (user.extensionAttribute2 -eq \"Finance\")                                              Department=Finance     Finance M365 collaboration group (Teams, SharePoint)
-  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Three rule shapes appear above, and choosing between them is the whole
 skill. A **department-wide or cross-cutting** question is boolean facet
@@ -588,9 +588,9 @@ Delegation follows a three-tier model: (1) Administrative Units define the scope
 
 ### Administrative Unit Registry
 
-  ------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------
   **AU Name**         **Scope**                    **Membership Type**  **Membership Rule**
-  ------------------  ---------------------------  -------------------  --------------------------------------------------------------------------------------- 
+  ------------------  ---------------------------  -------------------  ---------------------------------------------------------------------------------------
   AU-ORG-Enterprise   All                          Dynamic              (user.extensionAttribute15 -ne null)
 
   AU-NCR-Finance      NCR / Finance subtree        Dynamic              (user.extensionAttribute15 -startsWith \"Region=NCR|Department=Finance|\")
@@ -610,7 +610,7 @@ Delegation follows a three-tier model: (1) Administrative Units define the scope
   AU-Finance-GRC      Finance / GRC, all regions   Dynamic              (user.extensionAttribute2 -eq \"Finance\") and (user.extensionAttribute3 -eq \"GRC\")
 
   AU-Finance-Data     Finance / Data, all regions  Dynamic              (user.extensionAttribute2 -eq \"Finance\") and (user.extensionAttribute3 -eq \"Data\")
-  ------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 An AU that scopes a **subtree** uses the derived path, anchored at
 `Region=` and terminated by `|`. An AU that scopes a **division across
@@ -871,9 +871,30 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 5. Validate all attribute writes completed successfully.
 
+::: {.callout-important}
+## This write path targets cloud-only users and devices
+For a user with `onPremisesSyncEnabled = true`, Graph treats
+`onPremisesExtensionAttributes` as **read-only** — the source of authority is
+on-premises AD — and `Update-MgUser` returns an error rather than silently
+no-op'ing. In a hybrid estate that is every synced user, so the facet stamp
+happens **in AD and syncs down**, and this runbook applies only to cloud-only
+principals. Devices are cloud-mastered and take the direct Graph write. The
+substrate enforces the distinction: `uiao.adapters.entra_facet_writer`
+surfaces the Graph error per operation, and the ServiceNow kit refuses to
+actuate on an object whose `onPremisesSyncEnabled` it cannot classify.
+See [the hybrid-sync trap](../reference-architecture/orgpath-minimal-implementation.qmd) and ADR-127.
+:::
+
 \# Provision OrgPath for each user foreach (\$Mapping in \$UserOrgPathMappings) { try { \$UserParams = \@{ UserId = \$Mapping.EntraUserId OnPremisesExtensionAttributes = \@{ extensionAttribute1 = \$Mapping.Region extensionAttribute2 = \$Mapping.Department extensionAttribute3 = \$Mapping.Division extensionAttribute15 = New-OrgPath -Region \$Mapping.Region -Department \$Mapping.Department -Division \$Mapping.Division } } Update-MgUser \@UserParams Write-Verbose \"Updated user \$(\$Mapping.EntraUserId) with OrgPath \$(\$Mapping.OrgPath)\" } catch { Write-Error \"Failed to update user \$(\$Mapping.EntraUserId): \$\_\" } } \# Verify provisioning \$ProvisionedUsers = Get-MgUser -All -Property \"Id,OnPremisesExtensionAttributes\" \| Where-Object { \$\_.OnPremisesExtensionAttributes.ExtensionAttribute15 -ne \$null } Write-Verbose \"Provisioned users: \$(\$ProvisionedUsers.Count)\" \# Identify failures \$UnprovisionedUsers = Get-MgUser -All -Property \"Id,OnPremisesExtensionAttributes\" \| Where-Object { \[string\]::IsNullOrEmpty(\$\_.OnPremisesExtensionAttributes.ExtensionAttribute15) } Write-Verbose \"Unprovisioned users: \$(\$UnprovisionedUsers.Count)\" \# Update migration status for successful provisions foreach (\$User in \$ProvisionedUsers) { Write-MigrationLog -UserId \$User.Id -Status \"COMPLETED\" \# status belongs in the migration log, not in the Role facet slot }
 
 **Validation Criteria:** every user carries its projected facet values, each valid in its own codebook enumeration; extensionAttribute15 equals the recomputation from those facets; zero provisioning errors; the migration log records COMPLETED for all provisioned users.
+
+**Scope caveat.** “Every user” here means every user this runbook can write —
+cloud-only principals. A synced user's facets are validated against **AD** as
+the source of authority, and a clean run over the cloud-writable set is not
+evidence that the synced population is stamped. Any loop that enumerates all
+members (including the decommission sweep below) errors on synced users rather
+than clearing them; clear those at the AD source.
 
 **Rollback Procedure:** Set extensionAttribute1 through extensionAttribute4 to null for all affected users.
 
@@ -1150,7 +1171,7 @@ ships four functions, covered by Pester tests in CI:
 | `New-OrgPath` | Composes the derived canonical OrgPath from the hierarchy facets. Output always ends in the delimiter |
 | `Get-OrgPathPrefix` | Normalizes a subtree prefix for `-startsWith` / `like` use; idempotent, and appends the terminator when missing |
 | `Test-OrgPathDrift` | Compares a stored derived path against the value recomputed from the facets |
-| `Update-OrgAttributes` | Stamps the governance facets and the derived path in one Graph update --- `Update-MgUser` with `onPremisesExtensionAttributes` for users, `Update-MgDevice` with `extensionAttributes` for devices, because the property differs by object type |
+| `Update-OrgAttributes` | Stamps the governance facets and the derived path in one Graph update --- `Update-MgUser` with `onPremisesExtensionAttributes` for users, `Update-MgDevice` with `extensionAttributes` for devices, because the property differs by object type. **Succeeds only for cloud-only users and for devices:** for a synced user (`onPremisesSyncEnabled = true`) Graph holds `onPremisesExtensionAttributes` read-only and the write returns an error — stamp at the AD source instead |
 
 Per-facet *value* validation is not this module's job: it is the drift
 engine's, reading the codebook directly

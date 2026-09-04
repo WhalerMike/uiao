@@ -68,10 +68,10 @@ source of truth for federal dates; the Books cite subsets of it.*
 | Feb 16, 2020 / Jan 6, 2021 | **Kari's Law / RAY BAUM'S Act §506** | Direct 911 dialing; dispatchable location for MLTS incl. non-fixed devices | (telecom; PE/SC-adjacent) | Part 6 |
 | Sep 23, 2021 | **NIST SP 800-53 Rev 5** (Rev 4 withdrawn) | Current control catalog; FedRAMP Moderate baseline drawn from it | All | Series-wide |
 | May 12, 2021 | **EO 14028** | Zero Trust direction, SBOM, logging, incident sharing | Umbrella | Series-wide |
-| Aug 2022 → Aug 2023 | **OMB M-21-31** (event logging) | EL1 by Aug 2022, EL2 by Feb 2023, EL3 (full) by Aug 2023 | AU-2, AU-6, AU-11, AU-12 | Parts 13, 19 |
+| Aug 2022 → Aug 2023 | **OMB M-21-31** (event logging) — *rescinded 22 May 2026 by OMB M-26-14* | EL1 by Aug 2022, EL2 by Feb 2023, EL3 (full) by Aug 2023 | AU-2, AU-6, AU-11, AU-12 | Parts 13, 19 |
 | FY2023 → FY2025 | **OMB M-21-07** (IPv6) | 20% IPv6-only FY2023 → 50% FY2024 → 80% FY2025 | CM-8, SC family | Part 1 (IPAM) |
 | Oct 2018 | **BOD 18-01** | DMARC p=reject; HTTPS everywhere | SC-8; email auth (DNS) | Part 1 (DNS records) |
-| Nov 3, 2021 | **BOD 22-01** (KEV) | Remediate Known Exploited Vulnerabilities on CISA timelines | RA-5, SI-2 | Part 11 |
+| Nov 3, 2021 | **BOD 22-01** (KEV) — *revoked 10 Jun 2026 by BOD 26-04* | Remediate Known Exploited Vulnerabilities on CISA timelines | RA-5, SI-2 | Part 11 |
 | Apr 3, 2023 | **BOD 23-01** | Asset visibility + vulnerability enumeration reporting | CM-8, RA-5 | Parts 1, 2, 11 |
 | Jun 13, 2023 | **BOD 23-02** | Networked management interfaces removed from the public internet or protected by ZTA capability — within 14 days of identification, ongoing | AC-17, CM-7, SC-7 | Parts 5, 10 (PAW/ZTNA) |
 | Annual (FY cycle) | **FISMA CIO Metrics** | Quarterly + annual CyberScope reporting against the CIO metrics; FY26 cycle measures ZT maturity, logging, MFA, and asset coverage | PM, CA families | Book 19 ConMon feeds; measured-lifecycle metrics (Part 4) |

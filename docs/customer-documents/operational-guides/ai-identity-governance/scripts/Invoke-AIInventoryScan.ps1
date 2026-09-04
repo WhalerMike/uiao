@@ -240,7 +240,8 @@ foreach ($rec in $live) {
             PiaUrl      = $rec.PiaUrl
             ContactEmail = $rec.ContactEmail
             Finding     = "Deployed/pilot AI system has no Authorization to Operate. " +
-                          "M-25-21 §IV requires ATO before operational use. " +
+                          "A deployed AI system needs an ATO under the agency's existing authorization " +
+                          "requirements; M-25-21 imposes no AI-specific ATO gate. " +
                           "Remediate: initiate ATO or inherit reciprocity under ADR-054."
             EvidenceRef = $ref
         })
@@ -305,7 +306,8 @@ foreach ($rec in $live) {
             PiaUrl      = $null
             ContactEmail = $rec.ContactEmail
             Finding     = "AI system handles PII but has no Privacy Impact Assessment URL. " +
-                          "M-25-21 §IV requires a PIA for AI systems that process PII. " +
+                          "A PIA is required for PII-processing systems under the Privacy Act and " +
+                          "E-Government Act; the OMB inventory reports it via pia_url. " +
                           "Remediate: author or locate PIA; publish URL; update OMB inventory."
             EvidenceRef = $ref
         })

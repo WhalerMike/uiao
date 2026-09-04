@@ -54,13 +54,13 @@ ADR-091 §5 defines the closure artifact. Transformation #7 is closed for an ins
 |---|---|
 | `LoginMode = 1` (Windows Authentication Only) | `AuthenticationMode` |
 | zero active **type-S** logins outside the exception registry | `SQLLogins` (type-S) cross-referenced to the exception registry |
-| zero active **type-W / type-G** logins | `WindowsLogins` array |
+| zero active **type-U / type-G** logins | `WindowsLogins` array |
 | `sa` **disabled and renamed** | per-login `Disabled` + `sa` flag in `*_logins.csv` |
 | Arc Connected Machine agent **enrolled and healthy** | service-identity / Arc fields (Book 04 `azcmagent show`) |
 | Azure extension for SQL Server **deployed, Managed Identity active** | `EntraIDReady` + extension state |
 | **MFA via Conditional Access** for human SQL sign-ins over a validation period | Entra sign-in logs + Conditional Access reports (external join) |
 
-**`New-UIAOClosureRecord`** (`tools/powershell/UIAOSqlServerMigration/`) is the ingestion-and-projection step. It reads one scheduled D1.8 JSON and, per instance, projects it onto the §5 field set — Windows-only, zero active type-S outside the exception registry, zero active type-W/G, `sa` disabled, Arc enrolled/healthy, Managed Identity active — emitting a sealed closure record with a `verdict` (`closed` / `closed_excepted` / `open`) and the `failing_fields` for any open instance. An optional `-ExceptionRegistryPath` tolerates an excepted instance's type-S login (verdict `closed_excepted`). The MFA-via-Conditional-Access field is reported as `external` — the record points at the Entra sign-in logs and `Export-UIAOConditionalAccess` output (Book 07) rather than asserting it from the structural audit.
+**`New-UIAOClosureRecord`** (`tools/powershell/UIAOSqlServerMigration/`) is the ingestion-and-projection step. It reads one scheduled D1.8 JSON and, per instance, projects it onto the §5 field set — Windows-only, zero active type-S outside the exception registry, zero active type-U/G, `sa` disabled, Arc enrolled/healthy, Managed Identity active — emitting a sealed closure record with a `verdict` (`closed` / `closed_excepted` / `open`) and the `failing_fields` for any open instance. An optional `-ExceptionRegistryPath` tolerates an excepted instance's type-S login (verdict `closed_excepted`). The MFA-via-Conditional-Access field is reported as `external` — the record points at the Entra sign-in logs and `Export-UIAOConditionalAccess` output (Book 07) rather than asserting it from the structural audit.
 
 ```powershell
 Import-Module ./tools/powershell/UIAOSqlServerMigration
@@ -76,7 +76,7 @@ ADR-091 §5 records specific transitions as **compliance violations**, not advis
 
 - `LoginMode` changing **1 → 2** (Windows-Only → Mixed Mode) — Mixed Mode enabled without authorization.
 - A **new type-S** login present this run but not last — a SQL-auth login created.
-- A **new type-W / type-G** login on a previously Entra-only instance — Windows-backed identity reintroduced.
+- A **new type-U / type-G** login on a previously Entra-only instance — Windows-backed identity reintroduced.
 - The **Arc agent offline** or the SQL extension unavailable — Managed-Identity engine auth interrupted.
 
 **`Compare-UIAOClosureRun`** (`tools/powershell/UIAOSqlServerMigration/`) is the mechanical diff. It indexes a baseline and a current D1.8 run by instance and emits one event per regression — `mixed_mode_enabled`, `new_sql_auth_login`, `new_windows_login`, `arc_agent_offline` (each flagged `violation = true`) — plus informational `instance_appeared` / `instance_disappeared` events (an appeared instance is a possible discovery gap; re-run Book 02). The envelope's `compliance_violation` is true whenever any violation event is present.

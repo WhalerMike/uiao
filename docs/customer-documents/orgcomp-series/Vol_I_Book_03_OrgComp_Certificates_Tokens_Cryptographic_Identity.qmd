@@ -91,7 +91,7 @@ Kerberos (RFC 4120) was engineered for a network that no longer exists, and its 
 | Binding | What Kerberos Assumes | What the Modern Transport Provides |
 |---|---|---|
 | **Session binding** | The authenticated exchange rides one stateful, continuous connection between client and service | The SD-WAN overlay itself preserves the stream — it resequences multipath packets and holds the transport session across path switches. What interrupts session state is what sits *on* the modern path: inline inspection, NAT rebinding, and decrypt/re-encrypt middleboxes |
-| **Location binding** | A domain controller is reachable within sub-5 ms round-trip; the client and the KDC share a network | Workloads span on-premises virtualization, two hyperscale government clouds, and an externally managed tenancy; the KDC is co-located with none of them — and while service-side ticket validation is offline, ticket *issuance and renewal* require that reachability |
+| **Location binding** | A domain controller is **reachable** — not within any protocol-defined latency bound, but reachable at all, and on a path fast enough that logon-time operations complete. RFC 4120 sets a five-*minute* clock-skew tolerance and no latency requirement | Workloads span on-premises virtualization, two hyperscale government clouds, and an externally managed tenancy; the KDC is co-located with none of them — and while service-side ticket validation is offline, ticket *issuance and renewal* require that reachability |
 | **Time binding** | Client and KDC clocks agree within five minutes | The only binding that survives — NTP disciplining is solvable everywhere |
 
 : The three bindings of session-based authentication and their fate on modern transport {.striped .hover}
@@ -128,7 +128,7 @@ The full comparison, stated as protocol properties rather than preferences — e
 | Failure mode | Silent fallback to a weaker protocol (NTLM) | Explicit denial at the policy gate |
 | Policy evaluation point | At initial ticket grant, then inert | At every issuance and every refresh-token redemption |
 | Audit granularity | Logon events without cryptographic binding | Per-token, per-scope, per-device structured events |
-| Latency dependency | Sub-5 ms round-trip assumption to the KDC | None beyond the request itself |
+| Latency dependency | KDC reachability at logon, password change, and GPO retrieval — a deployment-era flat-LAN assumption, not a protocol bound | None beyond the request itself |
 
 : Session-based versus credential-based identity as protocol properties {.striped .hover}
 
@@ -272,7 +272,7 @@ Session-based authentication asks the *network* to vouch for continuity: the ser
 The properties that follow are exactly the ones the multipath analysis demanded:
 
 - **Path independence.** The token is valid on any path, across any number of path switches, through any NAT. Nothing about its validity references the network.
-- **Verification without callback.** The service validates a signature; it does not open a connection to a domain controller. The sub-5 ms location binding is gone.
+- **Verification without callback.** The service validates a signature; it does not open a connection to a domain controller. The KDC-reachability dependency is gone.
 - **Policy at issuance.** Every token issuance is a policy decision point: the identity provider evaluates user credential strength, device compliance (the Vol I Book 02 machine identity, surfaced as a device claim), location plausibility, and session risk *before* signing. Conditional access is the policy-enforcement plane consuming identity-plane truth — the plane separation the series hierarchy requires.
 - **Audit at the token level.** Every issuance, refresh, and revocation is a structured event. This is the telemetry NTLM structurally cannot produce and that the evidence plane (Vol III Book 06, Vol IV Book 06) requires.
 
