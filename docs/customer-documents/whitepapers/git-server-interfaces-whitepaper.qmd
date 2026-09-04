@@ -308,8 +308,12 @@ its own auth via LDAPS or OIDC.
 
 ### 3.4 Hybrid Entra device join — the OrgPath facets and derived path
 
-The host is registered as a device object in the customer's Entra
-tenant. Two attributes are critical to the governance plane:
+The host is registered as a **device** object in the customer's Entra tenant.
+That matters for the write path: device `extensionAttributes` are
+cloud-mastered and writable through Graph, unlike a synced user's
+`onPremisesExtensionAttributes`, which Graph treats as read-only. The stamps
+below are therefore direct Graph writes, with no on-premises hop. Two
+attributes are critical to the governance plane:
 
 - The governance-layer facets in their codebook slots — `extensionAttribute1
   = NCR` (Region), `extensionAttribute2 = IT` (Department), `extensionAttribute3
@@ -696,6 +700,15 @@ under operational validation per the build guide's own status warning:
 | Owner | `OrgTree-NCR-IT-InfraOps-CanonStewards` | `(user.extensionAttribute2 -eq "IT") and (user.extensionAttribute3 -eq "InfraOps") and (user.extensionAttribute10 -eq "Privileged")` |
 | Write | `OrgTree-NCR-IT-InfraOps-Contributors` | `(user.extensionAttribute15 -startsWith "Region=NCR\|Department=IT\|Division=InfraOps\|")` |
 | Read | `OrgTree-NCR-IT-Users` | `(user.extensionAttribute15 -startsWith "Region=NCR\|Department=IT\|")` |
+
+These rules read **user** facets, and the user plane is written differently
+from the device plane above: for a synced user the facets are stamped in
+on-premises AD and reach Entra by directory sync, so a move carries a sync
+hop before any group recalculates. Microsoft additionally warns against
+keying dynamic-group rules on attributes that are writable elsewhere — here
+the mitigation is that the facets have exactly one writer, the governance
+plane, and drift against it is a finding rather than an accepted edit.
+See [the hybrid-sync trap](../reference-architecture/orgpath-minimal-implementation.qmd).
 
 A move in the HR feed propagates through dynamic-group recalculation
 into a Gitea permission change in roughly fifteen minutes; no

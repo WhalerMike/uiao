@@ -69,7 +69,7 @@ The reconstruction is not guesswork. Every AD delegation concept has a direct En
 
 | AD Concept | Entra ID Equivalent | Notes |
 |---|---|---|
-| Organizational Unit (OU) | Administrative Unit (AU) | AU membership is attribute-driven (OrgPath facets), not container-based |
+| Organizational Unit (OU) | Administrative Unit (AU) | AU membership is attribute-driven (OrgPath facets), not container-based. **AUs cannot nest** — an OU tree does not map onto an AU tree, only onto a flat set of attribute-selected AUs |
 | OU-scoped delegation | Entra role scoped to AU | Same role (e.g., User Administrator) — different scope binding |
 | GPO inheritance down OU tree | Intune policy sets targeted at dynamic groups | Group rule replaces OU position |
 | Domain Admin | Global Administrator | PIM-eligible only; never permanently active |
@@ -78,6 +78,26 @@ The reconstruction is not guesswork. Every AD delegation concept has a direct En
 | OU read delegation for service accounts | Microsoft Graph scoped API + least-privilege Entra role | Explicit scope; no implicit OU traversal |
 | Security group creation by dept admin | Groups Administrator scoped to department AU | Role + AU together replace OU ACL |
 | Privileged service account OU | Workload Identity Administrator (PIM-gated) | No OU containment; explicit role binding |
+
+::: {.callout-important}
+## Two limits decide whether this mapping works
+
+**AUs cannot nest.** An OU tree does not become an AU tree. It becomes a flat
+set of AUs whose membership is selected by attribute, so any governance that
+depended on inheritance *down* the OU tree has to be re-expressed as an
+explicit predicate per AU rather than carried by containment.
+
+**The facets that drive AU membership are AD-mastered, not cloud-mastered.**
+For a user with `onPremisesSyncEnabled = true`, Microsoft Graph treats
+`onPremisesExtensionAttributes` as **read-only** — the source of authority is
+on-premises AD. In a hybrid agency that is every user, so the facet values the
+AU rules match on are written in AD and reach Entra by directory sync. Two
+consequences: the migration cannot stamp facets cloud-side for synced users,
+and every AU membership change inherits a sync-latency hop. Device
+`extensionAttributes` are cloud-mastered and *are* writable, which is why the
+device plane and the user plane behave differently. See
+[the hybrid-sync trap](../reference-architecture/orgpath-minimal-implementation.qmd).
+:::
 
 The UIAO Mapping step operationalizes this table: for each delegation record found in Discovery, it produces the AU definition, the membership rule (OrgPath facet predicate), and the role-assignment record needed in Entra. The output is executable canon, not a spreadsheet.
 

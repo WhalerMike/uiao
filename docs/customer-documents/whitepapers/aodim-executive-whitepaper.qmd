@@ -56,7 +56,22 @@ access it drives recalculate automatically, with no ticket in the loop.
 
 # Architecture Overview
 
-HR System → Identity Attributes → Dynamic Groups → Access & Policy Enforcement
+HR System → **on-premises AD** → directory sync → Entra facets → Dynamic Groups → Access & Policy Enforcement
+
+::: {.callout-important}
+## The facet write is AD-mastered, not cloud-mastered
+For any user with `onPremisesSyncEnabled = true`, Graph treats
+`onPremisesExtensionAttributes` as **read-only** — the source of authority is
+on-premises AD. In a hybrid agency that is every user, so the facet stamp
+happens **on-premises and syncs down**; it is not a cloud-side Graph write.
+Device `extensionAttributes` are cloud-mastered and *are* writable through
+Graph, which is why the device plane and the user plane use different
+properties and different write paths (ADR-127). Two consequences follow and
+neither is cosmetic: the flow carries a **directory-sync latency hop**, and it
+takes a hard dependency on Entra Connect Sync — which stops synchronising
+below v2.5.79.0 on **30 September 2026**. See
+[the hybrid-sync trap](../reference-architecture/orgpath-minimal-implementation.qmd).
+:::
 
 # Core Principle
 
@@ -129,11 +144,18 @@ Administrative Units and scoped roles replace traditional OU-based delegation. A
 
 1.  HR system updates user data
 
-2.  Attributes are updated in identity platform
+2.  The facet values are written **to on-premises AD** — the source of
+    authority for any synced user
 
-3.  Dynamic groups recalculate membership
+3.  Directory sync carries the change to Entra (this hop has latency; it is
+    not instantaneous)
 
-4.  Access and policies update automatically
+4.  Dynamic groups recalculate membership
+
+5.  Access and policies update automatically
+
+For a **cloud-only** user, or for a **device**, steps 2–3 collapse into a
+direct Graph write and the latency hop disappears.
 
 # Key Benefits
 
@@ -152,7 +174,9 @@ Administrative Units and scoped roles replace traditional OU-based delegation. A
 
 ::: {.callout-warning}
 ## ILLUSTRATIVE — replace before external release
-Cuts average provisioning lag from `[X]` days to near-zero, and reduces the
+Cuts average provisioning lag from `[X]` days to the directory-sync interval —
+not to zero: for synced users the AD-to-Entra hop is the floor, and a claim of
+“near-zero” overstates it — and reduces the
 share of accounts carrying stale/over-permissioned access from `[Y]`% to
 `[Z]`%.
 :::
