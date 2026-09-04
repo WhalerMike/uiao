@@ -234,7 +234,7 @@ ZTMM maturity ceiling for each pillar without agency compensating controls:
 all seven ZTMM pillars.  OMB M-22-09's Advanced-tier target by 2026 requires
 an agency-built compensating analytics layer.
 
-### 3.3 OMB M-21-31 — Improving the Federal Government's Investigative and Remediation Capabilities
+### 3.3 OMB M-26-14 — Ensuring Effective and Efficient Agency Logging and Network Visibility (rescinds M-21-31; formerly *Improving the Federal Government's Investigative and Remediation Capabilities
 
 | Tier | Requirement | Status in GCC-Moderate |
 |---|---|---|
@@ -243,7 +243,7 @@ an agency-built compensating analytics layer.
 | **Tier 2** | Extended categories + SIEM ingestion | Met with Sentinel; sign-in log categories must be explicitly enabled |
 | **Tier 3** (Maximum) | Complete logging breadth + rapid access | **Partially met**: UAL 180-day cliff without Premium; non-interactive/service-principal logs not default-on |
 
-**Key gap:** M-21-31 Tier 3's "rapid access" intent requires behavioral observability
+**Key gap:** M-26-14 maturity Level 3's "rapid access" intent requires behavioral observability
 that GCC-Moderate's boundary-constrained telemetry does not provide by default.
 Achieving Tier 3 in GCC-Moderate requires: (1) Purview Audit Premium for
 retention depth; (2) all non-interactive/SP/MI log categories explicitly enabled;
@@ -566,8 +566,8 @@ POA&M purposes.  Full evidence bundle finding shape in §3.5.
 | GCC-BND-004 | Endpoint Analytics Advanced blocked | SILENTLY_BLOCKED | P2 | M-22-09 | KSI-CNA, KSI-MLA | UIAO in-boundary telemetry |
 | GCC-BND-005 | Intune behavioral analytics blocked | SILENTLY_BLOCKED | P2 | M-22-09 | KSI-CMT | UIAO in-boundary telemetry |
 | GCC-BND-006 | Azure Monitor ARC metrics blocked | SILENTLY_BLOCKED | P2 | FedRAMP-20x | KSI-CMT, KSI-MLA | UIAO ARC probe |
-| GCC-BND-007 | Sign-in log categories not default-on | Configuration gap | P1 | BOD-25-01, M-21-31 | KSI-MLA | Tier 1 remediation |
-| GCC-BND-008 | UAL 180-day retention cliff | Retention-limited | P2 | M-21-31 | KSI-MLA | Purview Premium required |
+| GCC-BND-007 | Sign-in log categories not default-on | Configuration gap | P1 | BOD-25-01, M-26-14 | KSI-MLA | Tier 1 remediation |
+| GCC-BND-008 | UAL 180-day retention cliff | Retention-limited | P2 | M-26-14 | KSI-MLA | Purview Premium required |
 | GCC-BND-009 | M365 Adoption Score unavailable | Confirmed unavailable | P3 | M-22-09 | KSI-PIY | No agency-side equivalent |
 | GCC-BND-010 | Device Locations API unavailable | Confirmed unavailable | P2 | M-22-09 | KSI-IAM | No agency-side equivalent |
 | GCC-BND-011 | Three-way compliance conflict | Structural | P1 | TIC-3.0, ZTMM, FedRAMP-20x | KSI-IAM, KSI-MLA, KSI-CMT | MAS 2026 long-term; UIAO compensates |
@@ -599,7 +599,7 @@ POA&M purposes.  Full evidence bundle finding shape in §3.5.
 ### Federal mandates
 - [CISA BOD 25-01](https://cyber.dhs.gov/bod/25-01/)
 - [OMB M-22-09 Federal Zero Trust Strategy](https://www.whitehouse.gov/wp-content/uploads/2022/01/M-22-09.pdf)
-- [OMB M-21-31 Improving Investigative and Remediation Capabilities](https://www.whitehouse.gov/wp-content/uploads/2021/08/M-21-31-Improving-the-Federal-Government_s-Investigative-and-Remediation-Capabilities-Related-to-Cybersecurity-Incidents.pdf)
+- [OMB M-26-14 Ensuring Effective and Efficient Agency Logging and Network Visibility](https://www.whitehouse.gov/omb/information-for-agencies/memoranda/) — 22 May 2026; rescinds M-21-31. Superseded predecessor, retained for provenance: [OMB M-21-31](https://www.whitehouse.gov/wp-content/uploads/2021/08/M-21-31-Improving-the-Federal-Government_s-Investigative-and-Remediation-Capabilities-Related-to-Cybersecurity-Incidents.pdf)
 - [NIST SP 800-207 Zero Trust Architecture](https://csrc.nist.gov/publications/detail/sp/800-207/final)
 - [FedRAMP RFC-0005 Minimum Assessment Scope Standard](https://www.fedramp.gov/rfcs/0005/)
 - [FedRAMP RFC-0006 Phase One KSIs](https://www.fedramp.gov/rfcs/0006/)

@@ -9,7 +9,7 @@
 | AC-4 | Information Flow Enforcement | Application-aware flow policy at the NGFW/SASE PEP | NIAP CC + DISA STIG + FIPS 140-3 + DoDIN APL | NIST SP 800-53 Rev 5; NIST SP 800-207; CISA TIC 3.0 | Network | KSI-CNA | No |
 | SC-7 | Boundary Protection | NGFW boundary enforcement at the customer-owned edge (function: distributed policy enforcement point) | NIAP CC + DISA STIG + FIPS 140-3 + DoDIN APL | NIST SP 800-53 Rev 5; CISA TIC 3.0; NIST SP 800-207 | Network | KSI-CNA | No |
 | SC-7(8) | Route Traffic to Authenticated Proxy Servers | Forced-proxy egress through the SASE/SWG enforcement point | NIAP CC + DISA STIG + FIPS 140-3 + DoDIN APL | NIST SP 800-53 Rev 5; CISA TIC 3.0 | Network | KSI-CNA | No |
-| SI-4 | System Monitoring | Network detection/telemetry export from the enforcement substrate to the evidence contract | NIAP CC + DISA STIG + FIPS 140-3 + DoDIN APL | NIST SP 800-53 Rev 5; OMB M-21-31 | Telemetry | KSI-MLA | No |
+| SI-4 | System Monitoring | Network detection/telemetry export from the enforcement substrate to the evidence contract | NIAP CC + DISA STIG + FIPS 140-3 + DoDIN APL | NIST SP 800-53 Rev 5; OMB M-26-14 | Telemetry | KSI-MLA | No |
 
 : Authorities Closed Here — Network Enforcement Substrate (Cisco/Palo Alto/Juniper) († = Closure-Necessity anchor: no alternate closure path) {.striped .hover}
 
