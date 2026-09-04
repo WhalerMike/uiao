@@ -108,7 +108,11 @@ class AISystemRecord:
     has_pii: bool
     pia_url: str | None
 
-    # --- high-impact checklist (M-25-21 §V) ------------------------------
+    # --- high-impact reporting fields ------------------------------------
+    # These report against M-25-21 §4(b)'s SEVEN minimum risk-management
+    # practices; there is no "§V checklist". The six fields below cover five
+    # of the seven — human training and public feedback have no inventory
+    # field, so an inventory-derived view cannot evidence them.
     is_high_impact: bool
     hi_testing_conducted: str | None
     hi_assessment_completed: str | None

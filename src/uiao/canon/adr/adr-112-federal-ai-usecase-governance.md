@@ -41,9 +41,9 @@ M-25-21 imposes a governance regime on federal AI systems that has IAM implicati
 | Obligation | M-25-21 anchor | UIAO surface it touches |
 |---|---|---|
 | Agency AI Use Case Inventory (public transparency, machine-readable) | EO 13960 §5 + M-25-21 §III | Machine-identity surface — every inventoried system is an identity subject |
-| Authorization to Operate for deployed AI | M-25-21 §IV / `have_ato` field | ADR-054 single-ATO reciprocity — ATO enumerability |
-| High-impact AI safety governance checklist (testing, failsafe, appeal, monitoring, independent review) | M-25-21 §V `hi_*` fields | Evidence fabric — compliance evidence for governed AI systems |
-| PII and Privacy Impact Assessment for AI systems | M-25-21 §IV / `has_pii`, `pia_url` fields | UIAO's identity fabric — PII-bearing AI systems are highest-priority identity subjects |
+| ATO status *reported for* deployed AI | OMB inventory `have_ato` field (a **reporting** field — M-25-21 imposes no AI-specific ATO gate and directs agencies to keep applying existing authorization requirements) | ADR-054 single-ATO reciprocity — ATO enumerability |
+| High-impact AI minimum risk-management practices | M-25-21 **§4(b)** — seven practices, reported against by the inventory's six `hi_*` fields (see the coverage note below) | Evidence fabric — compliance evidence for governed AI systems |
+| PII and Privacy Impact Assessment for AI systems | OMB inventory `has_pii`, `pia_url` fields | UIAO's identity fabric — PII-bearing AI systems are highest-priority identity subjects |
 | Agentic AI classification | OMB inventory `classification` field | ADR-092 active governance — agentic AI systems are data planes UIAO governs |
 
 ### The OMB 2025 Federal AI Use Case Inventory
@@ -56,6 +56,50 @@ The inventory is the machine-readable realization of M-25-21's transparency obli
 - Key fields for UIAO: `agency`, `agency_bureau`, `system_name_ato`, `have_ato`, `has_pii`, `pia_url`, `classification` (includes *Agentic AI*), `development_stage`, `vendor_name`, `operational_date`, and the full `hi_*` safety checklist battery
 
 The inventory is published annually, machine-readable (CSV/XLSX), and openly licensed.
+
+### What M-25-21 imposes, and what the inventory merely reports
+
+This distinction is load-bearing and the earlier revision of this ADR blurred
+it. **M-25-21 §4(b)** sets **seven** minimum risk-management practices for
+high-impact AI: (1) pre-deployment testing; (2) an AI impact assessment; (3) ongoing monitoring; (4) human training; (5) human oversight and intervention; (6) remedies and appeals; and (7) public feedback. Independent review is a component *inside* the
+impact assessment, not an eighth practice.
+
+The memo imposes **no AI-specific Authorization to Operate gate**. It
+directs agencies to continue applying their existing authorization
+requirements to AI systems. `have_ato` is an inventory field that *reports*
+an agency's existing ATO posture; it is not evidence of a gate the memo
+created. Any claim that M-25-21 requires an ATO before production AI
+deployment is a misattribution, and a federal evaluator who knows the memo
+reads it as inventing the test you pass.
+
+**The six `hi_*` fields do not cover all seven practices.** Mapping them:
+
+| §4(b) practice | Inventory field |
+|---|---|
+| Pre-deployment testing | `hi_testing_conducted` |
+| AI impact assessment | `hi_assessment_completed` (with `hi_independent_review` as its internal component) |
+| Ongoing monitoring | `hi_ongoing_monitoring` |
+| Human oversight and intervention | `hi_failsafe_presence` |
+| Remedies and appeals | `hi_appeal_process` |
+| **Human training** | **no inventory field** |
+| **Public feedback** | **no inventory field** |
+
+Two of the seven practices have no corresponding inventory field, so an
+inventory-derived compliance view is structurally incomplete against §4(b).
+That gap is a real finding and a better differentiator than the invented
+gate it replaces: a governance substrate that reconciles the inventory can
+say which practices the inventory cannot evidence.
+
+**Two cadences, not one.** The AI use-case inventory goes to OMB **at least
+annually**; compliance plans are due at 180 days and **every two years
+thereafter until 2036**. All M-25-21 deadlines have now passed: a Chief AI
+Officer within 60 days, and the minimum practices for high-impact AI by
+**3 April 2026**.
+
+**Companion memoranda.** M-25-21 rescinded M-24-10. **M-25-22** governs how
+an agency *acquires* AI and is the memo a contracting officer works from.
+**M-26-04** (11 December 2025) adds unbiased-AI principles and self-sunsets
+on 11 December 2027.
 
 ### Sailpoint machine-identity slot
 
