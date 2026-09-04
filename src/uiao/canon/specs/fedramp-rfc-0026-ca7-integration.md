@@ -275,7 +275,7 @@ position:
 - **[FedRAMP NTC-0014](https://www.fedramp.gov/notices/0014/)** — Notice
   firing the §2.4 Pathway-1 gate (VDR + VER mandatory by 2026-12-07).
 - **[CISA BOD 26-04](https://cyber.dhs.gov/bod/26-04/)** — risk-based
-  remediation directive VER (§2.5) aligns to; supersedes BOD 22-01 /
+  remediation directive VER (§2.5) aligns to; revokes BOD 22-01 /
   19-02 (not BOD 25-01).
 - **[FINDING-PGM-003](../../../../docs/findings/fedramp-bod-26-04-vdr-ver-mandate.qmd)**
   — environmental-constraint record for the NTC-0014 / BOD 26-04 mandate.
