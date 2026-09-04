@@ -61,15 +61,30 @@ That constant is the single source for the split: the OrgPath kit uses it as
 ``include_dirs`` and the OrgMod ``Guides`` sweep folds it into ``exclude_dirs``,
 so the two sides cannot drift apart into a page that ships twice or not at all.
 
-WHY ORGMOD SHIPS WHITEPAPERS AND THE GROUPS ABOVE DO NOT.
+HOW THE WHITEPAPER CORPUS IS SPLIT BETWEEN THE TWO KITS.
 The whitepaper corpus is one flat section serving all four Org-family pillars,
 so it cannot be swept wholesale into any one kit. ``reading-guide.qmd`` already
-partitions it — six tracks, "grouped by the question they answer" — and
-``ORGMOD_WHITEPAPERS`` takes exactly Track 2 (Identity & Directory
-Modernization) and Track 4 (Network & Infrastructure Modernization), plus the
-one Track 1 paper that guide itself calls "the bridge into Track 2". Following
-the repo's own published grouping keeps the selection auditable instead of
-editorial. The OrgPath-facing tracks (1, 3, 5, 6) are deliberately absent.
+partitions it — six tracks, "grouped by the question they answer" — and the two
+selections below follow that published grouping rather than an editorial call,
+which keeps them auditable and gives a renamed paper somewhere to fail loudly:
+
+* ``ORGMOD_WHITEPAPERS`` — Track 2 (Identity & Directory Modernization) and
+  Track 4 (Network & Infrastructure Modernization), plus the one Track 1 paper
+  that guide itself calls "the bridge into Track 2".
+* ``ORGPATH_WHITEPAPERS`` — the rest of Track 1 (Governance Foundations) and
+  Track 6 (Positioning, Comparison & Vendor Reads).
+
+Two papers are cross-listed in the guide across a Track 2/4 and a Track 1/6
+row. Each is single-homed here, in its primary track's kit:
+``modernization-governance-whitepaper`` and ``uiao-vs-native-tools`` both ship
+in the OrgMod kit only. A test asserts the two selections stay disjoint.
+
+Tracks 3 (Zero Trust Assessment & Compliance Closure) and 5 (Federal
+Program-Specific Alignment) reach neither kit, and neither do the two papers
+the guide files outside the six tracks (``federal-compliance-for-moderate-
+agencies`` and ``event-logging-fedramp-boundary-limitations``). All of those
+are compliance material — OrgComp's, and OrgComp builds its kit elsewhere. The
+whitepapers section publishes its own complete zip regardless.
 
 Local preview (needs a rendered _site):
     python scripts/build_org_family_download.py --family all --site-root _site --out /tmp/dl
@@ -138,6 +153,19 @@ ORGMOD_WHITEPAPERS = (
     "infoblox-dns-reference.docx",
     "field-office-wan-transformation-dp-consolidation.docx",
     "git-server-interfaces-whitepaper.docx",
+)
+
+# Track 1 + Track 6 of the same reading guide, less the two papers cross-listed
+# into ORGMOD_WHITEPAPERS above. Order is reading order within each track.
+ORGPATH_WHITEPAPERS = (
+    # Track 1 — Governance Foundations: what UIAO is.
+    "uiao-governance-os-whitepaper.docx",
+    "zero-trust-governance-whitepaper.docx",
+    "zero-trust-governance-principles.docx",
+    "zero-trust-whole-agency-unification.docx",
+    # Track 6 — Positioning, Comparison & Vendor Reads.
+    "orgpath-composability-matrix.docx",
+    "snowflake-keypair-vs-uiao-orgpath.docx",
 )
 
 
@@ -227,6 +255,20 @@ FAMILIES: dict[str, Family] = {
                     "Steady-state governance operations — the Active Governance Directory LDAP "
                     "projection, federal AI identity governance, and the Help Desk / Cloud Services "
                     "authority model for an already-hybrid estate."
+                ),
+            ),
+            Group(
+                folder="Whitepapers",
+                site_rel="whitepapers",
+                mode="files",
+                # Not the whole section: see ORGPATH_WHITEPAPERS. The
+                # modernization tracks of the same guide ship in the OrgMod kit.
+                only=ORGPATH_WHITEPAPERS,
+                min_expected=6,
+                blurb=(
+                    "The governance papers — governance foundations (Track 1) and positioning and "
+                    "vendor reads (Track 6) from the whitepaper reading guide. The modernization "
+                    "tracks ship in the OrgMod kit; the compliance tracks in neither."
                 ),
             ),
         ),

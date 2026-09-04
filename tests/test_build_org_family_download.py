@@ -160,23 +160,48 @@ def test_the_shared_operational_guides_tree_is_partitioned_not_sampled() -> None
     assert not sorted(k for k, v in claimed.items() if len(v) > 1), "pages shipped by both kits"
 
 
-def test_orgmod_whitepapers_are_the_reading_guides_modernization_tracks() -> None:
-    # The whitepaper section serves all four pillars, so the OrgMod selection
-    # is editorial unless it tracks something published. It tracks
-    # reading-guide.qmd: every paper named here must still be linked from that
+def test_both_whitepaper_selections_track_the_published_reading_guide() -> None:
+    # The whitepaper section serves all four pillars, so either selection is
+    # editorial unless it tracks something published. Both track
+    # reading-guide.qmd: every paper named must still be linked from that
     # guide, so a renamed or retired paper fails here rather than vanishing
-    # from the kit at deploy time.
+    # from a kit at deploy time.
     guide = (_DOCS / "whitepapers" / "reading-guide.qmd").read_text(encoding="utf-8")
-    for name in bofd.ORGMOD_WHITEPAPERS:
-        slug = Path(name).stem
-        assert f"({slug}.qmd)" in guide, f"{slug} is in the OrgMod kit but no longer in the reading guide"
+    for key, selection in (("orgmod", bofd.ORGMOD_WHITEPAPERS), ("orgpath", bofd.ORGPATH_WHITEPAPERS)):
+        assert len(set(selection)) == len(selection), f"{key}: duplicate paper in the whitepaper selection"
+        for name in selection:
+            slug = Path(name).stem
+            assert f"({slug}.qmd)" in guide, f"{slug} is in the {key} kit but no longer in the reading guide"
 
-    # Papers whose tracks are explicitly not OrgMod's must stay out.
-    for slug in ("orgpath-composability-matrix", "uiao-governance-os-whitepaper", "scubagear-integration-whitepaper"):
-        assert f"{slug}.docx" not in bofd.ORGMOD_WHITEPAPERS, f"{slug} is not a modernization-track paper"
+        wp = next(g for g in bofd.FAMILIES[key].groups if g.folder == "Whitepapers")
+        assert wp.only == selection
 
-    wp = next(g for g in bofd.FAMILIES["orgmod"].groups if g.folder == "Whitepapers")
-    assert len(set(wp.only)) == len(wp.only), "duplicate paper in the OrgMod whitepaper selection"
+
+def test_the_whitepaper_selections_are_disjoint_and_leave_compliance_out() -> None:
+    # Two papers are cross-listed in the guide across a modernization and a
+    # governance track; each is single-homed in its primary track's kit, so a
+    # later edit that "helpfully" adds one to both is caught here.
+    overlap = set(bofd.ORGMOD_WHITEPAPERS) & set(bofd.ORGPATH_WHITEPAPERS)
+    assert not overlap, f"papers claimed by both kits: {sorted(overlap)}"
+
+    both = set(bofd.ORGMOD_WHITEPAPERS) | set(bofd.ORGPATH_WHITEPAPERS)
+    # The cross-listed pair belongs to OrgMod, its primary track.
+    for name in ("modernization-governance-whitepaper.docx", "uiao-vs-native-tools.docx"):
+        assert name in bofd.ORGMOD_WHITEPAPERS and name not in bofd.ORGPATH_WHITEPAPERS
+
+    # Tracks 3 and 5 are OrgComp's material and reach neither family kit.
+    for slug in (
+        "bod-25-01-close-before-assess",
+        "scubagear-integration-whitepaper",
+        "ticket-to-machine-not-ticket-to-human",
+        "federal-ai-governance-submission-readiness",
+        "federal-compliance-for-moderate-agencies",
+    ):
+        assert f"{slug}.docx" not in both, f"{slug} is compliance material, not an Org-family kit paper"
+
+    # Closed world: every selected paper is a real page in the section.
+    for name in both:
+        assert (_DOCS / "whitepapers" / Path(name).with_suffix(".qmd")).is_file(), name
 
 
 # --------------------------------------------------------------------------
@@ -221,10 +246,12 @@ def _fake_site(tmp_path: Path) -> Path:
     _touch(og / "ai-identity-governance" / "governed-path.docx")
     _touch(og / "helpdesk-entra-operations" / "helpdesk-flow.docx")
 
-    # whitepapers: a flat section the OrgMod kit takes named papers out of.
+    # whitepapers: a flat section both kits take named papers out of, plus a
+    # Track 3 compliance paper that belongs to neither.
     wp = docs / "whitepapers"
     _touch(wp / bofd.ORGMOD_WHITEPAPERS[0])
-    _touch(wp / "orgpath-composability-matrix.docx")
+    _touch(wp / bofd.ORGPATH_WHITEPAPERS[0])
+    _touch(wp / "bod-25-01-close-before-assess.docx")
 
     _touch(docs / "orgpath-multicloud" / "01-the-substrate.docx")
     _touch(docs / "modernization-specs" / "identity" / "spec.docx")
@@ -248,7 +275,12 @@ def test_orgpath_collect_takes_book_bundles_and_pages_not_section_bundles(tmp_pa
         "Governance_Operations/active-governance-directory/index.docx",
         "Governance_Operations/ai-identity-governance/governed-path.docx",
         "Governance_Operations/helpdesk-entra-operations/helpdesk-flow.docx",
+        f"Whitepapers/{bofd.ORGPATH_WHITEPAPERS[0]}",
     }
+    # The OrgMod paper and the compliance paper are both in the same source
+    # directory and must not be swept up with the named selection.
+    assert f"Whitepapers/{bofd.ORGMOD_WHITEPAPERS[0]}" not in members
+    assert "Whitepapers/bod-25-01-close-before-assess.docx" not in members
     # include_dirs takes only what it names: the rest of the shared
     # operational-guides tree must not leak into the OrgPath kit.
     assert not any(arc.startswith("Governance_Operations/pki-modernization") for arc in members)
@@ -277,7 +309,8 @@ def test_orgmod_collect_excludes_orgpath_implementation_and_the_promoted_narrati
     for name in bofd.ORGPATH_GOVERNANCE_OPS:
         assert not any(arc.startswith(f"Guides/{name}/") for arc in members)
     # The whitepapers group is a named selection, never the whole section.
-    assert "Whitepapers/orgpath-composability-matrix.docx" not in members
+    assert f"Whitepapers/{bofd.ORGPATH_WHITEPAPERS[0]}" not in members
+    assert "Whitepapers/bod-25-01-close-before-assess.docx" not in members
 
 
 def test_collect_reports_a_gap_instead_of_shipping_quietly(tmp_path: Path) -> None:
