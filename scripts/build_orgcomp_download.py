@@ -25,6 +25,19 @@ Produces, into ``--out`` (the deploy calls it with ``--out _site/download``):
     plus the operator kits, plus a README stating the edition and build date.
     Individual per-book .docx are not shipped — the site offers those per page.
 
+ONE SECTION COMES FROM OUTSIDE THE SERIES TREE.
+``siem-telemetry-emission`` lives under ``customer-documents/operational-guides``
+— OrgMod's operational home — but it is OrgComp's content: it is the *emission*
+side of the evidence pipeline whose *consumption* side is Vol III Book 06, and
+``operational-guides/index.qmd`` says so outright. It ships here in
+``Evidence_Emission/``, and build_org_family_download.py excludes it from the
+OrgMod kit's Guides sweep so it is not shipped twice.
+
+Unlike the books it carries no ``{{< meta agency.* >}}`` shortcodes, so it is
+not edition-sensitive and renders identically either way. It is still read from
+``_site`` rather than re-rendered here, for the same reason everything else is:
+the Quarto render is the only .docx source this script trusts.
+
 Federal edition ONLY. This script never reads inbox/aan-ssa-edition/, and the .docx
 it collects are the federal renders (Quarto resolved the agency metadata).
 
@@ -60,6 +73,14 @@ from check_kit_agency_leak import format_findings, scan_members  # noqa: E402
 SERIES_SITE_REL = "customer-documents/orgcomp-series"
 SERIES_SRC_REL = "docs/customer-documents/orgcomp-series"
 ZIP_NAME = "orgcomp-federal-series-latest.zip"
+
+# The one OrgComp section that lives outside the series tree — see the
+# docstring. build_org_family_download.py names the same directory in
+# ORGCOMP_EVIDENCE_EMISSION_DIR to keep it out of the OrgMod kit; a test
+# asserts the two agree.
+EVIDENCE_EMISSION_SITE_REL = "customer-documents/operational-guides/siem-telemetry-emission"
+EVIDENCE_EMISSION_FOLDER = "Evidence_Emission"
+EVIDENCE_EMISSION_MIN = 5
 
 # Map a Vol_<V>_Book_* filename to its distribution folder. Mirrors the volume
 # names build_distribution_kit.sh uses so the two kits are organised alike.
@@ -167,6 +188,26 @@ def collect(site_root: Path, src_root: Path) -> tuple[dict[str, Path], list[str]
             members[f"Runbooks_and_Kit_Docs/{docx.name}"] = docx
             n_extra += 1
     notes.append(f"runbook + kit .docx (from _site): {n_extra}")
+
+    # 1c. The evidence-emission section from _site. It sits under
+    # operational-guides rather than the series tree, so neither collector
+    # above reaches it; see the docstring for why it is OrgComp's.
+    emission_site = site_root / EVIDENCE_EMISSION_SITE_REL
+    n_emit = 0
+    if emission_site.is_dir():
+        for docx in sorted(emission_site.rglob("*.docx")):
+            if docx.name.lower().endswith("-bundle.docx"):
+                continue  # never ship a page and a concatenation of it
+            members[f"{EVIDENCE_EMISSION_FOLDER}/{docx.name}"] = docx
+            n_emit += 1
+    else:
+        notes.append(f"  MISSING: {EVIDENCE_EMISSION_SITE_REL} not found — Evidence_Emission is empty")
+    notes.append(f"evidence-emission .docx (from _site): {n_emit}")
+    if n_emit < EVIDENCE_EMISSION_MIN:
+        notes.append(
+            f"  WARNING: expected at least {EVIDENCE_EMISSION_MIN} evidence-emission pages, "
+            f"found {n_emit} — did the DOCX render sweep that section?"
+        )
 
     # 2. Committed .pptx decks from source.
     n_pptx = 0

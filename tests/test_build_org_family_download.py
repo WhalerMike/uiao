@@ -31,6 +31,17 @@ _SPEC.loader.exec_module(bofd)
 
 _DOCS = _REPO / "docs" / bofd.DOCS_SITE_REL
 
+# The OrgComp kit builder, loaded for one purpose: the evidence-emission split
+# is the only one whose halves live in different scripts, so the two constants
+# have to be compared across them.
+_OC_SPEC = importlib.util.spec_from_file_location(
+    "build_orgcomp_download",
+    _REPO / "scripts" / "build_orgcomp_download.py",
+)
+bocd = importlib.util.module_from_spec(_OC_SPEC)
+sys.modules[_OC_SPEC.name] = bocd
+_OC_SPEC.loader.exec_module(bocd)
+
 
 # --------------------------------------------------------------------------
 # The families as declared
@@ -131,9 +142,23 @@ def test_the_governance_subsections_moved_to_orgpath_and_left_orgmod() -> None:
         assert (_DOCS / "operational-guides" / name).is_dir(), f"{name} no longer exists — the split is a no-op"
 
 
+def test_the_evidence_emission_split_agrees_across_the_two_scripts() -> None:
+    # This is the only split whose halves live in different files: the OrgMod
+    # exclusion is here, the collector that picks the section up is in
+    # build_orgcomp_download.py. Nothing but this test keeps them naming the
+    # same directory, and a mismatch drops the section from every kit.
+    assert bocd.EVIDENCE_EMISSION_SITE_REL.endswith("/" + bofd.ORGCOMP_EVIDENCE_EMISSION_DIR)
+    assert bocd.EVIDENCE_EMISSION_SITE_REL.startswith(bofd.DOCS_SITE_REL + "/operational-guides/")
+    assert bofd.ORGCOMP_EVIDENCE_EMISSION_DIR in _orgmod_guides().exclude_dirs
+
+    src = _DOCS / "operational-guides" / bofd.ORGCOMP_EVIDENCE_EMISSION_DIR
+    assert src.is_dir(), "the evidence-emission section no longer exists — the exclusion is a no-op"
+    assert len(list(src.rglob("*.qmd"))) >= bocd.EVIDENCE_EMISSION_MIN
+
+
 def test_the_shared_operational_guides_tree_is_partitioned_not_sampled() -> None:
-    # Closed world in both directions over the tree the two families share:
-    # every page reaches exactly one kit. A one-way "nothing new leaked in"
+    # Closed world in both directions over the tree three kits now share:
+    # every page reaches exactly one of them. A one-way "nothing new leaked in"
     # check would pass while a whole sub-section silently stopped shipping.
     og = _DOCS / "operational-guides"
     on_disk = {q.relative_to(og).with_suffix("").as_posix() for q in og.rglob("*.qmd")}
@@ -155,9 +180,15 @@ def test_the_shared_operational_guides_tree_is_partitioned_not_sampled() -> None
                 continue
             claimed.setdefault(prefix + rel.with_suffix("").as_posix(), []).append(f"{key}/{folder}")
 
-    assert not sorted(on_disk - set(claimed)), "pages that reach neither kit"
+    # The third destination: the OrgComp kit, built by the sibling script.
+    emission = _DOCS / "operational-guides" / bofd.ORGCOMP_EVIDENCE_EMISSION_DIR
+    for q in emission.rglob("*.qmd"):
+        rel = q.relative_to(_DOCS / "operational-guides").with_suffix("").as_posix()
+        claimed.setdefault(rel, []).append("orgcomp/Evidence_Emission")
+
+    assert not sorted(on_disk - set(claimed)), "pages that reach no kit"
     assert not sorted(set(claimed) - on_disk), "pages claimed by a kit that are not on disk"
-    assert not sorted(k for k, v in claimed.items() if len(v) > 1), "pages shipped by both kits"
+    assert not sorted(k for k, v in claimed.items() if len(v) > 1), "pages shipped by more than one kit"
 
 
 def test_both_whitepaper_selections_track_the_published_reading_guide() -> None:
@@ -245,6 +276,8 @@ def _fake_site(tmp_path: Path) -> Path:
     _touch(og / "active-governance-directory" / "index.docx")
     _touch(og / "ai-identity-governance" / "governed-path.docx")
     _touch(og / "helpdesk-entra-operations" / "helpdesk-flow.docx")
+    # OrgComp's, collected by build_orgcomp_download.py — neither kit here.
+    _touch(og / bofd.ORGCOMP_EVIDENCE_EMISSION_DIR / "01-entra-id.docx")
 
     # whitepapers: a flat section both kits take named papers out of, plus a
     # Track 3 compliance paper that belongs to neither.
@@ -284,6 +317,7 @@ def test_orgpath_collect_takes_book_bundles_and_pages_not_section_bundles(tmp_pa
     # include_dirs takes only what it names: the rest of the shared
     # operational-guides tree must not leak into the OrgPath kit.
     assert not any(arc.startswith("Governance_Operations/pki-modernization") for arc in members)
+    assert not any(bofd.ORGCOMP_EVIDENCE_EMISSION_DIR in arc for arc in members)
     assert not any("target-surface" in arc for arc in members)
 
 
@@ -308,6 +342,8 @@ def test_orgmod_collect_excludes_orgpath_implementation_and_the_promoted_narrati
     # ...and the three governance sub-sections left the OrgMod kit entirely.
     for name in bofd.ORGPATH_GOVERNANCE_OPS:
         assert not any(arc.startswith(f"Guides/{name}/") for arc in members)
+    # ...and so did the evidence-emission section, which is OrgComp's.
+    assert not any(bofd.ORGCOMP_EVIDENCE_EMISSION_DIR in arc for arc in members)
     # The whitepapers group is a named selection, never the whole section.
     assert f"Whitepapers/{bofd.ORGPATH_WHITEPAPERS[0]}" not in members
     assert "Whitepapers/bod-25-01-close-before-assess.docx" not in members
