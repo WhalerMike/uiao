@@ -1,0 +1,79 @@
+ksi_id: KSI-PAN-002
+title: No Any-Any-Allow Rules in Production Security Policy
+category: boundary-protection
+description: >
+  Production firewall policy must not contain security rules whose source
+  zone, destination zone, source address, destination address, and application
+  are all set to ANY with an action of allow.  Such any-any-allow rules
+  negate the purpose of boundary protection by permitting all traffic between
+  all segments, violating least-privilege information-flow enforcement under
+  AC-4 and SC-7, and introducing uncontrolled configuration variance
+  contrary to CM-7.
+security_objective: >
+  Ensure that no over-permissive catch-all allow rule exists in the
+  production security policy, maintaining strict least-privilege information
+  flow control at every network boundary and reducing the attack surface
+  available to adversaries who gain a foothold inside the perimeter.
+related_controls:
+  - AC-4
+  - SC-7
+  - CM-7
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero enabled production security rules where source_zone = 'any' AND
+    destination_zone = 'any' AND source_address = 'any' AND
+    destination_address = 'any' AND application = 'any' AND action = 'allow'.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT r.rule_name, r.rule_uuid, r.action,
+           r.source_zone, r.destination_zone,
+           r.source_address, r.destination_address,
+           r.application
+    FROM pan_security_rules r
+    WHERE r.enabled = TRUE
+      AND r.environment = 'production'
+      AND LOWER(r.source_zone)        = 'any'
+      AND LOWER(r.destination_zone)   = 'any'
+      AND LOWER(r.source_address)     = 'any'
+      AND LOWER(r.destination_address) = 'any'
+      AND LOWER(r.application)        = 'any'
+      AND LOWER(r.action)             = 'allow'
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: paloalto.validators.no_any_any_allow_rules
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-15"
+enabled: true
+tags:
+  - palo-alto
+  - ngfw
+  - boundary-protection
+  - any-any-allow
+  - ac-4
+  - sc-7
+  - cm-7
+severity: HIGH
+nist_mappings:
+  primary: AC-4
+  secondary:
+    - SC-7
+    - CM-7
+fedramp_controls:
+  - AC-4
+  - SC-7
+  - CM-7
+provenance:
+  spec_ref: v0.6.2-paloalto
+  adr_ref: ADR-049
+  ruleset_version: "1.0"
+  introduced_by: WS-A3
