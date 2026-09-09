@@ -93,7 +93,7 @@ in the OrgMod kit only. A test asserts the two selections stay disjoint.
 Tracks 3 (Zero Trust Assessment & Compliance Closure) and 5 (Federal
 Program-Specific Alignment) reach neither kit, and neither do the two papers
 the guide files outside the six tracks (``federal-compliance-for-moderate-
-agencies`` and ``event-logging-fedramp-boundary-limitations``). All of those
+agencies``). All of those
 are compliance material — OrgComp's, and OrgComp builds its kit elsewhere. The
 whitepapers section publishes its own complete zip regardless.
 
