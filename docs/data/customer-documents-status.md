@@ -982,7 +982,7 @@
 | [`docs/customer-documents/whitepapers/infoblox-dns-reference.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/infoblox-dns-reference.qmd) | 296 | Substantial | ✅ | — | — |
 | [`docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.qmd) | 1655 | Substantial | ✅ | 12/12 | — |
 | [`docs/customer-documents/whitepapers/modernization-governance-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/modernization-governance-whitepaper.qmd) | 285 | Substantial | ✅ | 3/3 | — |
-| [`docs/customer-documents/whitepapers/modernization-journey.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/modernization-journey.qmd) | 1055 | Substantial | ✅ | 14/14 | — |
+| [`docs/customer-documents/whitepapers/modernization-journey.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/modernization-journey.qmd) | 1176 | Substantial | ✅ | 14/14 | — |
 | [`docs/customer-documents/whitepapers/orgpath-composability-matrix.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/orgpath-composability-matrix.qmd) | 165 | Authored | ✅ | 2/2 | — |
 | [`docs/customer-documents/whitepapers/reading-guide.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/reading-guide.qmd) | 192 | Authored | ✅ | — | — |
 | [`docs/customer-documents/whitepapers/scubagear-integration-whitepaper.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/whitepapers/scubagear-integration-whitepaper.qmd) | 413 | Substantial | ✅ | 3/3 | — |
