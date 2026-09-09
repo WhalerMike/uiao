@@ -134,12 +134,15 @@ currently do not ask, and some will not have answers yet.
 **Unresolved — partly closed 2026-09-09.** The ruleset carries no FedRAMP impact
 level for any Microsoft offering, so this ADR does not settle the GCC question
 from the framework side. The Marketplace does settle the Rev5 listing, and was
-read: `MSO365MTA` is **Class D (High)**, **FedRAMP In Process**, zero
-authorizations, having left FedRAMP Certified on 2026-07-01
+read: the certified offering is `MSO365MT`, **Class C (Moderate)**, FedRAMP
+Certified since 2014-11-20 with 99 authorizations; a second, identically-named
+listing `MSO365MTA` is **Class D (High)**, FedRAMP In Process, zero
+authorizations
 ([FINDING-PGM-006](../../../../docs/findings/gcc-marketplace-listing-class-d-in-process.qmd)).
-That resolves the level as **High rather than Moderate**, and confirms this
-ADR's expectation that the lookup would answer a Rev5 question: the listing is
-Type Rev5, so it says nothing about how the offering will be scoped once D2's
+That resolves the level as **Moderate for the certified service**, with a High
+effort apparently in progress alongside it — and confirms this ADR's expectation
+that the lookup would answer a Rev5 question: both listings are Type Rev5, so
+neither says anything about how the offering will be scoped once D2's
 per-resource categorisation applies.
 
 One tension this creates and does not resolve: the listing's **vendor-supplied**
