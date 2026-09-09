@@ -111,7 +111,6 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [AODIM — Attribute-Oriented Directory & Identity Model](whitepapers/aodim-executive-whitepaper.html) | Active | Executive, Customer |
 | [Assessment Tools vs. Closing BOD-25-01 Findings](whitepapers/bod-25-01-close-before-assess.html) | Active | Executive, Customer, Assessor, Architect |
 | [Federal AI Governance — Submission Readiness Brief](whitepapers/federal-ai-governance-submission-readiness.html) | Active | Executive, Customer |
-| [Federal Application Aware Networking Architecture](whitepapers/federal-application-aware-networking-architecture.html) | Draft | Executive, Architect, Engineer, Assessor, Technical-Lead |
 | [Federal Compliance for Moderate Agencies](whitepapers/federal-compliance-for-moderate-agencies.html) | Active | Executive, Architect, Assessor, Technical-Lead |
 | [Federal HRIT Productization — UIAO Substrate Alignment with OPM HRIT Modernization](whitepapers/federal-hrit-productization.html) | Active | Executive, Customer, Assessor |
 | [Federal SSOT Alignment — UIAO as the Identity Governance Substrate for AD → Entra ID Migration](whitepapers/federal-ssot-alignment.html) | Active | Executive, Customer, Assessor |
@@ -122,7 +121,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [DNS Record Types and Universal DDI Ecosystem Integrations — Reference Companion](whitepapers/infoblox-dns-reference.html) | Draft | Architect, Engineer, Technical-Lead |
 | [Next Generation DNS](whitepapers/infoblox-hybrid-dns-unified-ddi.html) | Draft | Executive, Architect, Engineer, Technical-Lead |
 | [Modernization Governance — Whitepaper](whitepapers/modernization-governance-whitepaper.html) | Active | Executive, Customer, Architect |
-| [From Mainframe to Application-Aware Modernization](whitepapers/modernization-journey.html) | Draft | Executive, Architect, Engineer, Assessor, Technical-Lead |
+| [Modernization Journey](whitepapers/modernization-journey.html) | Draft | Executive, Architect, Engineer, Assessor, Technical-Lead |
 | [Choose Your Partners — The OrgPath Composability Matrix](whitepapers/orgpath-composability-matrix.html) | Active | Executive, Customer, Technical |
 | [Whitepaper Reading Guide](whitepapers/reading-guide.html) | Active | Federal CIO/CISO · assessors · architects · engineers · research audience |
 | [ScubaGear Integration — Whitepaper](whitepapers/scubagear-integration-whitepaper.html) | Active | Customer, Assessor, Architect |

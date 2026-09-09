@@ -1004,7 +1004,7 @@
   - [UIAO Governance OS — Whitepaper](customer-documents/whitepapers/uiao-governance-os-whitepaper.html)
   - [Zero Trust Governance — Whitepaper](customer-documents/whitepapers/zero-trust-governance-whitepaper.html)
   - [Modernization Governance — Whitepaper](customer-documents/whitepapers/modernization-governance-whitepaper.html)
-  - [From Mainframe to Application-Aware Modernization](customer-documents/whitepapers/modernization-journey.html)
+  - [Modernization Journey](customer-documents/whitepapers/modernization-journey.html)
   - [Flipping 50,000 Devices to Hybrid Join — The Governed and Ungoverned Paths](customer-documents/whitepapers/hybrid-join-without-governance.html)
   - [AD to Entra ID — The Structural Migration Problem](customer-documents/whitepapers/ad-to-entraid-migration-problem.html)
   - [The Session vs. Telemetry Divide — Why Identity Architecture Splits at the FedRAMP Boundary](customer-documents/whitepapers/session-vs-telemetry-identity.html)
@@ -1027,7 +1027,6 @@
   - [DNS Record Types and Universal DDI Ecosystem Integrations — Reference Companion](customer-documents/whitepapers/infoblox-dns-reference.html)
   - [SD-WAN vs. DIA Under TIC 3.0](customer-documents/whitepapers/tic3-sdwan-vs-dia.html)
   - [What Changed at FedRAMP — and What Agencies Can Now Ask Microsoft For](customer-documents/whitepapers/fedramp-20x-and-the-commercial-feature-gap.html)
-  - [Federal Application Aware Networking Architecture](customer-documents/whitepapers/federal-application-aware-networking-architecture.html)
   - [Field Office WAN Transformation and Distribution Point Consolidation](customer-documents/whitepapers/field-office-wan-transformation-dp-consolidation.html)
 - **Architecture Series**
   - [Architecture Series](customer-documents/architecture-series/index.html)

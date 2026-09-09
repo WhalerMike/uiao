@@ -163,7 +163,6 @@ ORGMOD_WHITEPAPERS = (
     "federal-ssot-alignment.docx",
     "uiao-vs-native-tools.docx",
     # Track 4 — Network & Infrastructure Modernization.
-    "federal-application-aware-networking-architecture.docx",
     "tic3-sdwan-vs-dia.docx",
     "infoblox-hybrid-dns-unified-ddi.docx",
     "infoblox-dns-reference.docx",
