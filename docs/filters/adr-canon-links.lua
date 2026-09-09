@@ -1,6 +1,6 @@
 -- adr-canon-links.lua
 --
--- Quarto/pandoc Lua filter. HTML output only, ADR wrapper pages only.
+-- Quarto/pandoc Lua filter. HTML and DOCX output, ADR wrapper pages only.
 --
 -- Each published ADR page (docs/adr/adr-NNN-*.qmd) is a thin wrapper that
 -- embeds the canonical ADR source verbatim via Quarto's `{{< include >}}`
@@ -29,14 +29,25 @@
 -- rendered docs to files that do not publish to the site (see docs/about/*,
 -- adr-064); lychee already excludes `github.com/WhalerMike/uiao/blob/` (#757).
 --
+-- DOCX differs in ONE respect. Quarto rewrites nothing for the docx writer, and
+-- Word resolves a relative hyperlink against the .docx file's own location on
+-- disk — so the two site-relative forms this filter emits for HTML
+-- (`adr-NNN.html` and `../<path>.html`) are dead in a downloaded Word copy. For
+-- docx those two branches emit the ABSOLUTE site URL instead. The GitHub-blob
+-- branch is already absolute and is shared by both formats.
+--
 -- Registered project-wide in docs/_quarto.yml (`filters:`). It is a no-op for
--- every non-HTML format and for every input file that is not an ADR wrapper,
--- so applying it project-wide is safe.
+-- every format other than HTML and DOCX, and for every input file that is not
+-- an ADR wrapper, so applying it project-wide is safe.
 
-if not (FORMAT and FORMAT:match("html")) then
+if not (FORMAT and (FORMAT:match("html") or FORMAT:match("docx"))) then
   return {}
 end
 
+-- Word cannot resolve a site-relative href; emit absolute URLs there instead.
+local IS_DOCX = FORMAT:match("docx") ~= nil
+
+local SITE = "https://whalermike.github.io/uiao/"
 local GH_BLOB = "https://github.com/WhalerMike/uiao/blob/main/"
 
 -- canon ADR source directory, as repo-root-relative segments
@@ -116,12 +127,18 @@ local function rewrite_target(target)
   -- Sibling ADR with a generated wrapper -> same-dir .html
   local name = R:match("^src/uiao/canon/adr/(adr%-%d+[^/]*)%.%w+$")
   if name and not NO_WRAPPER[name] then
+    if IS_DOCX then
+      return SITE .. "adr/" .. name .. ".html" .. suffix
+    end
     return name .. ".html" .. suffix
   end
 
   -- Rendered docs page (.qmd publishes to .html, site rooted at docs/)
   local rest = R:match("^docs/(.+)%.qmd$")
   if rest then
+    if IS_DOCX then
+      return SITE .. rest .. ".html" .. suffix
+    end
     return "../" .. rest .. ".html" .. suffix
   end
 

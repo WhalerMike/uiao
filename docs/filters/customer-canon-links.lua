@@ -1,6 +1,6 @@
 -- customer-canon-links.lua
 --
--- Quarto/pandoc Lua filter. HTML output only. Applies to every published docs
+-- Quarto/pandoc Lua filter. HTML and DOCX output. Applies to every published docs
 -- page EXCEPT ADR wrapper pages (docs/adr/adr-NNN-*), which are owned by the
 -- sibling adr-canon-links.lua — the two filters stay mutually exclusive so they
 -- never both rewrite the same link.
@@ -32,12 +32,22 @@
 -- on-disk source links are untouched, so the on-disk link-check still passes;
 -- only the rendered HTML is rewritten.
 --
+-- WHY DOCX TOO. The site builds downloadable Word bundles, and Quarto rewrites
+-- NOTHING for the docx writer: every relative target passes through verbatim
+-- into word/_rels/document.xml.rels as an External relationship, which Word
+-- resolves against the .docx file's own location on disk. A reader who opens
+-- the Word copy outside the site therefore gets a dead link for every
+-- cross-document reference — measured at 10 of 10 links in
+-- `modernization-journey.docx` before this filter was extended. Because every
+-- rewrite this filter emits is already an ABSOLUTE https URL, the same logic is
+-- exactly what docx needs; only the format gate had to change.
+--
 -- Registered project-wide in docs/_quarto.yml (`filters:`). No-op for every
--- non-HTML format and for every ADR wrapper page (those are handled by
--- adr-canon-links.lua), so applying it project-wide is safe and the two filters
--- never both act on the same page.
+-- format other than HTML and DOCX, and for every ADR wrapper page (those are
+-- handled by adr-canon-links.lua), so applying it project-wide is safe and the
+-- two filters never both act on the same page.
 
-if not (FORMAT and FORMAT:match("html")) then
+if not (FORMAT and (FORMAT:match("html") or FORMAT:match("docx"))) then
   return {}
 end
 
