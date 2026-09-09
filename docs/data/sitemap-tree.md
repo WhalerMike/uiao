@@ -1027,6 +1027,7 @@
   - [Next Generation DNS](customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.html)
   - [DNS Record Types and Universal DDI Ecosystem Integrations — Reference Companion](customer-documents/whitepapers/infoblox-dns-reference.html)
   - [SD-WAN vs. DIA Under TIC 3.0](customer-documents/whitepapers/tic3-sdwan-vs-dia.html)
+  - [What Changed at FedRAMP — and What Agencies Can Now Ask Microsoft For](customer-documents/whitepapers/fedramp-20x-and-the-commercial-feature-gap.html)
   - [Federal Application Aware Networking Architecture](customer-documents/whitepapers/federal-application-aware-networking-architecture.html)
   - [Field Office WAN Transformation and Distribution Point Consolidation](customer-documents/whitepapers/field-office-wan-transformation-dp-consolidation.html)
 - **Architecture Series**

@@ -1,0 +1,322 @@
+---
+title: "What Changed at FedRAMP — and What Agencies Can Now Ask Microsoft For"
+subtitle: "The authorization boundary is gone, GCC was never the boundary agencies think it is, and the two facts together change what is worth asking for"
+doc-type: whitepaper
+audience: [Executive, Customer, Architect, Assessor]
+author: Michael Stratton
+date: "September 2026"
+status: Active
+canon-source: "src/uiao/canon/compliance/reference/fedramp-cr26/official/fedramp-consolidated-rules.json"
+canon-reference:
+  - "src/uiao/canon/adr/adr-141-fedramp-20x-boundary-model-refinement.md"
+  - "src/uiao/canon/adr/adr-106-fedramp-20x-integration.md"
+  - "src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml"
+repo-path: docs/customer-documents/whitepapers/fedramp-20x-and-the-commercial-feature-gap.qmd
+created-at: 2026-09-09
+updated-at: 2026-09-09
+version: "1.0"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+lifecycle: adopted
+tiers_adopted: [1]
+lifecycle_review: 2027-03-09
+---
+
+# What Changed at FedRAMP — and What Agencies Can Now Ask Microsoft For
+
+## Executive summary
+
+Two things are true at once, and the federal identity and collaboration
+community has been reasoning from neither.
+
+**First: FedRAMP 20x has no authorization boundary.** The term appears zero
+times in the Consolidated Rules for 2026. What replaced it is a data-flow test
+— Minimum Assessment Scope — under which security category is a **per-resource**
+property rather than a single level stamped across an environment, and under
+which software installed on agency systems outside a shared-responsibility model
+is out of FedRAMP's scope entirely.
+
+**Second: GCC was never the boundary agencies think it is.** Microsoft does not
+describe Government Community Cloud as a compliance perimeter that attenuates
+features. It describes GCC as riding the worldwide service footprint on Azure
+Commercial, with specific features excluded and **each exclusion published
+individually** — running in both directions, since some features are available
+in GCC and withheld from GCC High and DoD.
+
+Those two facts change the shape of the problem. A boundary cannot be negotiated.
+A published list of per-feature exclusions can be inventoried, prioritised, and
+argued feature by feature — and under 20x the scope argument an agency can make
+about any one of them is materially different from the one Rev 5 allowed.
+
+This paper states what changed, what agencies verifiably lose today, which
+mechanisms actually exist for changing it, and — as important — which do not.
+
+::: {.callout-note}
+## Relationship to existing papers
+This paper supplies the framework and vendor-documentation half of the argument
+that [Event Logging and the FedRAMP Boundary](event-logging-fedramp-boundary-limitations.qmd)
+approaches from the telemetry side. That paper is under rebuild; its gap matrix
+is derived from `gcc-moderate-telemetry-gaps.yaml`, which remains authoritative
+over both papers. Only the **eight vendor-confirmed** rows of that register are
+used here.
+:::
+
+## 1. What changed at FedRAMP
+
+### 1.1 The boundary is not a shape any more
+
+Under Rev 5 the authorization boundary is a provider artifact: drawn by the
+CSP, diagrammed in the SSP, with everything crossing it treated as an
+interconnection. In the Consolidated Rules for 2026 that construct is absent.
+"Authorization boundary" occurs **zero** times. Of the eight occurrences of
+"boundary", three describe the **agency's** boundary — *"the federal information
+system that includes the cloud service offering in its boundary"* — four are a
+classification tag, and one is inherited NIST SP 800-53 `SR-08` supply-chain
+guidance.
+
+FedRAMP tags exactly four rule families `boundary`: **MAS** (what is in the
+offering), **UCM** (how data is protected inside it), **VDR** (how weaknesses are
+handled), **CDS** (how the evidence reaches agencies). The boundary is now those
+four obligations rather than a perimeter.
+
+### 1.2 Minimum Assessment Scope, and the three provisions that matter
+
+`MAS-CSO-IIR` defines the offering as the resources **"likely to handle federal
+customer data or likely to impact the confidentiality, integrity, or
+availability"** of it. That is a question about data lineage, not network
+topology.
+
+Three consequences carry real weight:
+
+**Security category is per-resource.** `MAS-CSO-FLO` requires flows and
+categories for all resources and states that resources **"MAY vary by security
+category."** Rev 5 carried one impact level across an entire boundary, which
+forced everything to the high-water mark. That single-level habit is the origin
+of most "we can't have that feature" reasoning in the federal M365 estate — and
+20x does not require it.
+
+**Metadata is in scope with its resource.** `MAS-CSO-MDI` requires metadata,
+explicitly including metadata *about* federal customer data, to be included
+whenever the resource is in scope. This tightened between the RFC-0005 draft and
+the published rule.
+
+**Agent and client software may be out of scope entirely.** Per `MAS-CSO-IIR`
+guidance, software delivered for installation on agency systems and **not
+operated in a shared-responsibility model** — *"agents, application clients,
+mobile applications"* — is outside FedRAMP's scope under the FedRAMP
+Certification Act. For an estate carrying Intune agents, Defender sensors and
+the Entra Connect Sync engine, that is a scoping question with a published
+answer path that most boundary documents never ask.
+
+### 1.3 Change control replaces re-authorization
+
+Significant Change Notification splits changes three ways, and the asymmetry is
+the operational point:
+
+| Class | Definition | Obligation |
+|---|---|---|
+| **Routine recurring** | Regularly recurs as part of ongoing operations or vulnerability remediation | **Exempt from notification** |
+| **Adaptive** | Does not routinely recur; no substantive risk needing in-depth assessment | Notify within **10 business days after** |
+| **Transformative** | Introduces substantive risk likely to affect existing risk determinations | **30 days before** plans · **10 before** final · **5 after** finishing · **5 after** validation |
+
+Emergency changes may be executed first and notified retroactively. Every
+notification must be **human- and machine-readable**, with twelve months
+retained.
+
+### 1.4 Certification data becomes an API
+
+`CDS-TRC` introduces FedRAMP-Compatible Trust Centers: certification data shared
+*"without interruption"*, **programmatic access mandatory**, just-in-time
+provisioning preferred over per-request approval, access logged for six months,
+self-service provisioning encouraged. This is the provision that most rewards a
+vendor with an evidence pipeline and most penalises one with a PDF library.
+
+## 2. The mis-diagnosis
+
+The prevailing federal framing treats GCC as a compliance boundary that
+attenuates telemetry and withholds features for accreditation reasons. Microsoft
+does not describe it that way anywhere in its Microsoft 365 enterprise
+deployment documentation.
+
+What Microsoft documents is narrower and more useful:
+
+| Fact | Consequence |
+|---|---|
+| GCC has **no separate endpoint list** — it is served by the Worldwide list, same FQDNs and IP ranges as commercial | GCC is not a separate network regime |
+| **GCC pairs with Azure Commercial**; GCC High and DoD pair with Azure Government | The enclave is downstream of GCC, not at it |
+| The **"secure enclave"** framing is applied to GCC High and DoD explicitly, not to GCC | GCC is the worldwide service with exclusions |
+| Feature gaps are **published per feature**, and run **both directions** — Windows release health is available in GCC but *not* in GCC High or DoD | There is no monotonic ladder of restriction |
+
+This matters because the two diagnoses have different remedies. If GCC is a
+boundary, the only move is to accept it or leave for GCC High — and GCC High is
+*more* restricted on several axes, not fewer. If GCC is the worldwide footprint
+with an enumerated exclusion list, then each exclusion is a separate question
+with a separate answer, and some of those answers are obtainable.
+
+The papers arguing the boundary case do not need the stronger claim. The
+documented per-feature exclusions are better evidence than any inference drawn
+from a boundary model.
+
+## 3. What agencies verifiably lose today
+
+The most consequential single exclusion is not a telemetry nuance. It is the
+entire per-location network observability layer of the Microsoft 365 admin
+centre, which Microsoft states is unavailable to **GCC, GCC High and DoD**
+tenants alike.
+
+Commercial tenants receive, at no additional cost:
+
+- **Per-location network assessment scores**, 0–100, daily, against an 80%
+  healthy baseline
+- An **egress-distance insight** flagging locations beyond roughly 500 miles or
+  25 ms from their optimal egress
+- **Teams and SharePoint performance thresholds**, and a calculated latency
+  improvement to the optimal Exchange front door
+- A **TLS-interception alert** raised when 30% or more of a location's requests
+  show network intermediation
+- **Comparative per-provider scoring** — named transport and SASE providers
+  ranked per location on Teams performance, SharePoint throughput, Exchange
+  latency, packet loss and jitter, classified by provider type including
+  *"Overlay — VPN, Cloud Proxy, SD-WAN, and SASE"*
+
+An agency evaluating a SASE or transport provider in a commercial tenant has
+vendor-produced comparative evidence available in its own admin centre. The same
+agency in GCC has none of it, and must fund an independent measurement capability
+to reach a decision commercial enterprises make from a dashboard.
+
+Alongside that, eight further signals are vendor-confirmed as unavailable in the
+substrate's own register — seven Adoption Score categories and Microsoft Informed
+Network Routing path metrics — and the Microsoft 365 CDN is unavailable in all US
+Government, China and Germany clouds.
+
+::: {.callout-important}
+## Use the confirmed rows
+`gcc-moderate-telemetry-gaps.yaml` carries 26 rows, of which **eight are
+vendor-confirmed**; fifteen are the author's own inference and three are
+retention- or access-limited rather than absent. Only the confirmed rows and the
+admin-centre exclusion above are used in this paper. An argument built on the
+inferred rows will not survive a reviewer holding the Microsoft documentation.
+:::
+
+## 4. What agencies can actually do
+
+### 4.1 Inventory the exclusions feature by feature
+
+Because exclusions are published individually and run in both directions, the
+first move is a per-feature register with a citation per row, not a boundary
+model. This is the difference between "GCC withholds telemetry" — which a
+Microsoft reader will reject — and "the admin-centre Network connectivity layer
+is documented as unavailable in GCC, GCC High and DoD," which they cannot.
+
+### 4.2 Use the documented exception process where one exists
+
+ExpressRoute for Microsoft 365 is the worked example, and it cuts both ways.
+Microsoft states it **does not recommend** ExpressRoute for Microsoft 365,
+requires authorization, and grants it **only where a customer's regulatory
+requirement mandates direct connectivity** — asking for the text excerpt and web
+link to that regulation. Unauthorized subscriptions are blocked from creating
+Microsoft 365 route filters.
+
+Two things follow. Federal readers assume FedRAMP or FISMA supplies that hook;
+**neither does**, and an agency that writes ExpressRoute into an EIS task order
+without the authorization in hand will discover the gate afterwards. But the
+process itself is the template for how a feature-level ask is made: a named
+regulatory requirement, quoted, with a link.
+
+### 4.3 Make the scope argument 20x now permits
+
+Three arguments are available under the new rules that were not available under
+Rev 5:
+
+1. **Per-resource categorisation.** An agency need not assert one impact level
+   across a heterogeneous estate. Where a capability was refused because it would
+   pull a whole environment upward, `MAS-CSO-FLO` removes the premise.
+2. **The shared-responsibility test.** Endpoint software not operated in a
+   shared-responsibility model is outside FedRAMP's scope. Establishing that for
+   a given agent removes it from the scope conversation rather than constraining
+   it.
+3. **Routine-recurring exemption.** A provider shipping continuously can classify
+   that cadence as routine recurring and file nothing, which changes what
+   "keeping current with commercial" costs on the compliance side.
+
+### 4.4 Buy the capability, not the badge
+
+The Microsoft 365 Network Provider Program has been **closed to new network
+providers** since at least March 2026, though several pages in Microsoft's own
+documentation still invite enrolment. Naming that program as a qualification or
+evaluation criterion in a solicitation restricts competition to a pool frozen
+since then, and gives a new entrant no route in.
+
+Specify the capability instead: automated ingestion of the Microsoft 365 endpoint
+web service, Optimize and Allow direct-egress steering, and `/version` polling at
+Microsoft's recommended cadence. Treat program membership, if it is mentioned at
+all, as evidence rather than as a gate.
+
+## 5. Honest limits
+
+**No FedRAMP level is settled here.** The Consolidated Rules contain no impact
+level for any Microsoft offering, and Microsoft's M365 enterprise documentation
+contains no FedRAMP reference at all. The commonly used label "GCC-Moderate" is
+not a Microsoft product name; Microsoft's term is Government Community Cloud.
+Under 20x's per-resource categorisation there may be **no single level to find**
+— which would make the customary Marketplace lookup an answer to a Rev 5
+question about a framework being replaced.
+
+**Microsoft is not forcing anyone off Active Directory.** Microsoft's deployment
+documentation presents cloud-only and hybrid as two models chosen on fit, calls
+hybrid *"the most common choice for enterprise customers"*, contemplates
+permanent split operation, and terminates its own flagship reference
+architecture in hybrid with password hash sync. Nothing in it announces a forced
+migration or sets a sunset for AD DS synchronization. Governance arguments that
+rest on a Microsoft migration imperative should be re-based; the governance gaps
+they describe survive the correction, the urgency framing does not.
+
+**Synchronized users are administered on-premises.** For any user with
+`onPremisesSyncEnabled = true`, on-premises AD DS is the authoritative source and
+Graph treats `onPremisesExtensionAttributes` as read-only. Writability is
+attribute-specific. Any design that stamps attributes cloud-side needs an
+identity-model gate, because the failure is silent.
+
+**Rev 5 and 20x coexist.** Rev5 certifications remain valid to at least
+2028-12-31, and offerings certified under Rev5 retain boundary vocabulary. An
+agency will hold packages in both models simultaneously for years.
+
+## 6. What to ask for
+
+The productive conversation with Microsoft is not "grant us commercial parity."
+It is four specific, evidenced asks:
+
+1. **Publish the per-feature exclusion list for GCC as a machine-readable
+   artifact.** The exclusions already exist as individual documentation notes;
+   the gap is that they are not enumerable.
+2. **Name the exception path per feature**, as ExpressRoute already does — what
+   regulatory hook, quoted, would move a given exclusion.
+3. **Restore the admin-centre network observability layer to GCC**, or publish
+   the specific accreditation obstacle that prevents it. This is the largest
+   single documented loss and the one with a direct operational cost.
+4. **Ship a FedRAMP-Compatible Trust Center** with programmatic access under
+   `CDS-TRC`, so that certification data reaches agency pipelines as data rather
+   than as documents.
+
+Each of those is answerable. None of them requires the boundary framing, and
+three of them are strengthened rather than weakened by 20x.
+
+## References
+
+- FedRAMP Consolidated Rules for 2026, official ruleset `2026.06.24.01`, vendored
+  at `src/uiao/canon/compliance/reference/fedramp-cr26/official/` — the primary
+  rules authority per ADR-126 D1
+- [ADR-141 — FedRAMP 20x Boundary Model Refinement](../../adr/adr-141-fedramp-20x-boundary-model-refinement.qmd)
+- [ADR-106 — FedRAMP 20x Integration](../../adr/adr-106-fedramp-20x-integration.qmd)
+- [FINDING-PGM-005 — FedRAMP 20x has no CSP authorization boundary](../../findings/fedramp-20x-replaces-the-authorization-boundary.qmd)
+- `src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml` — authoritative over the
+  telemetry gap matrix
+- Microsoft Docset Cross-Check, 4 September 2026 — Microsoft 365 for enterprise
+  (o365-worldwide) docset, 1,529 pages, generated 22 August 2026. All Microsoft
+  facts in this paper trace to that cross-check's page citations.
+- [B.1 GCC-Moderate Boundary Model](../orgcomp-series/boundary/B1-gcc-moderate-boundary-model.qmd),
+  §0 — terminology
