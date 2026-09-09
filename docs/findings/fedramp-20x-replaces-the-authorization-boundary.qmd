@@ -1,0 +1,140 @@
+---
+title: "FedRAMP 20x has no CSP authorization boundary — Minimum Assessment Scope replaces it"
+finding_id: "FINDING-PGM-005"
+status: Open
+severity: P2
+created_at: "2026-09-09"
+updated_at: "2026-09-09"
+owner: "Michael Stratton"
+related_canon: ["UIAO_007"]
+related_adrs: ["ADR-106", "ADR-126", "ADR-141"]
+related_findings: ["FINDING-PGM-004"]
+supersedes: []
+superseded_by: []
+---
+
+# FedRAMP 20x has no CSP authorization boundary — Minimum Assessment Scope replaces it
+
+## 1. Constraint
+
+The term **"authorization boundary" does not appear** in the FedRAMP
+Consolidated Rules for 2026. Verified against the official ruleset vendored at
+`src/uiao/canon/compliance/reference/fedramp-cr26/official/fedramp-consolidated-rules.json`,
+version **2026.06.24.01**, which ADR-126 D1 designates the primary rules
+authority: **zero occurrences.**
+
+`boundary` occurs eight times, and none of them is a provider-drawn perimeter:
+
+| Occurrences | What they are |
+|---|---|
+| 3 | The **agency's** boundary — *"the federal information system that includes the cloud service offering in its boundary"* (`CCM-AGM-ROR`, `CCM-AGM-CSC`, `AGU-USE-ROR`) |
+| 4 | A `"tag": "boundary"` **classification** on four rule families (below) |
+| 1 | Inherited SP 800-53 `SR-08` supply-chain guidance |
+
+This is an inversion, not a rename. Under Rev 5 the boundary is a CSP artifact:
+drawn by the provider, diagrammed in the SSP, and everything crossing it is an
+interconnection. Under 20x the provider draws no boundary at all. It identifies
+an **offering**, and the only boundary in the ruleset belongs to the agency
+whose ATO wraps that offering.
+
+## 2. What FedRAMP itself treats as the boundary question
+
+The four families tagged `boundary` are the operative answer:
+
+| Family | The question it answers |
+|---|---|
+| **MAS** — Minimum Assessment Scope | What is in the offering |
+| **UCM** — Cryptographic Module Use | How data is protected inside it |
+| **VDR** — Vulnerability Detection and Response | How weaknesses in it are handled |
+| **CDS** — Certification Data Sharing | How the resulting evidence reaches agencies |
+
+"Boundary" is no longer a shape. It is those four obligations.
+
+## 3. Minimum Assessment Scope — the substantive changes
+
+`MAS-CSO-IIR` defines the offering as all information resources **"likely to
+handle federal customer data or likely to impact the confidentiality,
+integrity, or availability"** of it.
+
+**It is a data-flow test, not a topology test.** "Likely to handle or impact" is
+a probabilistic question about data, not a topological one about networks. It
+cannot be answered with a diagram; it is answered with lineage.
+
+**Security category becomes per-resource.** `MAS-CSO-FLO` requires flows and
+categories for *all* resources, and its guidance states resources **"MAY vary
+by security category."** Rev 5 carried one impact level for the whole boundary,
+forcing everything to the high-water mark. 20x permits heterogeneous
+categorisation inside a single offering. This is the change with the largest
+consequence for how this corpus writes about GCC.
+
+**Third parties are scoped by impact, not by interconnection.** `MAS-CSO-TPR`
+requires addressing *potential impact to federal customer data*, replacing the
+interconnection-agreement framing.
+
+**Two exclusions carry more weight than the rules.** Per `MAS-CSO-IIR`
+guidance: whole product categories are placed outside FedRAMP by the OMB
+Director (`fedramp.gov/scope`); and **software delivered for installation on
+agency systems and not operated in a shared-responsibility model — "agents,
+application clients, mobile applications" — is entirely outside the scope of
+FedRAMP** under the FedRAMP Certification Act.
+
+`MAS-CSO-MDI` pulls metadata **into** scope (including metadata about federal
+customer data) whenever the resource is in scope. `MAS-CSO-SUP` lets a provider
+attach clearly-marked, non-certified material to the package.
+
+## 4. Change control replaces re-authorization
+
+Significant Change Notification splits changes three ways, defined in `FRD`:
+
+| Class | Definition (`FRD`) | Obligation |
+|---|---|---|
+| **Routine recurring** (`FRD-RTR`) | Regularly recurs as part of ongoing operations or vulnerability remediation | **Exempt** — `SCN-RTR-NNR` says providers *should not* notify |
+| **Adaptive** (`FRD-ADP`) | Does not routinely recur; introduces no substantive risk needing in-depth assessment | Notify within **10 business days after** |
+| **Transformative** (`FRD-TRF`) | Introduces substantive risk likely to affect existing risk determinations | **30 days before** plans · **10 before** final · **5 after** finishing · **5 after** validation · docs within **30** |
+
+`SCN-CSO-EMG` permits transformative change first and notification
+retroactively during an incident. `SCN-CSO-HRM` requires every notification in
+**human- and machine-readable** form; `SCN-CSO-HIS` retains 12 months.
+
+## 5. What this means for the corpus
+
+**The GCC framing loses its remaining support.** Nine documents treat
+"GCC-Moderate" as a compliance boundary at a single impact level. 20x has no
+single-level concept to attach that to, and per-resource categorisation is the
+opposite of a uniform boundary label. Combined with the 2026-09-04 Microsoft
+Docset Cross-Check — which found Microsoft describes GCC as the worldwide
+footprint with individually published per-feature exclusions, not a
+compliance-drawn boundary — neither the vendor nor the framework supports the
+corpus's framing.
+
+**The agent/client exclusion touches how boundary docs frame endpoint
+software.** Intune agents, Defender sensors and the Entra Connect Sync engine
+are installed on agency systems. Whether they are inside a
+shared-responsibility model is now a scoping question with a published answer
+path, and the boundary documents do not ask it.
+
+**One canon drift.** ADR-106 §Context, written against RFC-0005, states "most
+metadata that do not meet either prong are explicitly outside the Minimum
+Assessment Scope." The consolidated rule is more inclusive:
+`MAS-CSO-MDI` requires metadata **in** scope whenever `MAS-CSO-IIR` applies.
+The rule tightened between RFC and consolidation. ADR-106 is ACCEPTED and
+immutable under CR-003; [ADR-141](../adr/adr-141-fedramp-20x-boundary-model-refinement.qmd)
+carries the correction.
+
+## 6. Verification boundary
+
+Every fact above is quoted from the **official** ruleset, version
+2026.06.24.01, vendored in-repo — not from the unofficial Palladium OSCAL
+snapshot alongside it, which is dated 2026-05-05 and predates publication by
+seven weeks. Where the two differ, the official file governs per ADR-126 D1.
+
+**Not settled here:** the ruleset contains no FedRAMP impact level for any
+Microsoft offering, so it cannot close the standing GCC question. That still
+requires the FedRAMP Marketplace listing. This finding narrows the question
+rather than answering it: under 20x there may be no single level to find.
+
+## Status history
+
+| Date | Status | Note |
+|---|---|---|
+| 2026-09-09 | Open | Raised from a direct read of the vendored official CR26 ruleset while extending the Microsoft Docset Cross-Check of 2026-09-04. |

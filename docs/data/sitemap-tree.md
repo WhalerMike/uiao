@@ -237,6 +237,7 @@
 - [Ephemeral Governance Engine — decompose the substrate by lifetime, not by function](adr/adr-138-ephemeral-governance-engine.html)
 - [Coverage-and-gap doctrine is per-plane — allocate UIAO_015 for the governance plane](adr/adr-139-governance-plane-coverage-doctrine.html)
 - [OMB M-26-14 Event-Logging Supersession — Retiring the M-21-31 EL0–EL3 Tiers from Live Claims](adr/adr-140-m-26-14-event-logging-supersession.html)
+- [FedRAMP 20x Boundary Model — Per-Resource Categorisation, Metadata Inclusion, and the Shared-Responsibility Scope Test (refines ADR-106)](adr/adr-141-fedramp-20x-boundary-model-refinement.html)
 
 ## Schema Reference
 
