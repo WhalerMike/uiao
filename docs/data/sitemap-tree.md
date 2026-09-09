@@ -237,6 +237,7 @@
 - [Ephemeral Governance Engine — decompose the substrate by lifetime, not by function](adr/adr-138-ephemeral-governance-engine.html)
 - [Coverage-and-gap doctrine is per-plane — allocate UIAO_015 for the governance plane](adr/adr-139-governance-plane-coverage-doctrine.html)
 - [OMB M-26-14 Event-Logging Supersession — Retiring the M-21-31 EL0–EL3 Tiers from Live Claims](adr/adr-140-m-26-14-event-logging-supersession.html)
+- [FedRAMP 20x Boundary Model — Per-Resource Categorisation, Metadata Inclusion, and the Shared-Responsibility Scope Test (refines ADR-106)](adr/adr-141-fedramp-20x-boundary-model-refinement.html)
 
 ## Schema Reference
 
@@ -1026,6 +1027,7 @@
   - [Next Generation DNS](customer-documents/whitepapers/infoblox-hybrid-dns-unified-ddi.html)
   - [DNS Record Types and Universal DDI Ecosystem Integrations — Reference Companion](customer-documents/whitepapers/infoblox-dns-reference.html)
   - [SD-WAN vs. DIA Under TIC 3.0](customer-documents/whitepapers/tic3-sdwan-vs-dia.html)
+  - [What Changed at FedRAMP — and What Agencies Can Now Ask Microsoft For](customer-documents/whitepapers/fedramp-20x-and-the-commercial-feature-gap.html)
   - [Federal Application Aware Networking Architecture](customer-documents/whitepapers/federal-application-aware-networking-architecture.html)
   - [Field Office WAN Transformation and Distribution Point Consolidation](customer-documents/whitepapers/field-office-wan-transformation-dp-consolidation.html)
 - **Architecture Series**

@@ -116,6 +116,7 @@ Each adapter has a paired specification and validation suite. The spec describes
 | [Federal Compliance for Moderate Agencies](whitepapers/federal-compliance-for-moderate-agencies.html) | Active | Executive, Architect, Assessor, Technical-Lead |
 | [Federal HRIT Productization — UIAO Substrate Alignment with OPM HRIT Modernization](whitepapers/federal-hrit-productization.html) | Active | Executive, Customer, Assessor |
 | [Federal SSOT Alignment — UIAO as the Identity Governance Substrate for AD → Entra ID Migration](whitepapers/federal-ssot-alignment.html) | Active | Executive, Customer, Assessor |
+| [What Changed at FedRAMP — and What Agencies Can Now Ask Microsoft For](whitepapers/fedramp-20x-and-the-commercial-feature-gap.html) | Active | Executive, Customer, Architect, Assessor |
 | [Field Office WAN Transformation and Distribution Point Consolidation](whitepapers/field-office-wan-transformation-dp-consolidation.html) | Draft | Executive, Architect, Budget-Acquisition |
 | [UIAO Git Server Interfaces — Windows Server 2025 Deployment](whitepapers/git-server-interfaces-whitepaper.html) | Draft | Executive, Customer, Technical |
 | [Flipping 50,000 Devices to Hybrid Join — The Governed and Ungoverned Paths](whitepapers/hybrid-join-without-governance.html) | Draft | Executive, Architect, Engineer, Assessor, Technical-Lead |
