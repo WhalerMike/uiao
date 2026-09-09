@@ -1,16 +1,16 @@
 ---
 title: "Modernization Journey"
-subtitle: "From Mainframe to FedRAMP 20x — what forty years of federal architecture cost, and what the current mandates require"
+subtitle: "From Mainframe to FedRAMP 20x — what forty years of federal architecture cost, and which mandates actually bind the agency"
 doc-type: whitepaper
 audience: [Executive, Architect, Engineer, Assessor, Technical-Lead]
 status: Draft
 author: Michael Stratton
-date: "September 2026"
+date: "2026-09-09"
 derived-from: "Narrative synthesis of a federal agency modernization arc. Principle 5 and the mainframe-access section draw on an internal architecture position paper on application-data separation and cloud-migration readiness (July 2026), together with mature IBM z/OS Connect / RACF PassTicket product capability. Federal requirements are cited to NIST, OMB, CISA, and FedRAMP; named products (Entra ID, SD-WAN/SASE platforms, DDI platforms, Terraform) appear as concrete illustrations of role, not as recommendations. The closing appendix maps Act 4 to the UIAO ADRs it derives from."
 repo-path: docs/customer-documents/whitepapers/modernization-journey.qmd
 created-at: 2026-06-04
 updated-at: 2026-09-09
-version: "2.1"
+version: "2.2"
 format:
   html:
     toc: true
@@ -125,10 +125,12 @@ were designed for a world that no longer exists.
    modernized. The path is known. The delay has a cost measured in program
    integrity, not just performance.
 3. **DNS, DHCP, and IP address management were not designed to be security
-   controls — but they now are.** Every Zero Trust policy references
-   services by name. Every FedRAMP boundary enforcement decision depends on
-   DNS resolution. Every device inventory required by federal compliance
-   mandates depends on IP address management.
+   controls — but they now are.** Zero Trust policy is written against named
+   services rather than addresses, so name resolution becomes a policy
+   surface; where enforcement is still expressed as IP or CIDR ranges, the
+   address-management system is what makes those ranges meaningful and
+   current. Either way the device and address inventory federal compliance
+   requires is produced by DDI, not surveyed alongside it.[^cm8]
 4. **VPN is not Zero Trust.** A VPN tunnel extends trust to everyone inside
    it. A compromised endpoint inside the tunnel has the same access as a
    trusted administrator. You cannot fully implement Zero Trust while VPN is
@@ -246,14 +248,14 @@ firewalls. Every packet from a field office to a regional data center had to
 traverse security devices designed to *break* sessions — to inspect, decrypt,
 re-encrypt, verify, block.
 
-![Act 2 — When Security Ate the Architecture: a field-office request traverses five stacked inline security devices, and the added latency degrades the four operations that must reach a domain controller](images/federal-application-aware-networking-architecture-image-04-security-stacking.png){#fig-security-stacking fig-alt="An engineering diagram on a white background titled 'Act 2 — When Security Ate the Architecture', subtitled 'Stacked inline inspection did not expire tickets. It degraded the operations that must reach a domain controller.' On the left, a 'Field office workstation' box feeds down through five navy boxes — Firewall +15 ms, NAT +8 ms, IDS inline probe +12 ms, Proxy/DLP +20 ms, Compliance scanner +25 ms — into an amber box reading '80 ms added, one way, on top of the propagation floor'. A red arrow points right into a bordered panel headed 'What this actually degrades: the DC-dependent operations', listing four red-tinted entries: initial TGT acquisition at logon (the client must reach a KDC before the desktop is usable); SYSVOL/GPO retrieval (many small file reads, so latency multiplies per round trip); password change (written to a writable DC, not a local cache); and hybrid Entra join registration (documented as needing on-premises DC reach). A note beneath observes that steady-state application traffic is largely unaffected, which is why the problem presents as slow logons rather than an outage. A teal panel on the right headed 'What does not happen' states that there is no Kerberos latency limit — RFC 4120 sets a five-minute clock-skew tolerance, which is a clock tolerance and not a latency budget, with no millisecond threshold anywhere in the protocol; that NAT does not invalidate tickets because Windows KILE ships ClientIpAddresses = 0 for stated DHCP and network-address-translation reasons; and that address checking, where enabled, is performed by the application server via KRB_AP_ERR_BADADDR rather than by the KDC. A navy footer reads 'The argument survives being stated correctly — and is stronger for it', noting that stacking inline latency in front of a domain controller makes logons crawl and GPO processing stall. A caption records that the latency figures are illustrative of a typical stacked-inspection path while the operation list and Kerberos behaviour are not." width="100%"}
+![Act 2 — When Security Ate the Architecture: the geographic detour, not the inline devices, is where the latency comes from, and the added round-trip cost lands on the four operations that must reach a domain controller](images/federal-application-aware-networking-architecture-image-04-security-stacking.png){#fig-security-stacking fig-alt="An engineering diagram on a white background titled 'Act 2 — When Security Ate the Architecture', subtitled 'Stacked inline inspection did not expire tickets. It degraded the operations that must reach a domain controller.' The left column, headed 'Where the latency actually comes from', ranks three causes. First, in red, 'The geographic detour': branch traffic is backhauled to the regional data center and back out, paying the full data-center round trip before the request reaches its destination — marked 'Dominant cost, tens of milliseconds'. Second, in amber, 'TLS inspection at the proxy': decrypt, inspect, re-encrypt, scaling with the number of objects fetched rather than the size of the pipe — marked 'Real, and second largest'. Third, in teal, 'The packet-layer devices': firewall, NAT and IDS, each adding well under a millisecond to a few milliseconds on current hardware — marked 'Not where the time goes'. A navy summary box beneath reads 'A backhauled branch path commonly runs 100 to 150 ms, and the detour is most of it', with an arrow leading right. The middle panel, 'What this actually degrades: the DC-dependent operations', lists four red-tinted entries: initial TGT acquisition at logon; SYSVOL and GPO retrieval, where many small file reads multiply latency per round trip; password change, written to a writable domain controller rather than a local cache; and hybrid Entra join registration, documented as needing on-premises domain controller reach. A note observes that steady-state application traffic is largely unaffected, so the problem presents as slow logons rather than an outage. A teal panel on the right, 'What does not happen', states that there is no Kerberos latency limit — RFC 4120 sets a five-minute clock-skew tolerance, a clock tolerance rather than a latency budget, with no millisecond threshold in the protocol; that NAT does not invalidate tickets, because Windows KILE ships ClientIpAddresses set to zero for stated DHCP and network-address-translation reasons; and that address checking, where enabled, is performed by the application server via KRB_AP_ERR_BADADDR rather than by the KDC. A navy footer reads 'The argument survives being stated correctly — and is stronger for it'. A caption records that the ranges are illustrative and should be measured, while the ordering of the three causes, the operation list and the Kerberos behaviour are not." width="100%"}
 
 Active Directory Kerberos tickets have a lifespan — a default TGT lives ten
 hours with seven-day renewal, and service tickets 600 minutes. They are **not**
 bound to a network path. Windows KILE ships `ClientIpAddresses = 0`, so client
 addresses are not written into the ticket at all, and Microsoft's stated reason
 is verbatim *"because of Dynamic Host Configuration Protocol and network address
-translation issues"* — tolerating a changed source address is a design property
+translation issues"*[^kile] — tolerating a changed source address is a design property
 of the deployed protocol. Where RFC 4120's optional `caddr` field *is* populated,
 it carries addresses the **client** supplies in the AS-REQ rather than the source
 IP the KDC observes, and the check is performed by the **application server**
@@ -278,7 +280,7 @@ being invalidated by NAT.
 > 45–53 ms round-trip**, before any queue delay, security inspection, or
 > application processing. Active Directory has **no millisecond latency
 > requirement** — the widely-quoted five-minute Kerberos figure is clock-skew
-> tolerance, not a latency budget — but the DC-dependent operations are the ones
+> tolerance, not a latency budget[^rfc4120] — but the DC-dependent operations are the ones
 > that feel this distance: initial TGT acquisition at logon, SYSVOL/GPO
 > retrieval, password changes, and hybrid Entra join registration, each of which
 > Microsoft documents as requiring line-of-sight to an on-premises domain
@@ -405,7 +407,7 @@ compromise — it is the physics-optimal path.**
 
 5G reduces latency through two distinct mechanisms.
 
-**The radio mechanism:** 5G's scalable numerology shortens the slot as
+**The radio mechanism:** 5G's scalable numerology[^5g] shortens the slot as
 subcarrier spacing rises — 0.5 ms at the 30 kHz spacing typical of mid-band
 sub-6 GHz deployments, and 0.125 ms only at the 120 kHz spacing used in
 mmWave — against a fixed 1 ms slot in LTE. Practical mid-band sub-6 GHz 5G
@@ -519,10 +521,13 @@ paths. The user experiences a 50 ms pause rather than a 30-second timeout.
 
 > **This is not a forecast.** Every item in this table is a completed
 > transition in the commercial sector. The federal government is executing
-> these transitions now, under compliance mandates — Zero Trust Executive
-> Order, TIC 3.0, FedRAMP 20x — that commercial enterprises were not subject
-> to. That makes the federal transition harder, not easier. The path is
-> known. The delay has a cost.
+> these transitions now under obligations commercial enterprises never
+> carried — **EO 14028**,[^eo14028] **OMB M-22-09**,[^m2209] and **CISA BOD
+> 25-01**[^bod2501] — each of which binds agencies directly. (TIC 3.0 is
+> guidance rather than a mandate, and FedRAMP 20x binds cloud service
+> providers, not agencies; both are treated that way later in this paper.)
+> That makes the federal transition harder, not easier. The path is known.
+> The delay has a cost.
 
 ---
 
@@ -564,7 +569,7 @@ principles that follow from it.
 
 The structural move is the one sentence this whole story turns on. Active
 Directory conflated **the directory (truth)** with **the domain controller
-(the in-path enforcer)**. NIST SP 800-207 and OMB M-22-09 require the modern
+(the in-path enforcer)**. NIST SP 800-207[^nist207] and OMB M-22-09[^m2209] require the modern
 architecture to keep these separate: the governance layer holds and
 reconciles authoritative state, while identity providers, enforcement points,
 and data platforms remain the runtime data planes.
@@ -668,7 +673,7 @@ government-wide. The **CISA Zero Trust Maturity Model v2.0** Identity pillar
 calls for phishing-resistant MFA at Advanced and Optimal; certificate-based
 authentication is one way to get there, not a named requirement. NTLM has no
 zero-trust story — not because it is invisible (events 4776 and 4624 log it
-perfectly well) but because it carries **no device or session context**: an
+perfectly well)[^ntlm] but because it carries **no device or session context**: an
 NTLM authentication cannot be conditioned on device compliance, location, or
 risk, so it is unreachable by Conditional Access and cannot participate in a
 per-transaction access decision at all.
@@ -681,7 +686,7 @@ per-transaction access decision at all.
 > Principle 1: the token must assert an authorization that is *true* rather
 > than merely *well-formed*.**
 
-## FedRAMP 20x Consolidated Rules — What Modernization Must Achieve
+## FedRAMP 20x Consolidated Rules — What Changed, and Who It Binds
 
 FedRAMP published its **Consolidated Rules for 2026** on June 25, 2026,
 establishing the most significant shift in federal cloud authorization since
@@ -693,10 +698,13 @@ replaced by continuously-verified, machine-readable Key Security Indicators
 ## Who this actually binds
 
 **FedRAMP 20x obligates cloud service providers, not agencies.** The
-Consolidated Rules define the KSI assessment as a follow-on assessment *of a
-cloud service offering*, coordinated by *the provider*, and they place
-agencies on the other side of the transaction as the *customer* using that
-offering. An agency's own AD domains, SD-WAN fabric, DDI grid, and mainframe
+Consolidated Rules define a Persistent FedRAMP Assessment (**FRD-PFA**) as
+"follow-on assessments of a cloud service offering focused on Key Security
+Indicators, coordinated by the provider"; a Provider (**FRD-PRV**) is "the
+cloud service provider responsible for a cloud service offering"; and All
+Necessary Parties (**FRD-ANP**) places the agency on the other side of the
+transaction as "any agency customer who is using the cloud service
+offering".[^cr26] An agency's own AD domains, SD-WAN fabric, DDI grid, and mainframe
 are not a certified cloud service offering, and nobody will demand JSON KSI
 evidence for them on January 1, 2027.
 
@@ -754,7 +762,7 @@ to answer the continuous-evidence question on its own estate, which is the
 obligation it actually carries.
 :::
 
-![FedRAMP 20x timeline from Consolidated Rules publication through the Class A/B/C pipeline openings to the January 2027 mandatory deadline, alongside how active governance already aligns to continuous, machine-readable evidence](images/federal-application-aware-networking-architecture-image-13-fedramp-20x.png){#fig-fedramp-20x fig-alt="A timeline diagram on a white background titled 'FedRAMP 20x Consolidated Rules: What Mainframe-to-AAN Modernization Must Achieve — Machine-readable KSIs replace periodic evidence assembly.' A horizontal navy timeline arrow runs left to right with six colored dots and callout boxes: green 'Jun 25, 2026 — Consolidated Rules published, machine-readable JSON KSIs', with a TODAY marker at Jul 1, 2026 just after it; orange 'Jul 28, 2026 — FedRAMP Ready pathway ceases'; blue 'Aug 3, 2026 — Class A pipeline opens, automated KSI validation live'; blue 'Aug 31, 2026 — Class B and C pathways open'; red 'Jan 1, 2027 — Rules mandatory for all certified systems, Hard deadline'; red 'Jun 11, 2027 — No new Rev5 certifications accepted'. Below, two side-by-side boxes: green 'Active Governance Aligns to 20x' explaining that gated actuation is the AO-signable posture FedRAMP 20x demands, and blue 'Annual Assessment to Continuous KSI' explaining that SD-WAN path logs, SASE session records, and DDI events ARE the evidence, with no manual assembly required." width="100%"}
+![The FedRAMP 20x provider clock — Consolidated Rules publication, the Class A/B/C pipeline openings, and the January 2027 date on which the rules become mandatory for certified cloud service offerings — set against the agency's own, already-passed obligations](images/federal-application-aware-networking-architecture-image-13-fedramp-20x.png){#fig-fedramp-20x fig-alt="A two-band timeline diagram on a white background titled 'FedRAMP 20x: a provider clock, not an agency deadline'. The upper band, labelled 'The provider clock — binds cloud service providers', runs left to right through five dated markers: 'Jun 25, 2026 — Consolidated Rules for 2026 published, 10 KSI themes and 46 indicators in machine-readable JSON'; 'Jul 28, 2026 — FedRAMP Ready pathway ceases'; 'Aug 3 and Aug 31, 2026 — Class A, then Class B and C pipelines open'; 'Jan 1, 2027 — rules mandatory for certified cloud service offerings'; and 'Jun 11, 2027 — no new Rev5 certifications accepted'. The lower band, labelled 'The agency clock — binds the agency directly', carries three entries whose dates sit to the left of the whole provider band: 'OMB M-22-09 — zero-trust milestones, due end of FY24, already passed'; 'CISA BOD 25-01 — Microsoft 365 secure configuration, in force and continuous'; and 'NIST SP 800-53 CA-7 with OMB Circular A-130 — continuous monitoring inside every existing ATO, ongoing'. A footer band reads: 'What the agency buys is governed by the top row. What the agency operates is governed by the bottom row. Only the bottom row is late.'" width="100%"}
 
 ### Principle 4 — Govern Actively: The Control Plane Over the Data Plane
 
@@ -776,7 +784,7 @@ route, resolve, and store at runtime.
 ![Active Governance: control plane and actuation ladder — a governance control plane over five data planes (Entra ID, SD-WAN/SASE, InfoBlox DDI, MDM/EDR, SIEM), plus the CISA ZT maturity progression from Traditional through Optimal with the federal L3 gated-actuation ceiling marked as the target now](images/federal-application-aware-networking-architecture-image-14-active-governance.png){#fig-active-governance fig-alt="A diagram on a white background titled 'Active Governance: Control Plane Over Data Planes — The actuation ladder, federal ceiling, gated actuation as the AO-signable posture'. A navy 'Governance Control Plane' box at top reads 'holds desired state · observes actual state · classifies drift · reconciles toward intent — NEVER becomes the in-path enforcer, that was AD's fatal conflation', connected by dashed lines to a row labeled 'Data Planes (runtime, governed not replaced)' containing five boxes: blue Entra ID (authenticates at runtime), dark-green SD-WAN/SASE (routes + enforces at network), orange InfoBlox DDI (resolves names + inventory), purple MDM/EDR (device posture assessment), red SIEM (logs + monitors + detects). Below, a horizontal 'Actuation Ladder — CISA ZT Maturity Progression' bar in five segments: gray Traditional (record + observe only), light-blue Initial (observe + advise), dark-green ADVANCED (gated actuation, federal ceiling, marked with a gold star 'target now'), and purple Optimal (autonomous within guardrails, high-blast-radius always gated). A bottom banner reads 'FedRAMP 20x: continuous, automated, machine-readable evidence — not assembled manually for annual assessments.'" width="100%"}
 
 > **What this means for authorizing officials:** no federal mandate names a
-> CISA ZTMM stage as a production requirement — ZTMM is a maturity model, and
+> CISA ZTMM stage as a production requirement[^ztmm] — ZTMM is a maturity model, and
 > M-22-09 sets outcomes (phishing-resistant MFA, encrypted DNS and HTTP,
 > application inventory) rather than a stage. **Advanced is this paper's
 > recommendation, and the reason is signability:** gated actuation, where the
@@ -954,7 +962,7 @@ mandate, standard, or policy that requires or validates it.
 | Audit provenance: every transaction traceable to authorized source | FedRAMP Moderate AU-2/12 | NIST SP 800-53 Rev 5 AU-2, AU-12 |
 | Continuous monitoring of the agency's own authorized systems | OMB Circular A-130; the agency's existing ATOs | NIST SP 800-53 Rev 5 CA-7; NIST SP 800-37 Rev 2 |
 | Gated actuation as recommended governance posture (Advanced maturity) | **No mandate — this paper's recommendation**; supports CA-7 and AU-12 accountability | CISA ZTMM v2.0 Automation and Orchestration pillar (a maturity model, not a requirement) |
-| Machine-readable KSI evidence; no manual evidence assembly | FedRAMP 20x Consolidated Rules — **binds cloud service providers, not agencies**; relevant to the agency as a purchaser and as direction of travel | FedRAMP 20x JSON evidence format; 46 published indicators across 10 KSI families |
+| Machine-readable KSI evidence; no manual evidence assembly | FedRAMP 20x Consolidated Rules — **binds cloud service providers, not agencies**; relevant to the agency as a purchaser and as direction of travel | FedRAMP 20x JSON evidence format; 46 indicators across 10 KSI themes in the 2026 Consolidated Rules[^ksi-set] |
 | Reduce synchronous round-trip count before separating an application from authoritative data | OMB Circular A-130 (sound engineering practice); EO 14028 | NIST SP 800-53 Rev 5 SA-8 (Security and Privacy Engineering Principles) |
 | Bridge mainframe RACF/SAF access to token-based identity via API gateway and PassTicket | OMB M-22-09 (modern authentication); BOD 25-01 | NIST SP 800-207; CISA ZTMM v2.0 Identity pillar |
 
@@ -988,11 +996,20 @@ execution plan.
    network engineering, identity engineering, compliance/ConMon, and
    application architecture, respectively. None of them will move if
    nobody owns them.
-4. **Put the FedRAMP 20x dates on the calendar now.** July 28, 2026
-   (FedRAMP Ready ceases), August 3 and 31, 2026 (Class A/B/C pipelines
-   open), January 1, 2027 (Consolidated Rules mandatory), June 11, 2027
-   (no new Rev5). Continuous monitoring built after these dates pass is a
-   remediation project, not a modernization project.
+4. **Put the agency's own clocks on the calendar — they are the late
+   ones.** **OMB M-22-09**'s zero-trust milestones came due at the end of
+   FY24 and have passed;[^m2209] **CISA BOD 25-01** is in force and
+   continuous for Microsoft 365 secure configuration;[^bod2501] and
+   **NIST SP 800-53 CA-7** with **OMB Circular A-130** already requires
+   continuous monitoring of every system the agency has authorized.[^ca7]
+   Continuous monitoring built after those obligations came due is a
+   remediation project, not a modernization project. Separately, track the
+   **provider** clock so you know when your vendors' evidence changes
+   format: FedRAMP Ready ceases 28 July 2026, the Class A/B/C pipelines
+   open 3 and 31 August 2026, the Consolidated Rules become mandatory for
+   certified cloud service offerings on 1 January 2027, and no new Rev5
+   certifications are accepted after 11 June 2027.[^cr26-dates] Those are
+   procurement dates, not agency deadlines.
 5. **Pilot the mainframe token-bridge pattern on one low-risk transaction
    class before committing to a timeline.** Discrete, atomic, read-mostly
    transactions are the correct first candidates — not the highest-value
@@ -1000,16 +1017,120 @@ execution plan.
    pattern against your specific z/OS estate before scheduling the harder,
    pseudo-conversational transactions.
 6. **Bring this document to the people who can act on it.** The CIO/CISO
-   office owns the FedRAMP 20x deadline; the network team owns Principles
-   2 and 5; the identity team owns Principle 3; the mainframe and
-   application teams own the token-bridge chapter. This document is
+   office owns the ATO and continuous-monitoring posture — the CA-7
+   obligation inside each existing authorization, and the M-22-09 and
+   BOD 25-01 positions; the network team owns Principles 2 and 5; the
+   identity team owns Principle 3; the mainframe and application teams own
+   the token-bridge chapter. This document is
    written to be handed to all four without modification.
 :::
 
 None of this requires a specific vendor decision on day one. It requires an
 inventory, an owner, and a date. The architecture described in this
 whitepaper is not aspirational — it is what the commercial sector already
-runs, and what federal compliance now requires.
+runs, and what the agency's existing authorizations already oblige it to be
+able to evidence.
+
+
+## Sources
+
+Federal requirements in this paper are cited to the issuing authority below.
+Dates for FedRAMP and CISA events are the ones carried in this repository's
+authority-deadline register, which records the issuing source and the date each
+was last verified against it; a date in the corpus that disagrees with that
+register fails a build gate, so the citations here and the dates elsewhere in
+the corpus cannot drift apart.
+
+Two claims in this paper are deliberately *not* attributed to a mandate, and
+say so where they appear: the single-source-of-truth requirement is this
+paper's inference from the Evidence Act and the Federal Data Strategy, and
+Advanced-maturity gated actuation is this paper's recommendation rather than a
+posture any federal document requires.
+
+[^eo14028]: Executive Order 14028, *Improving the Nation's Cybersecurity*,
+    86 FR 26633 (17 May 2021).
+    <https://www.federalregister.gov/documents/2021/05/17/2021-10460/improving-the-nations-cybersecurity>
+
+[^m2209]: OMB Memorandum M-22-09, *Moving the U.S. Government Toward Zero Trust
+    Cybersecurity Principles* (26 January 2022). The memorandum sets specific
+    outcomes — phishing-resistant MFA, encrypted DNS and HTTP traffic, an
+    application inventory — against milestones due by the end of FY2024. It
+    does not name a CISA Zero Trust Maturity Model stage as a requirement.
+    <https://www.whitehouse.gov/wp-content/uploads/2022/01/M-22-09.pdf>
+
+[^bod2501]: CISA Binding Operational Directive 25-01, *Implementing Secure
+    Practices for Cloud Services*. The directive is in force and its obligation
+    is continuous; the finalized-baseline set and the mandatory policy list are
+    revised by CISA, so confirm the current set at the source rather than from
+    any static snapshot.
+    <https://www.cisa.gov/resources-tools/services/bod-25-01-implementing-secure-practices-cloud-services-required-configurations>
+
+[^ca7]: NIST SP 800-53 Rev. 5, control CA-7 (Continuous Monitoring), applied
+    through the authorization process in NIST SP 800-37 Rev. 2 and required of
+    agency systems by OMB Circular A-130.
+    <https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final> ·
+    <https://csrc.nist.gov/pubs/sp/800/37/r2/final> ·
+    <https://www.whitehouse.gov/wp-content/uploads/legacy_drupal_files/omb/circulars/A130/a130revised.pdf>
+
+[^cm8]: NIST SP 800-53 Rev. 5, controls CM-8 (System Component Inventory) and
+    SI-12 (Information Management and Retention).
+    <https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final>
+
+[^cr26]: FedRAMP, *Consolidated Rules for 2026*, machine-readable ruleset
+    version `2026.06.24.01` (published 24 June 2026). Definitions cited by their
+    FedRAMP Definition identifiers: FRD-PFA (Persistent FedRAMP Assessment),
+    FRD-PRV (Provider), FRD-CSO (Cloud Service Offering), FRD-ANP (All Necessary
+    Parties). A SHA-256-pinned copy is vendored in this repository at
+    `src/uiao/canon/compliance/reference/fedramp-cr26/official/`.
+    <https://github.com/FedRAMP/rules>
+
+[^ksi-set]: Counted from the ruleset in [^cr26]: ten KSI themes (CED, CMT, CNA,
+    IAM, INR, MLA, PIY, RPL, SCR, SVC) carrying forty-six indicators in total.
+    Note that material predating the 2026 Consolidated Rules describes a larger
+    KSI set across more themes; the figures here are the restructured CR26
+    counts, which is why they differ.
+
+[^cr26-dates]: FedRAMP, *Propelling change: FedRAMP launches Consolidated Rules
+    for 2026* (25 June 2026), for the Ready, Class A/B/C and 1 January 2027
+    dates; and FedRAMP's provider-transition guidance for the 11 June 2027 Rev5
+    cutoff.
+    <https://www.fedramp.gov/2026-06-25-propelling-change-fedramp-launches-consolidated-rules-for-2026/> ·
+    <https://www.fedramp.gov/2026/providers/updating/>
+
+[^rfc4120]: R. Neuman et al., *The Kerberos Network Authentication Service
+    (V5)*, RFC 4120 (July 2005). The five-minute figure commonly quoted at
+    Kerberos is the maximum tolerable clock skew; the protocol defines no
+    latency bound. Optional address checking uses the `caddr` field the client
+    supplies, and is enforced by the application server
+    (`KRB_AP_ERR_BADADDR`), not by the KDC.
+    <https://www.rfc-editor.org/rfc/rfc4120>
+
+[^kile]: Microsoft, *[MS-KILE]: Kerberos Protocol Extensions*. Windows sets
+    `ClientIpAddresses` to zero so client addresses are not written into
+    tickets, stated to be "because of Dynamic Host Configuration Protocol and
+    network address translation issues" — which is why source-address
+    translation on a network path does not invalidate a ticket.
+    <https://learn.microsoft.com/openspecs/windows_protocols/ms-kile/>
+
+[^ntlm]: NTLM authentication is recorded by Windows Security events 4776
+    (credential validation) and 4624 (logon). The objection to NTLM here is not
+    visibility but the absence of device, location and risk context in the
+    exchange, which is what places it outside a per-transaction access decision.
+
+[^ztmm]: CISA, *Zero Trust Maturity Model*, version 2.0 (April 2023). A
+    maturity model describing Traditional, Initial, Advanced and Optimal
+    stages; it does not designate a stage as a federal production requirement.
+    <https://www.cisa.gov/zero-trust-maturity-model>
+
+[^nist207]: NIST SP 800-207, *Zero Trust Architecture* (August 2020).
+    <https://csrc.nist.gov/pubs/sp/800/207/final>
+
+[^5g]: 3GPP 5G NR scales slot duration with subcarrier spacing: 1 ms at 15 kHz,
+    0.5 ms at the 30 kHz spacing typical of mid-band sub-6 GHz deployments, and
+    0.125 ms at the 120 kHz spacing used in millimetre wave. The 0.125 ms
+    figure is therefore an mmWave number and should not be quoted for a
+    mid-band deployment.
+
 
 ## Appendix — Narrative provenance: this arc mapped to UIAO canon
 
