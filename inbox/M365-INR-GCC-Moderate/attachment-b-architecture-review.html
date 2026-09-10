@@ -1,0 +1,651 @@
+<title>Architecture Review Determination</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --paper:      #F3F5F6;
+    --surface:    #FFFFFF;
+    --surface-2:  #E9EDEF;
+    --ink:        #131A21;
+    --ink-2:      #414D57;
+    --ink-3:      #6B7883;
+    --rule:       #CFD7DB;
+    --rule-soft:  #E1E7EA;
+    --accent:     #1D4E6B;
+    --accent-ink: #123C54;
+    --accent-wash:#E2ECF1;
+    --ochre:      #8F5512;
+    --ochre-wash: #F6EADB;
+    --forest:     #2F6B52;
+    --forest-wash:#E2EFE8;
+    --slate:      #4A5A66;
+    --slate-wash: #E6EAED;
+
+    --f-display: "Public Sans", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #0F1519;
+      --surface:    #161E23;
+      --surface-2:  #1D272D;
+      --ink:        #E4EAED;
+      --ink-2:      #B3C0C8;
+      --ink-3:      #8695A0;
+      --rule:       #2C383F;
+      --rule-soft:  #232E34;
+      --accent:     #74B4D2;
+      --accent-ink: #A6D0E4;
+      --accent-wash:#17313F;
+      --ochre:      #D9A05B;
+      --ochre-wash: #362717;
+      --forest:     #79BE9C;
+      --forest-wash:#153024;
+      --slate:      #9AA9B4;
+      --slate-wash: #202B31;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #0F1519;
+    --surface:    #161E23;
+    --surface-2:  #1D272D;
+    --ink:        #E4EAED;
+    --ink-2:      #B3C0C8;
+    --ink-3:      #8695A0;
+    --rule:       #2C383F;
+    --rule-soft:  #232E34;
+    --accent:     #74B4D2;
+    --accent-ink: #A6D0E4;
+    --accent-wash:#17313F;
+    --ochre:      #D9A05B;
+    --ochre-wash: #362717;
+    --forest:     #79BE9C;
+    --forest-wash:#153024;
+    --slate:      #9AA9B4;
+    --slate-wash: #202B31;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 15.5px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 32px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .draftbar {
+    background: var(--ochre-wash);
+    color: var(--ochre);
+    font-family: var(--f-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    padding: 9px 13px;
+    border-radius: 2px;
+    line-height: 1.5;
+  }
+
+  header { display: flex; flex-direction: column; gap: 15px; }
+
+  .kicker {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-size: clamp(23px, 4.6vw, 32px);
+    line-height: 1.12;
+    letter-spacing: -.019em;
+    text-wrap: balance;
+    margin: 0;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .fields { display: flex; flex-direction: column; gap: 0; }
+  .fields > div {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 3px 16px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    align-items: baseline;
+  }
+  .fields dt {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .fields dd { margin: 0; font-family: var(--f-display); font-size: 14.5px; line-height: 1.45; }
+
+  .fill {
+    color: var(--accent-ink);
+    background: var(--accent-wash);
+    padding: 1px 6px;
+    border-radius: 2px;
+    font-family: var(--f-mono);
+    font-size: .86em;
+  }
+
+  @media (max-width: 520px) {
+    .fields > div { grid-template-columns: 1fr; gap: 4px; }
+  }
+
+  section { display: flex; flex-direction: column; gap: 14px; }
+
+  h2 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(18px, 3.2vw, 22px);
+    line-height: 1.25;
+    letter-spacing: -.012em;
+    margin: 0;
+  }
+  h3 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 12.5px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    margin: 0;
+  }
+  p { margin: 0; max-width: 68ch; }
+  section > p + p { margin-top: -3px; }
+
+  code, .mono { font-family: var(--f-mono); font-size: .87em; }
+  code { background: var(--surface-2); padding: 1px 5px; border-radius: 2px; color: var(--ink); }
+
+  a { color: var(--accent-ink); text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  /* ---------- determination options ---------- */
+
+  .opts { display: flex; flex-direction: column; gap: 0; }
+  .opts > div {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 13px;
+    padding: 13px 0;
+    border-top: 1px solid var(--rule-soft);
+    align-items: start;
+  }
+  .opts > div:last-child { border-bottom: 1px solid var(--rule-soft); }
+  .box {
+    width: 15px; height: 15px;
+    border: 1.5px solid var(--ink-2);
+    border-radius: 1px;
+    margin-top: 4px;
+  }
+  .opt-body { display: flex; flex-direction: column; gap: 4px; }
+  .opt-body strong { font-family: var(--f-display); font-size: 15px; font-weight: 700; }
+  .opt-body span { font-size: 14px; color: var(--ink-2); line-height: 1.45; }
+  .proposed {
+    display: inline-block;
+    font-family: var(--f-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 2px;
+    color: var(--accent-ink);
+    background: var(--accent-wash);
+    margin-left: 7px;
+    vertical-align: 2px;
+  }
+
+  /* ---------- tables ---------- */
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 2px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; font-family: var(--f-display); min-width: 840px; }
+  thead th {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--ink-2);
+    padding: 11px 13px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--rule);
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
+  tbody td, tbody th {
+    padding: 11px 13px;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+    line-height: 1.45;
+  }
+  tbody th { text-align: left; font-weight: 700; white-space: nowrap; }
+  tbody tr:last-child td, tbody tr:last-child th { border-bottom: none; }
+  tbody tr.blank td, tbody tr.blank th { color: var(--ink-3); }
+
+  .st {
+    display: inline-block;
+    font-family: var(--f-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .st-branch { color: var(--forest); background: var(--forest-wash); }
+  .st-tenant { color: var(--forest); background: var(--forest-wash); }
+  .st-ao     { color: var(--ochre);  background: var(--ochre-wash); }
+  .st-gap    { color: var(--slate);  background: var(--slate-wash); }
+
+  /* ---------- status key ---------- */
+
+  .key { display: flex; flex-direction: column; gap: 0; }
+  .key > div {
+    display: grid;
+    grid-template-columns: 168px 1fr;
+    gap: 4px 16px;
+    padding: 10px 0;
+    border-top: 1px solid var(--rule-soft);
+    align-items: baseline;
+  }
+  .key > div:last-child { border-bottom: 1px solid var(--rule-soft); }
+  .key p { font-size: 14.5px; }
+  @media (max-width: 560px) {
+    .key > div { grid-template-columns: 1fr; gap: 6px; }
+  }
+
+  /* ---------- blocks ---------- */
+
+  .warn {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--ochre);
+    border-radius: 2px;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .warn .label {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ochre);
+  }
+  .warn p { font-size: 14.5px; }
+
+  .note {
+    background: var(--surface-2);
+    border-radius: 2px;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .note .label {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .note p { font-size: 14.5px; color: var(--ink-2); }
+
+  /* ---------- sign-off ---------- */
+
+  .signoff {
+    border: 2px solid var(--ink);
+    border-radius: 2px;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: var(--surface);
+  }
+  .signoff h2 {
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  .assert { display: flex; flex-direction: column; gap: 8px; }
+  .assert p { font-size: 14.5px; }
+  .siglines { display: flex; flex-direction: column; gap: 20px; padding-top: 4px; }
+  .sigrow { display: flex; flex-wrap: wrap; gap: 20px; }
+  .sig { flex: 1 1 200px; display: flex; flex-direction: column; gap: 5px; }
+  .sig .rule { border-bottom: 1px solid var(--ink-2); height: 26px; }
+  .sig .cap {
+    font-family: var(--f-mono);
+    font-size: 10px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .conditions { display: flex; flex-direction: column; gap: 5px; }
+  .conditions .cap {
+    font-family: var(--f-mono);
+    font-size: 10px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .conditions .rule { border-bottom: 1px solid var(--rule); height: 24px; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 14px;
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    line-height: 1.7;
+    letter-spacing: .02em;
+    color: var(--ink-3);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  @media print {
+    :root {
+      --paper: #FFFFFF; --surface: #FFFFFF; --surface-2: #F2F2F2;
+      --ink: #000000; --ink-2: #333333; --ink-3: #555555;
+      --rule: #999999; --rule-soft: #CCCCCC;
+      --accent: #1D4E6B; --accent-ink: #123C54; --accent-wash: #EEF3F6;
+      --ochre: #6B4210; --ochre-wash: #F7F1E6;
+    }
+    body { font-size: 10pt; line-height: 1.4; }
+    .page { max-width: none; padding: 0; gap: 18px; }
+    .tablewrap, .warn, .note, .signoff, .opts > div { break-inside: avoid; }
+    a { text-decoration: none; color: #000; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="page">
+
+  <div class="draftbar">Template — complete against the current SCC and Reference Architecture before the review convenes</div>
+
+  <header>
+    <span class="kicker">Attachment B</span>
+    <h1>Architecture review determination: TIC 3.0 classification and capability transfer</h1>
+    <dl class="fields">
+      <div><dt>Attaches to</dt><dd>Risk acceptance — Microsoft 365 Optimize endpoint inspection exemption</dd></div>
+      <div><dt>Scope</dt><dd>Sites listed at Attachment A, version <span class="fill">[n]</span></dd></div>
+      <div><dt>Prepared by</dt><dd><span class="fill">[Name, title]</span></dd></div>
+      <div><dt>Reviewed by</dt><dd><span class="fill">[Architecture review board / date convened]</span></dd></div>
+      <div><dt>Guidance used</dt><dd>TIC 3.0 Security Capabilities Catalog <span class="fill">[version]</span>; Reference Architecture <span class="fill">[version]</span>; Branch Office Use Case</dd></div>
+    </dl>
+  </header>
+
+  <section>
+    <div class="warn">
+      <span class="label">What this determination is, and is not</span>
+      <p>This document records the architecture review's finding that the design is TIC 3.0 conformant and that campus policy enforcement point capabilities have been accounted for at the branch. <strong>It does not accept risk.</strong> The single item requiring risk acceptance — the Optimize-category inspection exemption — is referred to the Authorizing Official in the covering memo. Keeping those two decisions separate is what allows each signer to answer a question that is actually theirs.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>B1 — Security pattern classification</h2>
+    <p>The Branch Office Use Case defines three patterns. An agency may implement a subset. Classification is not bookkeeping: it determines which policy enforcement point capabilities apply, and a misclassification here propagates into every row of B2.</p>
+    <div class="opts">
+      <div>
+        <div class="box"></div>
+        <div class="opt-body">
+          <strong>Branch Office to Cloud Service Provider<span class="proposed">Proposed</span></strong>
+          <span>Branch users reaching an agency-sanctioned CSP. Microsoft 365 is a sanctioned service under <span class="fill">[reference]</span>, which places locally egressing Optimize traffic in this pattern.</span>
+        </div>
+      </div>
+      <div>
+        <div class="box"></div>
+        <div class="opt-body">
+          <strong>Branch Office to Web</strong>
+          <span>Generic internet destinations. Selecting this pattern for Microsoft 365 pulls in a general web-proxy capability set whose inspection expectations are incompatible with the Optimize category's purpose.</span>
+        </div>
+      </div>
+      <div>
+        <div class="box"></div>
+        <div class="opt-body">
+          <strong>Branch Office to Agency Campus</strong>
+          <span>Branch access to internal resources. Applies to the site's other traffic and is unchanged by this design; recorded here for completeness.</span>
+        </div>
+      </div>
+    </div>
+    <p><strong>Board rationale where the determination differs from the proposal:</strong> <span class="fill">[record here]</span></p>
+  </section>
+
+  <section>
+    <h2>Trust zone and enforcement point</h2>
+    <p>TIC 3.0 permits policy enforcement points to sit between, before, or within a trust zone. Record the definition this design adopts:</p>
+    <dl class="fields">
+      <div><dt>Trust zone</dt><dd><span class="fill">[Branch site as defined — scope and boundary]</span></dd></div>
+      <div><dt>PEP location</dt><dd><span class="fill">[Device and position relative to the zone]</span></dd></div>
+      <div><dt>Prior state</dt><dd>Enforcement at the campus PEP, reached by backhaul</dd></div>
+      <div><dt>Reversion</dt><dd>Returns enforcement to the campus PEP — the prior posture is restored, not degraded</dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <h2>B2 — Capability transfer register</h2>
+    <p>One row per PEP capability group in the catalog. Complete every row: a blank row is a gap, not an omission, and is treated as such by this review.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">PEP capability group</th>
+            <th scope="col">What branch DIA changes</th>
+            <th scope="col">Where enforcement now sits</th>
+            <th scope="col">Control reference</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Web</th>
+            <td>Optimize-category traffic no longer traverses the campus web PEP; inspection of that set is forgone.</td>
+            <td><span class="fill">[Tenant-side and endpoint controls]</span></td>
+            <td><span class="fill">[ref]</span></td>
+            <td><span class="st st-ao">Referred to AO</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Networking</th>
+            <td>Enforcement moves to the branch edge — DIA NAT, ACLs, and the SD-WAN policy governing local egress.</td>
+            <td><span class="fill">[Branch device and policy]</span></td>
+            <td><span class="fill">[ref]</span></td>
+            <td><span class="st st-branch">Enforced at branch</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Files</th>
+            <td>SharePoint and OneDrive transfers bypass campus file inspection when steered locally.</td>
+            <td><span class="fill">[Defender for Office 365 / DLP / endpoint]</span></td>
+            <td><span class="fill">[ref]</span></td>
+            <td><span class="st st-tenant">Enforced tenant-side</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Enterprise</th>
+            <td>Identity enforcement is unchanged by routing but becomes the primary control on a less-inspected path.</td>
+            <td><span class="fill">[Conditional Access policies]</span></td>
+            <td><span class="fill">[ref]</span></td>
+            <td><span class="st st-tenant">Enforced tenant-side</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Email</th>
+            <td>Exchange Online traffic steered locally no longer passes campus email inspection on that path.</td>
+            <td><span class="fill">[Exchange Online Protection / Defender for Office 365]</span></td>
+            <td><span class="fill">[ref]</span></td>
+            <td><span class="st st-tenant">Enforced tenant-side</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Resiliency</th>
+            <td>Microsoft 365 reachability at the site now depends on the local circuit. Failure behaviour must be defined, not incidental.</td>
+            <td><span class="fill">[Failback to backhaul on DIA loss — describe trigger and timing]</span></td>
+            <td><span class="fill">[ref]</span></td>
+            <td><span class="fill">[status]</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Domain Name System</th>
+            <td>Resolution moves local. DNS security enforcement that sat on the campus path does not follow automatically.</td>
+            <td><span class="fill">[Protective DNS / branch resolver policy]</span></td>
+            <td><span class="fill">[ref]</span></td>
+            <td><span class="fill">[status]</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Intrusion Detection</th>
+            <td>Branch egress is not observed by the sensors covering campus egress.</td>
+            <td><span class="fill">[Branch UTD / equivalent, or state the coverage gap]</span></td>
+            <td><span class="fill">[ref]</span></td>
+            <td><span class="fill">[status]</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Enterprise</th>
+            <td>Identity enforcement is unchanged by routing but becomes the primary control on a less-inspected path.</td>
+            <td><span class="fill">[Conditional Access policies]</span></td>
+            <td><span class="fill">[ref]</span></td>
+            <td><span class="st st-tenant">Enforced tenant-side</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Unified Communications and Collaboration</th>
+            <td>Teams media egresses locally — one of the workloads this design exists to improve, and squarely in scope.</td>
+            <td><span class="fill">[UCC controls applying to Teams media at branch]</span></td>
+            <td><span class="fill">[ref]</span></td>
+            <td><span class="fill">[status]</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Data Protection</th>
+            <td>Content leaving via branch egress is outside campus data-protection enforcement on that path.</td>
+            <td><span class="fill">[Purview / DLP policy coverage]</span></td>
+            <td><span class="fill">[ref]</span></td>
+            <td><span class="fill">[status]</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Services</th>
+            <td><span class="fill">[Assess applicability to this design]</span></td>
+            <td><span class="fill">[ ]</span></td>
+            <td><span class="fill">[ref]</span></td>
+            <td><span class="fill">[status]</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Identity</th>
+            <td><span class="fill">[Assess — overlaps Enterprise; record the split your agency uses]</span></td>
+            <td><span class="fill">[ ]</span></td>
+            <td><span class="fill">[ref]</span></td>
+            <td><span class="fill">[status]</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Universal capabilities</th>
+            <td>Branch egress does not traverse the sensors that observed campus egress, changing agency and CISA visibility.</td>
+            <td><span class="fill">[Branch PEP logging; CLAW reporting pattern ref]</span></td>
+            <td><span class="fill">[ref]</span></td>
+            <td><span class="fill">[status]</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="warn">
+      <span class="label">Confirm the group list against the version you cite</span>
+      <p>The twelve groups above reflect the later catalog revisions, which carry Unified Communications and Collaboration, Data Protection, Services and Identity in addition to the original set. <strong>The group list has grown across versions</strong> — an earlier catalog carried eight — so the count is a property of the version, not of TIC 3.0. Enumerate from the catalog revision named in the header and correct this table if it differs.</p>
+      <p>As of this drafting the current revision appears to be <strong>v3.3 (July 2025)</strong>, superseding v3.2, which superseded v2.0. Several superseded copies rank highly in search results; confirm the version before the review convenes.</p>
+    </div>
+
+    <h3>Status values</h3>
+    <div class="key">
+      <div><span class="st st-branch">Enforced at branch</span><p>The capability is delivered by a device or policy at the branch trust zone boundary.</p></div>
+      <div><span class="st st-tenant">Enforced tenant-side</span><p>Delivered by a service-side or endpoint control rather than a network device. A legitimate answer where the control is named and verifiable.</p></div>
+      <div><span class="st st-ao">Referred to AO</span><p>Not transferred; a risk acceptance is sought in the covering memo. Permitted only for the item the memo actually covers.</p></div>
+      <div><span class="st st-gap">Gap</span><p>Neither transferred nor referred. <strong>A gap blocks sign-off.</strong> Resolve it or convert it to an explicit referral before this determination is signed.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>B3 — Telemetry</h2>
+    <dl class="fields">
+      <div><dt>Reporting pattern</dt><dd><span class="fill">[NCPS Cloud Interface RA pattern reference]</span></dd></div>
+      <div><dt>Sources</dt><dd><span class="fill">[Branch PEP log sources feeding the pattern]</span></dd></div>
+      <div><dt>Verified</dt><dd><span class="fill">[Date telemetry confirmed arriving, per site or per pattern]</span></dd></div>
+      <div><dt>Gap during pilot</dt><dd><span class="fill">[If any — state it, do not leave blank]</span></dd></div>
+    </dl>
+    <p>Telemetry reaching CISA is a condition of fleet rollout, not of pilot cutover — but a pilot that runs without it should say so here rather than leave the reviewer to infer it.</p>
+  </section>
+
+  <section>
+    <div class="signoff">
+      <h2>Architecture review determination</h2>
+      <div class="opts">
+        <div><div class="box"></div><div class="opt-body"><strong>Conformant</strong><span>Classification at B1 confirmed; capability transfer at B2 complete with no gaps.</span></div></div>
+        <div><div class="box"></div><div class="opt-body"><strong>Conformant with conditions</strong><span>Conditions stated below; each must close before the site enters scope.</span></div></div>
+        <div><div class="box"></div><div class="opt-body"><strong>Not conformant</strong><span>Basis stated below. Design returns for rework before AO routing.</span></div></div>
+      </div>
+
+      <div class="conditions">
+        <span class="cap">Conditions or basis</span>
+        <div class="rule"></div>
+        <div class="rule"></div>
+        <div class="rule"></div>
+      </div>
+
+      <div class="assert">
+        <p>By signing, the review asserts that the classification at B1 is correct for this traffic, that every capability group in the catalog has been assessed and recorded at B2, and that the only item forgone is the one referred to the Authorizing Official. It asserts nothing about whether that risk should be accepted.</p>
+      </div>
+
+      <div class="siglines">
+        <div class="sigrow">
+          <div class="sig"><div class="rule"></div><span class="cap">Architecture review chair — signature</span></div>
+          <div class="sig"><div class="rule"></div><span class="cap">Date</span></div>
+        </div>
+        <div class="sigrow">
+          <div class="sig"><div class="rule"></div><span class="cap">Concurrence — ISSO</span></div>
+          <div class="sig"><div class="rule"></div><span class="cap">Next review or re-assessment trigger</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="note">
+      <span class="label">Re-assessment triggers</span>
+      <p>This determination is bound to Attachment A at the version cited above. Re-assess if: sites are added; the exemption scope widens beyond the Optimize category; a control named at B2 changes or lapses; the catalog is revised in a way that alters the group list; or the telemetry pattern at B3 changes.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>Template. Complete bracketed fields against current CISA guidance and confirm the format against agency architecture review requirements.</span>
+    <span>Companion documents: risk acceptance memo; Attachment A site register; technical briefing, Informed Network Routing in GCC.</span>
+  </footer>
+
+</div>
