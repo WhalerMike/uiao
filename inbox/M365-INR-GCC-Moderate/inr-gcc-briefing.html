@@ -1,0 +1,1308 @@
+<title>Informed Network Routing in GCC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,600;0,700;0,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --paper:      #F3F5F6;
+    --surface:    #FFFFFF;
+    --surface-2:  #E9EDEF;
+    --ink:        #131A21;
+    --ink-2:      #414D57;
+    --ink-3:      #6B7883;
+    --rule:       #CFD7DB;
+    --rule-soft:  #E1E7EA;
+    --accent:     #1D4E6B;
+    --accent-ink: #123C54;
+    --accent-wash:#E2ECF1;
+    --ochre:      #8F5512;
+    --ochre-wash: #F6EADB;
+    --forest:     #2F6B52;
+    --forest-wash:#E2EFE8;
+    --slate:      #4A5A66;
+    --slate-wash: #E6EAED;
+
+    --f-display: "Public Sans", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+    --measure: 68ch;
+    --shadow: 0 1px 2px rgba(19, 26, 33, .06), 0 8px 24px -18px rgba(19, 26, 33, .35);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #0F1519;
+      --surface:    #161E23;
+      --surface-2:  #1D272D;
+      --ink:        #E4EAED;
+      --ink-2:      #B3C0C8;
+      --ink-3:      #8695A0;
+      --rule:       #2C383F;
+      --rule-soft:  #232E34;
+      --accent:     #74B4D2;
+      --accent-ink: #A6D0E4;
+      --accent-wash:#17313F;
+      --ochre:      #D9A05B;
+      --ochre-wash: #362717;
+      --forest:     #79BE9C;
+      --forest-wash:#153024;
+      --slate:      #9AA9B4;
+      --slate-wash: #202B31;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #0F1519;
+    --surface:    #161E23;
+    --surface-2:  #1D272D;
+    --ink:        #E4EAED;
+    --ink-2:      #B3C0C8;
+    --ink-3:      #8695A0;
+    --rule:       #2C383F;
+    --rule-soft:  #232E34;
+    --accent:     #74B4D2;
+    --accent-ink: #A6D0E4;
+    --accent-wash:#17313F;
+    --ochre:      #D9A05B;
+    --ochre-wash: #362717;
+    --forest:     #79BE9C;
+    --forest-wash:#153024;
+    --slate:      #9AA9B4;
+    --slate-wash: #202B31;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 17px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet {
+    max-width: 860px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 40px 72px;
+    display: flex;
+    flex-direction: column;
+    gap: 44px;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead { display: flex; flex-direction: column; gap: 18px; }
+
+  .docstrip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    align-items: baseline;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--ink);
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .docstrip strong { color: var(--ink); font-weight: 600; }
+  .docstrip .spacer { margin-left: auto; }
+
+  h1 {
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-size: clamp(30px, 6.2vw, 46px);
+    line-height: 1.08;
+    letter-spacing: -.021em;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .standfirst {
+    font-size: clamp(18px, 2.6vw, 20.5px);
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: var(--measure);
+    margin: 0;
+  }
+
+  /* ---------- bottom line ---------- */
+
+  .bottomline {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent);
+    border-radius: 2px;
+    padding: 24px 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: var(--shadow);
+  }
+  .bottomline h2 { margin: 0; }
+  .bottomline p { margin: 0; max-width: var(--measure); }
+  .bottomline p + p { color: var(--ink-2); font-size: 16px; }
+
+  /* ---------- section furniture ---------- */
+
+  section { display: flex; flex-direction: column; gap: 18px; }
+
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h2 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(21px, 3.6vw, 27px);
+    line-height: 1.22;
+    letter-spacing: -.014em;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  h3 {
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: 17px;
+    line-height: 1.35;
+    letter-spacing: -.005em;
+    margin: 0;
+  }
+
+  p { margin: 0; max-width: var(--measure); }
+  section > p + p { margin-top: -4px; }
+
+  a { color: var(--accent-ink); text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:focus-visible, .q a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  code, .mono { font-family: var(--f-mono); font-size: .87em; }
+  code {
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 2px;
+    color: var(--ink);
+  }
+
+  /* ---------- evidence grades ---------- */
+
+  .grade {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .grade::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .g-doc  { color: var(--forest); background: var(--forest-wash); }
+  .g-inf  { color: var(--ochre);  background: var(--ochre-wash); }
+  .g-uns  { color: var(--slate);  background: var(--slate-wash); }
+
+  /* ---------- claim ledger ---------- */
+
+  .ledger { display: flex; flex-direction: column; gap: 0; }
+
+  .claim {
+    display: grid;
+    grid-template-columns: 132px 1fr;
+    gap: 4px 22px;
+    padding: 18px 0;
+    border-top: 1px solid var(--rule-soft);
+    align-items: start;
+  }
+  .claim:last-child { border-bottom: 1px solid var(--rule-soft); }
+  .claim > .grade { margin-top: 2px; }
+  .claim-body { display: flex; flex-direction: column; gap: 6px; }
+  .claim-body p { font-size: 16px; }
+  .claim-src {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    letter-spacing: .01em;
+  }
+
+  @media (max-width: 560px) {
+    .claim { grid-template-columns: 1fr; gap: 10px; }
+  }
+
+  /* ---------- pull quote from primary source ---------- */
+
+  .q {
+    background: var(--accent-wash);
+    border-radius: 2px;
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .q blockquote {
+    margin: 0;
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: clamp(17px, 2.7vw, 20px);
+    line-height: 1.42;
+    letter-spacing: -.008em;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+  .q cite {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    font-style: normal;
+    letter-spacing: .04em;
+    color: var(--ink-2);
+  }
+
+  /* ---------- correction blocks ---------- */
+
+  .fix {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .fix .label {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ochre);
+  }
+  .fix p { font-size: 16px; }
+  .fix .was {
+    color: var(--ink-3);
+    text-decoration: line-through;
+    text-decoration-color: var(--ochre);
+  }
+
+  /* ---------- timeline ---------- */
+
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    border-top: 2px solid var(--rule);
+    padding-top: 0;
+  }
+  .tl-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 16px 14px 4px 0;
+    position: relative;
+  }
+  .tl-item::before {
+    content: "";
+    position: absolute;
+    top: -6px; left: 0;
+    width: 9px; height: 9px;
+    background: var(--paper);
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+  }
+  .tl-item.past::before { background: var(--accent); }
+  .tl-date {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--accent-ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .tl-label {
+    font-family: var(--f-display);
+    font-size: 13.5px;
+    line-height: 1.34;
+    color: var(--ink-2);
+  }
+  @media (max-width: 720px) {
+    .timeline { grid-template-columns: 1fr; border-top: none; }
+    .tl-item {
+      border-left: 2px solid var(--rule);
+      padding: 4px 0 16px 18px;
+    }
+    .tl-item::before { top: 4px; left: -5.5px; }
+  }
+
+  /* ---------- table ---------- */
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 2px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 15px; }
+  thead th {
+    font-family: var(--f-display);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--ink-2);
+    padding: 13px 16px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--rule);
+    vertical-align: bottom;
+  }
+  tbody td { padding: 15px 16px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; line-height: 1.5; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody th {
+    text-align: left;
+    padding: 15px 16px;
+    border-bottom: 1px solid var(--rule-soft);
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: 14.5px;
+    vertical-align: top;
+    width: 22%;
+  }
+  tbody tr:last-child th { border-bottom: none; }
+
+  /* ---------- alternatives ---------- */
+
+  .options { display: flex; flex-direction: column; gap: 2px; }
+  .option {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 20px 0;
+    border-top: 1px solid var(--rule-soft);
+  }
+  .option:last-child { border-bottom: 1px solid var(--rule-soft); }
+  .option-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; }
+  .option p { font-size: 16px; }
+  .caveat {
+    font-size: 14.5px;
+    color: var(--ink-2);
+    border-left: 2px solid var(--ochre);
+    padding-left: 12px;
+    max-width: var(--measure);
+  }
+
+  /* ---------- checks ---------- */
+
+  ol.checks { margin: 0; padding-left: 0; list-style: none; counter-reset: chk; display: flex; flex-direction: column; gap: 14px; }
+  ol.checks li {
+    counter-increment: chk;
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 14px;
+    align-items: start;
+    max-width: var(--measure);
+  }
+  ol.checks li::before {
+    content: counter(chk);
+    font-family: var(--f-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-ink);
+    background: var(--accent-wash);
+    border-radius: 2px;
+    text-align: center;
+    padding: 3px 0;
+    line-height: 1.4;
+  }
+  ol.checks p { font-size: 16px; }
+  ol.checks .settles, ol.checks .sub { display: block; font-size: 14px; color: var(--ink-3); margin-top: 3px; }
+
+  /* ---------- prerequisites ---------- */
+
+  .prereqs { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; }
+  .prereqs > div {
+    display: grid;
+    grid-template-columns: 210px 1fr;
+    gap: 4px 20px;
+    padding: 14px 0;
+    border-top: 1px solid var(--rule-soft);
+    align-items: baseline;
+  }
+  .prereqs > div:last-child { border-bottom: 1px solid var(--rule-soft); }
+  .prereqs dt {
+    font-family: var(--f-mono);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--accent-ink);
+    letter-spacing: .01em;
+  }
+  .prereqs dd { margin: 0; font-size: 15.5px; line-height: 1.55; }
+  @media (max-width: 600px) {
+    .prereqs > div { grid-template-columns: 1fr; gap: 6px; }
+  }
+
+  /* ---------- phases ---------- */
+
+  .g-gate { color: var(--accent-ink); background: var(--accent-wash); }
+
+  .phases { display: flex; flex-direction: column; gap: 0; }
+
+  .phase {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 6px 22px;
+    padding: 22px 0;
+    border-top: 1px solid var(--rule-soft);
+    align-items: start;
+  }
+  .phase:last-child { border-bottom: 1px solid var(--rule-soft); }
+
+  .phase-no {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding-top: 3px;
+  }
+  .phase-no strong {
+    font-family: var(--f-display);
+    font-size: 25px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    line-height: 1;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .phase-body { display: flex; flex-direction: column; gap: 9px; }
+  .phase-head { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: baseline; }
+  .phase-body p { font-size: 16px; }
+
+  .gate {
+    font-family: var(--f-display);
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    background: var(--surface-2);
+    border-radius: 2px;
+    padding: 10px 13px;
+    max-width: var(--measure);
+  }
+  .gate b {
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: .01em;
+  }
+
+  @media (max-width: 560px) {
+    .phase { grid-template-columns: 1fr; gap: 10px; }
+    .phase-no { flex-direction: row; align-items: baseline; gap: 8px; padding-top: 0; }
+  }
+
+  /* ---------- neutral note ---------- */
+
+  .note {
+    background: var(--surface-2);
+    border-radius: 2px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .note .label {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .note p { font-size: 15.5px; color: var(--ink-2); }
+
+  /* ---------- sources ---------- */
+
+  .sources { display: flex; flex-direction: column; gap: 10px; }
+  .sources li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 14.5px; }
+  ol.sources { margin: 0; padding-left: 22px; }
+  .src-kind {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 18px;
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    line-height: 1.7;
+    letter-spacing: .02em;
+    color: var(--ink-3);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="sheet">
+
+  <header class="masthead">
+    <div class="docstrip">
+      <span><strong>Technical briefing</strong></span>
+      <span>Network &amp; compliance</span>
+      <span class="spacer">Revised 2026-09-10</span>
+    </div>
+    <h1>Informed Network Routing is not available to GCC Moderate</h1>
+    <p class="standfirst">A corrected assessment: what Microsoft documents, what FedRAMP 20x does and does not change, and what to deploy on Catalyst SD-WAN instead.</p>
+  </header>
+
+  <div class="bottomline">
+    <h2>Bottom line</h2>
+    <p>Microsoft 365 Informed Network Routing (INR) cannot be enabled in a GCC Moderate tenant. This is a Microsoft product-availability limitation, stated plainly in Microsoft's own documentation. It is not a consequence of FedRAMP boundary rules, and FedRAMP 20x does not change it. Feature parity between the commercial and sovereign clouds is sequenced rather than simultaneous; a capability present in one and not yet the other is an ordinary state, not a defect.</p>
+    <p>The earlier framing — that legacy FedRAMP boundary scoping blocked INR and that the Consolidated Rules for 2026 removed that barrier, leaving only Microsoft engineering — asserts a cause that no public source establishes. The limitation is real; the explanation was not evidenced. This revision replaces it with what is documented.</p>
+  </div>
+
+  <section>
+    <div class="eyebrow">Section 1 — What the primary source says</div>
+    <h2>The limitation, in Microsoft's words</h2>
+    <div class="q">
+      <blockquote>“Microsoft 365 informed network routing supports tenants in WW Commercial cloud but not the GCC Moderate, GCC High, DoD, Germany, or China clouds.”</blockquote>
+      <cite>Microsoft Learn — Microsoft 365 informed network routing, Overview</cite>
+    </div>
+    <p>This single sentence is the authoritative citation for the whole question. Any briefing that reaches an Authorizing Official or a customer should carry it in place of secondary commentary. Three further facts from the same article bound the discussion:</p>
+
+    <div class="ledger">
+      <div class="claim">
+        <span class="grade g-doc">Documented</span>
+        <div class="claim-body">
+          <h3>The channel is bi-directional and carries circuit-level operational data</h3>
+          <p>Microsoft periodically returns application-experience feedback per office location and Internet circuit; the SD-WAN solution periodically returns “network-level optics data, including configuration information and usage statistics associated with the device and attached circuits.” Microsoft states no personal information is collected and that data is aggregated to office locations and circuits.</p>
+          <span class="claim-src">Source: Microsoft Learn, Overview</span>
+        </div>
+      </div>
+      <div class="claim">
+        <span class="grade g-doc">Documented</span>
+        <div class="claim-body">
+          <h3>Circuits are identified by public egress IP, configured per location</h3>
+          <p>INR “identifies traffic associated with a specific office location and Internet circuit based on the public IP address used to send network traffic to Microsoft.” Administrators enumerate each location's egress IP ranges in the admin center. Microsoft also notes INR “might not provide significant value” at a branch with no direct Internet access circuit.</p>
+          <span class="claim-src">Source: Microsoft Learn, Requirements &amp; Configuring</span>
+        </div>
+      </div>
+      <div class="claim">
+        <span class="grade g-doc">Documented</span>
+        <div class="claim-body">
+          <h3>Exchanged data is stored in customer-selected Azure regions, outside the tenant</h3>
+          <p>Data exchanged between Microsoft and the SD-WAN provider is held in a storage location chosen at enablement, described as “geographical areas containing Microsoft Azure regions,” retained up to 30 days. Microsoft explicitly notes the SD-WAN solution's own location “might not be within the same region” and directs customers to evaluate data storage location requirements with the vendor before production deployment.</p>
+          <span class="claim-src">Source: Microsoft Learn, Data storage</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Section 2 — Why, and how confident we are</div>
+    <h2>The likely reason, graded honestly</h2>
+    <p>Microsoft states the limitation clearly and does not publish a rationale for it. That is normal for cloud-availability statements and is not an omission on Microsoft's part — but it does mean any explanation offered here is the agency's inference. The most plausible one is architectural, and sits in the data-storage paragraph above rather than in FedRAMP scoping.</p>
+
+    <div class="ledger">
+      <div class="claim">
+        <span class="grade g-inf">Inferred</span>
+        <div class="claim-body">
+          <h3>The feature's data plane terminates outside the government cloud</h3>
+          <p>INR's exchanged data rests in commercial Azure regions and is then handed to a third-party SaaS operator whose location may differ. A government-cloud service description that commits to US-sovereign storage and screened-personnel operations cannot absorb that path without a separate government-side data plane and a separate vendor arrangement. That is a substantial engineering and contractual build, not a toggle — which is a sufficient explanation for non-availability across <em>all five</em> of the clouds named, including Germany and China, where US FedRAMP rules have no bearing at all. Read that breadth as evidence of an engineering sequence rather than a decision aimed at federal customers.</p>
+          <span class="claim-src">Basis: Microsoft Learn data-storage terms and the breadth of the clouds named. Microsoft has not published a rationale; this reading is the agency's own.</span>
+        </div>
+      </div>
+      <div class="claim">
+        <span class="grade g-uns">Unsupported</span>
+        <div class="claim-body">
+          <h3>That Microsoft or agency AOs judged INR telemetry an unacceptable attack surface</h3>
+          <p>No Microsoft, FedRAMP, or agency source states this. It is a plausible hypothesis about sensitivity — circuit performance and per-site usage statistics do describe branch topology — but presenting it as the operative reason is speculation. Note also that it does not survive contact with the recommended alternatives: ThousandEyes agents stream comparable path telemetry to a third-party SaaS. The distinction between INR and ThousandEyes is <strong>authorization status</strong>, not attack surface.</p>
+          <span class="claim-src">No source located supporting a stated security rationale.</span>
+        </div>
+      </div>
+      <div class="claim">
+        <span class="grade g-uns">Unsupported</span>
+        <div class="claim-body">
+          <h3>That FedRAMP boundary rules ever blocked INR</h3>
+          <p>FedRAMP boundary and scoping rules govern which information resources a cloud service provider must include in <em>its own</em> assessment. They do not govern which features Microsoft ships to a sovereign cloud, and they do not reach the agency's Catalyst SD-WAN Manager, which is customer-operated infrastructure and not a cloud service offering under assessment. No source ties INR's GCC unavailability to boundary scoping in either direction.</p>
+          <span class="claim-src">Claim withdrawn from the prior version.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Section 3 — The FedRAMP position, corrected</div>
+    <h2>What the Consolidated Rules for 2026 actually change</h2>
+    <p>The Minimum Assessment Scope is real and it is a genuine liberalization — but it liberalizes the wrong dimension for this question, and it is not yet the operative regime for Microsoft's existing GCC certification.</p>
+
+    <div class="fix">
+      <span class="label">Correction — Rev 5 characterization</span>
+      <p class="was">Rigid perimeter; all connected APIs in-scope must inherit authorization. Strict interconnection security agreements required.</p>
+      <p>Rev 5 already permitted external and non-FedRAMP services with documented risk, via the Control Implementation Summary, the Customer Responsibility Matrix, interconnection agreements, and the external services inventory. Describing it as “all-or-nothing” overstates the prior state to make the change look larger than it is — a FedRAMP-literate reader will discount the rest of the document on that basis.</p>
+    </div>
+
+    <div class="fix">
+      <span class="label">Correction — direction of the metadata argument</span>
+      <p>MAS requires providers to assess “all information resources that are likely to handle federal customer data or likely to impact the confidentiality, integrity, or availability of federal customer data,” and states that resources outside that test — “including most metadata” — <em>should be excluded</em> from FedRAMP assessment. This cuts against the original thesis rather than for it: if telemetry metadata falls outside assessment scope, then boundary rules were never the obstacle standing between GCC Moderate and INR, under either ruleset.</p>
+    </div>
+
+    <div class="fix">
+      <span class="label">Correction — timeline and applicability</span>
+      <p class="was">FedRAMP 20x is the operative regime; compliance now permits it.</p>
+      <p>CR26 was finalized 2026-06-25 and took effect 2026-07-04, but enforcement for most rulesets begins 2027-01-01, and existing Rev 5 certifications remain active into 2028. Office 365 GCC operates today largely under Rev 5. “Compliance already allows it, only Microsoft blocks it” is premature even on its own terms.</p>
+    </div>
+
+    <div class="timeline" role="list" aria-label="FedRAMP Consolidated Rules for 2026 transition milestones">
+      <div class="tl-item past" role="listitem">
+        <span class="tl-date">2026-06-25</span>
+        <span class="tl-label">CR26 finalized</span>
+      </div>
+      <div class="tl-item past" role="listitem">
+        <span class="tl-date">2026-07-04</span>
+        <span class="tl-label">Effective; early adoption for Rev 5 holders</span>
+      </div>
+      <div class="tl-item" role="listitem">
+        <span class="tl-date">2027-01-01</span>
+        <span class="tl-label">Enforcement of most rulesets begins</span>
+      </div>
+      <div class="tl-item" role="listitem">
+        <span class="tl-date">2027-06-11</span>
+        <span class="tl-label">No new Rev 5 applications accepted</span>
+      </div>
+      <div class="tl-item" role="listitem">
+        <span class="tl-date">2028-12-31</span>
+        <span class="tl-label">Planned Rev 5 sunset</span>
+      </div>
+    </div>
+
+    <p>One terminology note for mixed audiences: CR26 uses <strong>Minimum Assessment Scope</strong>, while the earlier 20x Phase One document was renamed <strong>Minimum Assessment Standard</strong> to avoid confusion with the scope of FedRAMP under M-24-15. Both abbreviate to MAS. Spell it out on first use.</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">Section 4 — Corrected comparison</div>
+    <h2>Legacy versus CR26, and the effect on INR</h2>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Dimension</th>
+            <th scope="col">Legacy FedRAMP (Rev 5)</th>
+            <th scope="col">Consolidated Rules for 2026</th>
+            <th scope="col">Effect on INR in GCC Moderate</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Assessment scope</th>
+            <td>Authorization boundary defined by the provider, with external services inventoried and risk-documented.</td>
+            <td>Minimum Assessment Scope: information resources likely to handle federal customer data or affect its CIA. Most metadata excluded.</td>
+            <td><strong>None.</strong> Governs Microsoft's assessment scope, not feature availability per cloud.</td>
+          </tr>
+          <tr>
+            <th scope="row">Non-FedRAMP third-party services</th>
+            <td>Permitted with documented risk acceptance, CRM entries and interconnection agreements.</td>
+            <td>Permitted on the same risk-based logic, with lighter documentation and continuous validation via KSIs.</td>
+            <td><strong>None.</strong> The agency's SD-WAN controller is customer-operated and outside FedRAMP assessment either way.</td>
+          </tr>
+          <tr>
+            <th scope="row">Feature availability in sovereign clouds</th>
+            <td>Determined by Microsoft's service description and cloud architecture.</td>
+            <td>Unchanged — FedRAMP does not govern this.</td>
+            <td><strong>Decisive.</strong> INR remains absent from the GCC admin center.</td>
+          </tr>
+          <tr>
+            <th scope="row">Applicability to O365 GCC today</th>
+            <td>Operative regime for the existing certification.</td>
+            <td>In transition; most enforcement from 2027-01-01.</td>
+            <td>No near-term path opens from the ruleset change.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Section 5 — What to deploy instead</div>
+    <h2>Native optimization paths on Catalyst SD-WAN</h2>
+    <p>Each of these is available today in a GCC Moderate context. The first item corrects a link error in the prior version that would misconfigure a production fabric.</p>
+
+    <div class="options">
+      <div class="option">
+        <div class="option-head">
+          <h3>Endpoint-driven steering via the M365 IP &amp; URL web service</h3>
+          <span class="grade g-doc">Corrected</span>
+        </div>
+        <p>Ingest the endpoint feed through Cloud OnRamp for SaaS / SD-AVC so Optimize-category traffic egresses locally via DIA.</p>
+        <p class="caveat"><strong>There is no GCC instance.</strong> The web service accepts <code>Instance=Worldwide</code>, <code>China</code>, <code>USGovDoD</code>, or <code>USGovGCCHigh</code> only, and GCC Moderate is served by <strong>Worldwide</strong> — the page is titled “Microsoft 365 Worldwide (+GCC).” The prior version linked the <em>DoD</em> endpoints page; a fabric configured from that feed would classify the wrong prefixes and break M365 optimization.</p>
+      </div>
+
+      <div class="option">
+        <div class="option-head">
+          <h3>Synthetic HTTP/HTTPS probing in Cloud OnRamp for SaaS</h3>
+        </div>
+        <p>Probe Microsoft front-end endpoints from each site and select paths on measured loss, latency and jitter rather than on a vendor-supplied quality signal. This is the direct functional substitute for INR's feedback loop, and it keeps all measurement inside the agency's own fabric.</p>
+        <p class="caveat">Probing measures the path to a front door, not application experience inside the service — the gap INR was built to close. In a commercial tenant, Cloud OnRamp blends INR's opinion score into this same best-path algorithm; in GCC that input is simply absent, so this is the algorithm running one input short rather than an equivalent alternative. Configuration in <a href="#config">Section 6</a>.</p>
+      </div>
+
+      <div class="option">
+        <div class="option-head">
+          <h3>Cisco ThousandEyes for Government</h3>
+          <span class="grade g-doc">FedRAMP Moderate authorized</span>
+        </div>
+        <p>Independent path and application monitoring with a federal authorization of its own, listed on the FedRAMP Marketplace. Use it for circuit degradation attribution and hop-by-hop evidence during incidents. Deployment in <a href="#te">Section 7</a>.</p>
+        <p class="caveat">State this precisely: the authorization belongs to the <strong>ThousandEyes for Government platform</strong>. Enterprise Agents are customer-deployed software that report into it; agents do not hold an authorization themselves. And be consistent — these agents also export path telemetry to a third-party SaaS, so the case for them is authorization status, not a smaller attack surface.</p>
+      </div>
+    </div>
+
+    <p>For reference if a commercial tenant is ever in scope: the only INR-enabled partner solution Microsoft lists is Cisco <span class="mono">IOS XE SD-WAN</span>, minimum version <span class="mono">20.4 / 17.4</span>. Enablement requires a Global Administrator to grant tenant-level Entra ID application permissions to the vendor.</p>
+  </section>
+
+  <section id="config">
+    <div class="eyebrow">Section 6 — Configuration</div>
+    <h2>Standing up probe-based steering without INR</h2>
+    <p>One thing to understand before configuring: Cloud OnRamp for SaaS does not treat probing and Microsoft telemetry as alternatives. In a commercial tenant it blends INR's opinion score <em>into</em> its best-path algorithm alongside its own probe results. A GCC Moderate deployment is therefore running the algorithm with one input missing — not running a parallel design. Configure accordingly, and set expectations with that in mind.</p>
+
+    <h3>Prerequisites</h3>
+    <dl class="prereqs">
+      <div>
+        <dt>Administration → Settings</dt>
+        <dd>Enable <strong>Cloud OnRamp for SaaS</strong>. Required in all cases.</dd>
+      </div>
+      <div>
+        <dt>Administration → Cluster Management</dt>
+        <dd>Enable <strong>Cisco SD-AVC</strong>. Required if you intend to steer by Microsoft 365 traffic category rather than a flat application list.</dd>
+      </div>
+      <div>
+        <dt>Administration → Settings → Cloud Services</dt>
+        <dd>Enable the <strong>SD-AVC Cloud Connector</strong>, which periodically fetches the Microsoft 365 Optimize / Allow / Default IP and URL categories from the Microsoft web service. From SD-WAN Manager 20.14.1 this is configured on the Cloud Services page without retrieving an OTP or opening a TAC case; earlier releases require that older path.</dd>
+      </div>
+      <div>
+        <dt>Transport / DIA</dt>
+        <dd>Direct Internet Access at each site that will probe locally. If a gateway site uses a SIG tunnel as its DIA connection, NBAR protocol discovery must be enabled in that tunnel's configuration.</dd>
+      </div>
+      <div>
+        <dt>Branch DNS</dt>
+        <dd>Name resolution occurring <strong>local to the branch egress</strong>. This is a prerequisite, not a tuning step — see below.</dd>
+      </div>
+    </dl>
+
+    <h3>Configuration sequence</h3>
+    <ol class="checks">
+      <li>
+        <p><strong>Choose the egress model per site.</strong> The best-path algorithm selects among the configured, available Cloud OnRamp egress options — local DIA egress, gateway-site internet egress, or both. Decide this before enabling applications; it determines what the probes are comparing.
+        <span class="sub">A site with a single DIA circuit and no gateway alternative has nothing to steer between, and Microsoft makes the same point about INR: little value where there is no second path.</span></p>
+      </li>
+      <li>
+        <p><strong>Enable the applications and application lists.</strong> For Microsoft 365, select which traffic categories to optimize — typically Optimize, or Optimize and Allow. SD-AVC supplies the category membership from Microsoft's published endpoint data.
+        <span class="sub">Confirm the fabric is pulling the <strong>Worldwide (+GCC)</strong> instance. There is no GCC instance; a DoD or GCC High feed classifies prefixes your tenant does not use.</span></p>
+      </li>
+      <li>
+        <p><strong>Set the probe endpoint for each application list.</strong> Cloud OnRamp for SaaS probes a single server per list — the probe endpoint — to determine that list's best path. The endpoint may be given as a URL, probed on port 80 or 443 according to the scheme, or as an IP address. Newer releases also allow user-defined probe endpoints to be attached to applications directly in the Application Catalog.
+        <span class="sub">This is the step most likely to be wrong in a GCC build. A default probe endpoint aimed at a commercial hostname measures a path your users never take. Point it at an endpoint that terminates in the GCC service footprint and confirm the probe actually resolves and responds from a branch.</span></p>
+      </li>
+      <li>
+        <p><strong>Attach the DIA sites and gateway sites</strong> to the enabled application lists and apply the configuration.</p>
+      </li>
+      <li>
+        <p><strong>Baseline before you rely on it.</strong> Read vQoE per path: 8–10 green, 5–8 yellow, 0–5 red, derived from measured loss and latency against expected values.
+        <span class="sub">Cisco is explicit that the vQoE status and score shown on the monitoring page are indicators, not failover thresholds, and do not directly drive best-path determination. Do not write an operational runbook that treats the displayed score as the trigger.</span></p>
+      </li>
+    </ol>
+
+    <h3>Local DNS resolution</h3>
+    <p>Microsoft's connectivity principles state it directly: ensure name resolution occurs close to the network egress, so connections are served through the most optimal Microsoft 365 front door. Local DNS and local internet egress are to be implemented <em>together</em> — Microsoft names remote lookups as a cause of network hairpins, and puts local DNS resolution alongside local egress at the top of its optimization-impact table.</p>
+
+    <div class="fix">
+      <span class="label">Trap — local egress with central resolution</span>
+      <p>If branch clients keep resolving through centralized resolvers in the datacenter, Microsoft's Distributed Service Front Door steers on the <strong>resolver's</strong> apparent location. Packets then egress locally at the branch and travel to a front door chosen for the datacenter. The design looks deployed and delivers little.</p>
+      <p>This failure is quiet in a way the others are not: Cloud OnRamp probes will report a healthy path, because the path to that front door genuinely is healthy. It is the wrong front door. Nothing on the SD-WAN dashboard says so.</p>
+      <p>Practically: place resolvers or caching members at the DIA sites, point branch DHCP at them, and audit conditional forwarders — a forwarding rule that pulls Microsoft 365 queries back to a core resolver reintroduces the hairpin no matter how the branch is otherwise configured. Microsoft also asks that local servers cache records appropriately.</p>
+    </div>
+
+    <p>Two consequences worth carrying forward. DNS is not only a performance lever here — Microsoft states its connectivity guidance is built around <strong>domain-based</strong> endpoint identification, and that many endpoints publish no IP data at all, so resolution is part of how traffic gets classified. And if branch resolution is served by a cloud-delivered DNS security service, confirm you are pointed at its <strong>federal instance</strong> rather than its commercial one, and record which in Attachment B's Domain Name System row — the same class of error as an agent registering to the wrong ThousandEyes platform.</p>
+
+    <div class="note">
+      <span class="label">Vendor-specific — Infoblox DDI</span>
+      <p>Skip this block if the agency's DDI is not Infoblox; the principles above are vendor-neutral and stand on their own.</p>
+      <p><strong>IPAM is the natural source of truth for Attachment A.</strong> The post-NAT public egress ranges the site register needs are IPAM data. Keep the reconciliation direction right: verify from the branch, then reconcile <em>to</em> IPAM. The site is authoritative; the record is not, and a register built from IPAM alone inherits whatever has drifted.</p>
+      <p><strong>Local resolution means grid members or caching resolvers at the DIA sites</strong>, with branch DHCP handing out those resolvers. Then audit the grid's forwarders and forwarding rules — this is where central resolution usually survives an otherwise correct branch build.</p>
+      <p><strong>If DNS security is cloud-delivered, confirm the federal instance.</strong> Infoblox's BloxOne Threat Defense <em>Federal Cloud</em> holds FedRAMP Moderate authorization, granted January 2023 with the Census Bureau as sponsoring agency. The commercial cloud is a different service. This is the Domain Name System row in Attachment B, and the failure mode is identical to an agent registering to the wrong ThousandEyes platform.</p>
+      <p><strong>Do not assume SD-WAN Manager orchestrates Infoblox.</strong> Cisco Catalyst Center has a genuine Infoblox IPAM integration over WAPI against the Grid Master, and Infoblox NIOS 8.6.0 documents API-based integrations with Cisco Meraki and Viptela SD-WAN through Network Insight. But Catalyst Center is not Catalyst SD-WAN Manager, and Viptela is the legacy naming of what is now Catalyst SD-WAN — neither statement establishes support on your current Manager release. Put it to the vendor rather than inferring it from a version-old datasheet, and plan on manual reconciliation until someone confirms otherwise.</p>
+    </div>
+
+    <h3>What to document for the ATO package</h3>
+    <div class="fix">
+      <span class="label">Dependency introduced — SD-AVC Cloud Connector</span>
+      <p>The Cloud Connector is a Cisco-hosted cloud service that your SD-WAN Manager reaches out to for Microsoft 365 category data. Enabling it introduces precisely the class of external-service dependency this briefing examines elsewhere — so document it deliberately rather than inheriting it. The alternative is running without Cloud Connector on static or custom application lists, trading automatic category updates for a self-contained fabric. That is a real choice with an operational cost; make it explicitly.</p>
+    </div>
+    <div class="fix">
+      <span class="label">Architecture review — TIC 3.0</span>
+      <p>Local DIA egress at a branch relocates the Policy Enforcement Point by design. Confirm the branch egress path maps to a TIC 3.0 security pattern and that the campus PEP's capabilities have been transferred to the branch before enabling, not after. This is an architecture question, not a device-configuration question, and it is the item most likely to stall the deployment — treated in full in <a href="#tic">Section 8</a>.</p>
+    </div>
+
+    <div class="note">
+      <span class="label">Verification limit on this section</span>
+      <p>Menu paths, probe-endpoint behavior, prerequisites and the vQoE bands above are drawn from Cisco's Cloud OnRamp configuration guide and solution documentation. Exact CLI syntax, probe timers and default intervals are <strong>not</strong> reproduced here because cisco.com was unreachable from the session that prepared this briefing — do not treat their absence as a claim that they are unnecessary.</p>
+      <p>Take those values from the guide matching your running version. Cisco splits the documentation at <span class="mono">20.15.1</span>: releases <span class="mono">20.3.1–20.14.x</span> and <span class="mono">20.15.1 and later</span> are separate chapters with different UI paths, and the Application Catalog probe-endpoint workflow is a newer-release capability.</p>
+    </div>
+  </section>
+
+  <section id="te">
+    <div class="eyebrow">Section 7 — Deployment</div>
+    <h2>ThousandEyes agents for path attribution</h2>
+    <p>Scope this correctly before deploying: ThousandEyes is observability, not control. It does not feed Cloud OnRamp's best-path algorithm. Probes steer; ThousandEyes explains. Deploying agents does not restore what INR's absence costs you in path selection — it restores your ability to say <em>why</em> a path degraded, which is the more common operational need during an incident.</p>
+
+    <div class="fix">
+      <span class="label">The one detail that must not be missed</span>
+      <p>ThousandEyes for Government is a <strong>standalone platform instance</strong> hosted in AWS GovCloud, not a tenant or setting inside the commercial platform. Agents must be told to register to it. For a Linux-package agent, that means adding the <code>-m advanced</code> option to the installation script with the value set to <code>FEDRAMP</code>.</p>
+      <p>An agent installed without it registers to the <strong>commercial</strong> platform. For a federal deployment that is a data-placement incident, not a configuration nit — agency network telemetry landing outside the authorized boundary. Make this an explicit build step with a post-install check that the agent appears in the government console and nowhere else.</p>
+    </div>
+
+    <h3>Form factors</h3>
+    <dl class="prereqs">
+      <div>
+        <dt>Linux package</dt>
+        <dd>Installed onto a supported distribution such as Ubuntu or Red Hat. Requires the <code>-m advanced</code> / <code>FEDRAMP</code> option above.</dd>
+      </div>
+      <div>
+        <dt>Docker container</dt>
+        <dd>64-bit Linux host, kernel 3.10 or later, with cgroups and network namespaces. The government instance imposes additional prerequisites on Docker installs — take them from the ThousandEyes for Government documentation, not the general Docker page. The account group token is supplied through <code>TEAGENT_ACCOUNT_TOKEN</code>. Docker for macOS and Docker for Windows are not supported for production.</dd>
+      </div>
+      <div>
+        <dt>Virtual Appliance (TEVA)</dt>
+        <dd>A prepared VM carrying both the operating system and the agent. The lowest-friction option where branch virtualization already exists.</dd>
+      </div>
+      <div>
+        <dt>Embedded on Catalyst routers</dt>
+        <dd>A Docker-type container run through IOx application hosting on IOS XE Catalyst SD-WAN devices. Minimum <strong>8 GB DRAM</strong>; provision <strong>16 GB</strong> to co-host applications such as UTD or DRE.</dd>
+      </div>
+    </dl>
+
+    <div class="fix">
+      <span class="label">Sizing trap — read this against Section 8</span>
+      <p>The TIC capability-transfer obligation tends to put UTD on the same branch router you are now asking to host a ThousandEyes agent. IOx will not run additional applications when CPU, memory or storage are short — it raises an error and declines. A branch sized at 8 GB satisfies the agent alone and then fails the moment the security stack arrives. Size for the finished architecture, not for the first component you deploy.</p>
+    </div>
+
+    <h3>What to measure</h3>
+    <p>Aim the tests at the gap INR leaves rather than duplicating what Cloud OnRamp already probes. HTTP Server and Page Load tests against the Microsoft 365 endpoints your tenant actually uses give service-side experience; Network tests with Path Visualization per circuit give hop-level attribution when a path degrades; agent-to-agent tests across the fabric separate a transport problem from a SaaS problem.</p>
+    <p>Baseline all of it <em>before</em> cutting over to local DIA. Without a pre-change baseline, the first complaint after cutover has no comparison and the design gets blamed on principle.</p>
+
+    <div class="note">
+      <span class="label">Verify before designing around it</span>
+      <p><strong>Open question:</strong> whether the SD-WAN Manager-driven embedded agent path supports the government instance. Explicit FedRAMP prerequisites are documented for the Linux package and Docker methods; the Cisco device app-hosting path could not be confirmed either way from available sources. From SD-WAN Manager 20.14.1 the Manager can reach Cisco services in the Cisco Networking Cloud including ThousandEyes, and ThousandEyes supports agents on Catalyst routers in SD-WAN mode — but neither statement establishes government-instance support.</p>
+      <p>Confirm with Cisco before building the design on embedded agents. If the answer is no, the fallback is standalone agents at each site, which changes branch hardware and licensing assumptions materially. That is a question to ask in week one, not week ten.</p>
+      <p>Exact install syntax, the government platform hostname and its outbound firewall requirements are not reproduced here — docs.thousandeyes.com was unreachable from the session that prepared this briefing. Take them from the ThousandEyes for Government documentation.</p>
+    </div>
+  </section>
+
+  <section id="tic">
+    <div class="eyebrow">Section 8 — Architecture</div>
+    <h2>TIC 3.0 and PEP alignment</h2>
+    <p>This section is independent of whether INR exists — a commercial tenant running full INR faces identical obligations. It bears on everything above it, the ThousandEyes agents included: they egress to an external platform like any other branch traffic. If the deployment stalls, this is where it stalls, and it is not a Microsoft or Cisco problem to solve.</p>
+
+    <h3>Identify the pattern before the capabilities</h3>
+    <p>The TIC 3.0 Branch Office Use Case defines three security patterns: <strong>Branch Office to Web</strong>, <strong>Branch Office to Agency Campus</strong>, and <strong>Branch Office to Cloud Service Provider</strong>. An agency may implement a subset rather than all three. The stated purpose is to eliminate the “TIC tax” of hairpinning outbound internet traffic back to a central perimeter — which is the same objective the SD-WAN design is pursuing.</p>
+
+    <div class="fix">
+      <span class="label">Classification — get this right first</span>
+      <p>Microsoft 365 Optimize traffic egressing locally is <strong>Branch Office to Cloud Service Provider</strong>: an agency-sanctioned CSP. It is not Branch Office to Web. The distinction is not bookkeeping — it determines which PEP capabilities apply. Filing M365 DIA under the Web pattern tends to pull in a general web-proxy capability set, and inspecting the Optimize endpoints is precisely what that category exists to avoid. Misclassify here and the architecture review will hand back requirements that negate the performance case for the whole project.</p>
+    </div>
+
+    <h3>The transfer obligation</h3>
+    <p>The governing constraint is straightforward: under a DIA architecture, branch performance improves, but <em>all of the security applied at the campus PEP must be transferred to the branch</em>. TIC 3.0 permits PEPs to sit between, before, or within a trust zone, so the branch becomes a trust zone with enforcement at its own edge. Work the transfer explicitly rather than assuming the SD-WAN appliance covers it.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">PEP capability group</th>
+            <th scope="col">What branch DIA changes</th>
+            <th scope="col">What to record</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Web</th>
+            <td>Traffic classified Optimize no longer passes the campus web PEP. Microsoft's guidance is to bypass break-and-inspect for that category specifically.</td>
+            <td>The exact endpoint set exempted from inspection, sourced from the Worldwide (+GCC) feed, and the risk acceptance covering it. Scope the exemption to Optimize; do not let it drift to Allow or Default.</td>
+          </tr>
+          <tr>
+            <th scope="row">Networking</th>
+            <td>Enforcement moves to the branch edge — DIA NAT, ACLs, and the SD-WAN policy that decides what is permitted to egress locally.</td>
+            <td>The branch trust zone definition and which device enforces at its boundary.</td>
+          </tr>
+          <tr>
+            <th scope="row">Files</th>
+            <td>SharePoint and OneDrive content transfers bypass campus file inspection when steered locally.</td>
+            <td>Where equivalent coverage now lives — endpoint controls, tenant-side controls such as Defender for Office 365 and DLP, or a branch capability. Naming a tenant-side control is a legitimate answer; leaving the row blank is not.</td>
+          </tr>
+          <tr>
+            <th scope="row">Enterprise</th>
+            <td>Identity and access enforcement is unchanged by the routing decision but is now the primary control on a path with less network inspection.</td>
+            <td>Conditional Access posture and how it compensates for reduced inline inspection.</td>
+          </tr>
+          <tr>
+            <th scope="row">Universal capabilities and telemetry</th>
+            <td>Branch egress does not traverse the sensors that watch campus egress, changing what CISA sees.</td>
+            <td>The reporting pattern that gets branch PEP telemetry to CISA's Cloud Log Aggregation Warehouse, per the NCPS Cloud Interface Reference Architecture.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="fix">
+      <span class="label">Unresolved tension — state it, don't design around it</span>
+      <p>Microsoft's published connectivity guidance recommends that Optimize endpoints bypass TLS break-and-inspect and packet inspection. That guidance is technically grounded rather than a request to lower the agency's security bar: these endpoints are encrypted and secured at the client and service ends, and Microsoft notes that re-encrypting inspected traffic can itself cause protocol errors and carries its own risk. A campus web PEP nonetheless normally performs exactly that inspection. Nothing in the SD-WAN configuration resolves this; it is an agency risk-acceptance decision, scoped to a named endpoint set and signed by someone empowered to sign it. Briefings that leave this implicit are the ones that come back from review. Put it in front of the AO as a decision with a bounded scope, early.</p>
+    </div>
+
+    <div class="note">
+      <span class="label">Verification limit on this section</span>
+      <p>The pattern names, the transfer obligation, the PEP capability structure and the CLAW telemetry requirement are drawn from CISA's TIC 3.0 core guidance and the Branch Office Use Case. They could not be read directly — cisa.gov was unreachable from the session that prepared this briefing — so confirm wording against the current documents before this goes to an AO.</p>
+      <p>Check specifically: the <strong>Security Capabilities Catalog</strong>, current revision <strong>v3.3 (July 2025)</strong> — superseding v3.2 and v2.0, both of which rank highly in search results. The number of PEP capability groups is a property of the revision rather than of TIC 3.0: later revisions carry twelve, adding Unified Communications and Collaboration, Data Protection, Services and Identity to the original eight. Attachment B enumerates all twelve; verify them against the revision you cite. The <strong>Reference Architecture v1.1</strong> (July 2025) governs trust zones and PEP placement. CISA's 2026 paper on using SASE in a modern TIC 3.0 solution is worth reading alongside these if the design includes SIG tunnels.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Section 9 — Sequencing</div>
+    <h2>Order of work, and why this order</h2>
+    <p>The instinct on a project like this is to start with the SD-WAN configuration, because it is the part the network team controls outright. That is the wrong start. The critical path runs through two external answers — an Authorizing Official's decision on inspection bypass, and Cisco's answer on government-instance support for embedded agents — and both of them change what hardware you buy. Configuration is fast and reversible. Procurement and risk acceptance are neither.</p>
+
+    <div class="phases">
+      <div class="phase">
+        <div class="phase-no"><strong>0</strong><span>Days</span></div>
+        <div class="phase-body">
+          <div class="phase-head"><h3>Disconfirm the premise</h3></div>
+          <p>Open a GCC Moderate tenant at Health → Network connectivity → Settings and confirm the SD-WAN solution pane is absent. Five minutes, first-party, and it costs nothing to be wrong early rather than late.</p>
+          <div class="gate"><b>Exit:</b> INR confirmed unavailable in your own tenant, not merely in documentation. If the pane is present, stop — the rest of this plan is the wrong plan.</div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-no"><strong>1</strong><span>Week 1</span></div>
+        <div class="phase-body">
+          <div class="phase-head">
+            <h3>Open the long-lead questions, all in parallel</h3>
+            <span class="grade g-inf">Long lead</span>
+          </div>
+          <p>Four items, none of which the network team can answer alone, and each of which gates something downstream. Ask Cisco whether the SD-WAN Manager embedded-agent path supports the ThousandEyes government instance. Put the TIC classification — Branch Office to Cloud Service Provider, per Section 8 — to the architecture review. Put the Optimize-category inspection bypass in front of the AO as a scoped risk acceptance. Decide whether the SD-AVC Cloud Connector dependency is acceptable or whether you run on static application lists.</p>
+          <div class="gate"><b>Exit:</b> enough answers to size branch hardware. Specifically: do agents run embedded or standalone, and does UTD land on the same router?</div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-no"><strong>2</strong><span>Procurement</span></div>
+        <div class="phase-body">
+          <div class="phase-head">
+            <h3>Size and order against the finished architecture</h3>
+            <span class="grade g-gate">Expensive to redo</span>
+          </div>
+          <p>Provision DRAM for everything the branch router will eventually host, not for the first thing you deploy on it. If the TIC capability transfer puts UTD on that box alongside a ThousandEyes agent, that is 16 GB, and discovering it after delivery means a second procurement cycle.</p>
+          <div class="gate"><b>Exit:</b> hardware ordered against the answers from Phase 1 — never in parallel with them.</div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-no"><strong>3</strong><span>Before cutover</span></div>
+        <div class="phase-body">
+          <div class="phase-head">
+            <h3>Observability first, then baseline</h3>
+            <span class="grade g-gate">One-way door</span>
+          </div>
+          <p>Deploy ThousandEyes agents and verify each one registered to the government instance and nowhere else. Then capture a pre-change baseline at every pilot site: HTTP Server and Page Load against your tenant's endpoints, Network tests with Path Visualization per circuit.</p>
+          <div class="gate"><b>Exit:</b> a baseline exists for every site in the pilot. This is the one step that cannot be recovered later — after cutover, the pre-cutover state is gone, and the first user complaint has nothing to be measured against.</div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-no"><strong>4</strong><span>Pilot</span></div>
+        <div class="phase-body">
+          <div class="phase-head"><h3>Enable steering at a small number of sites</h3></div>
+          <p>Confirm the fabric is pulling the Worldwide (+GCC) endpoint instance before enabling anything. Then enable application lists, set and <em>test</em> each probe endpoint from a branch — confirm it resolves and responds — and bring up local DIA at the pilot sites. Compare against the Phase 3 baseline rather than against expectations.</p>
+          <div class="gate"><b>Exit:</b> measured improvement at pilot sites, with the probe endpoints verified as reachable rather than assumed.</div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-no"><strong>5</strong><span>Rollout</span></div>
+        <div class="phase-body">
+          <div class="phase-head"><h3>Fleet rollout with the telemetry path operational</h3></div>
+          <p>Expand site by site. The CLAW reporting pattern for branch PEP telemetry has to be working, not planned — branch egress does not traverse the sensors that watched campus egress, and that gap is a finding waiting to be written.</p>
+          <div class="gate"><b>Exit:</b> every site cut over, each with baseline-to-current comparison retained, and branch telemetry reaching CISA.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="label">How to read this section</span>
+      <p>Unlike the rest of this briefing, the sequencing above is engineering judgment rather than sourced fact — it carries no evidence grade because there is no document to grade it against. The dependencies it encodes are real and traceable to earlier sections; the phase boundaries and durations are a recommendation, and a programme with different procurement or review timelines should reorder accordingly.</p>
+      <p>The two claims worth arguing with, if you disagree with anything here: that Phase 1 must complete before Phase 2 rather than running alongside it, and that Phase 3 must complete before Phase 4. Both are there because the failure they prevent is expensive and unrecoverable, not because the sequence is naturally tidy.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Section 10 — Rollback</div>
+    <h2>What reverses, what leaves residue, and what does not reverse at all</h2>
+    <p>Treating this deployment as one thing you can back out of is the mistake. It is several changes with very different reversibility, and the ones that do not reverse are not the ones teams worry about in advance. Decide the thresholds and the decision rights before cutover — during an incident, “is this bad enough to roll back?” becomes an argument rather than a determination.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Change</th>
+            <th scope="col">Reversibility</th>
+            <th scope="col">How, and what remains</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Local DIA steering at a site</th>
+            <td><span class="grade g-doc">Clean</span></td>
+            <td>Revert the SD-WAN policy for that site; traffic returns to backhaul through the campus PEP. Per-site and fast. No residue.</td>
+          </tr>
+          <tr>
+            <th scope="row">Application lists and probe endpoints</th>
+            <td><span class="grade g-doc">Clean</span></td>
+            <td>Disable the enabled applications or correct the probe endpoint. Misclassification stops as soon as the policy is withdrawn.</td>
+          </tr>
+          <tr>
+            <th scope="row">Inspection-bypass exemption at the campus PEP</th>
+            <td><span class="grade g-inf">Needs deliberate reversal</span></td>
+            <td>Does not revert with the routing change. Withdraw the exemption scope explicitly and tell the AO it has been withdrawn — see the trap below.</td>
+          </tr>
+          <tr>
+            <th scope="row">SD-AVC Cloud Connector</th>
+            <td><span class="grade g-inf">Residue</span></td>
+            <td>Can be disabled, but the Cisco cloud dependency was established and exercised. Disabling also freezes Microsoft 365 category data, so application lists go stale from that moment — plan how they are maintained if you turn it off.</td>
+          </tr>
+          <tr>
+            <th scope="row">ThousandEyes agents</th>
+            <td><span class="grade g-inf">Residue</span></td>
+            <td>Agents uninstall cleanly. Telemetry already sent does not. If an agent registered to the wrong platform, removal is containment, not rollback.</td>
+          </tr>
+          <tr>
+            <th scope="row">Pre-cutover baseline window</th>
+            <td><span class="grade g-uns">Irreversible</span></td>
+            <td>Cannot be recreated. If Phase 3 was skipped, no rollback restores the ability to say what changed.</td>
+          </tr>
+          <tr>
+            <th scope="row">Branch hardware</th>
+            <td><span class="grade g-uns">Irreversible</span></td>
+            <td>Procurement does not roll back. This is why the sizing question sits in Phase 1 rather than Phase 4.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Decide the triggers before cutover</h3>
+    <p>Write the thresholds against the Phase 3 baseline, in the units ThousandEyes and Cloud OnRamp already report, and name who holds each decision. Three distinct classes, with different urgency and different decision-makers:</p>
+    <ol class="checks">
+      <li>
+        <p><strong>Performance regression at a site.</strong> Measured degradation against that site's own baseline, sustained rather than momentary.
+        <span class="sub">Network operations reverts that site's steering. No approval cycle — this must be a routine, local, same-shift action or it will not happen when needed.</span></p>
+      </li>
+      <li>
+        <p><strong>Compliance or security finding.</strong> The exemption scope turns out wider than approved, branch telemetry is not reaching CLAW, or a capability named in the transfer table is not actually in place.
+        <span class="sub">Not a network decision. Revert the affected sites, notify the AO, and treat the gap as a finding — the routing change is the fastest thing you can undo while the underlying issue is worked.</span></p>
+      </li>
+      <li>
+        <p><strong>Wrong-platform agent registration.</strong> An agent appears in the commercial console.
+        <span class="sub">Handle as a data-placement incident under the agency's existing procedure, not as a deployment rollback. Removing the agent stops further flow; it does not address what already went. Escalate on the agency's timeline, not the project's.</span></p>
+      </li>
+    </ol>
+
+    <div class="fix">
+      <span class="label">Trap — reverting the route but keeping the exemption</span>
+      <p>Rolling back to backhaul restores the campus PEP as the enforcement point, so the TIC posture is <em>restored</em> by the rollback rather than degraded by it. That part is genuinely safe. What is not safe is leaving the Optimize-category inspection exemption in place afterwards: the traffic is once again traversing the campus PEP, but with an exemption that no longer buys anything. You keep the accepted risk and lose the performance it was accepted for. Make withdrawal of the exemption an explicit, tracked step of any rollback, not an implied consequence.</p>
+    </div>
+
+    <div class="fix">
+      <span class="label">Trap — rolling back the observability with the change</span>
+      <p>The instinct during a bad cutover is to revert everything that was touched. Leave the ThousandEyes agents running. They are how you establish what actually went wrong, and they are the only thing that will tell you whether the second attempt is better. Reverting the monitoring alongside the change is how a deployment gets rolled back twice for the same unexplained reason.</p>
+    </div>
+
+    <div class="note">
+      <span class="label">How to read this section</span>
+      <p>Like Section 9, this is engineering judgment rather than sourced fact, and carries no evidence grade. The reversibility classifications follow from how each component works as documented in Sections 6 through 8; the thresholds and decision rights are yours to set, and they are the part most worth arguing over before cutover rather than after.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Section 11 — Communications</div>
+    <h2>Briefing the Authorizing Official</h2>
+    <p>This programme contains exactly one decision that requires an AO signature. Everything else is either informational or belongs to somebody else. The most common way this meeting goes wrong is arriving with “approve the SD-WAN project” — which invites the AO to adjudicate vendor questions, procurement and architecture all at once, and produces a deferral rather than a decision.</p>
+
+    <div class="bottomline">
+      <h2>The ask, in one sentence</h2>
+      <p>Accept the risk of exempting the Microsoft 365 Optimize endpoint set — enumerated from the Worldwide (+GCC) feed — from TLS break-and-inspect at branch direct-internet egress, for a named list of pilot sites, with compensating controls identified and branch telemetry continuing to reach CLAW.</p>
+      <p>Bounded four ways: a specific endpoint set, a specific list of sites, named compensating controls, and per-site reversal within a shift. If any of those four is missing from the memo, the ask is not yet ready to put in front of an AO.</p>
+    </div>
+
+    <h3>Anticipate these four questions</h3>
+    <ol class="checks">
+      <li>
+        <p><em>“What can you no longer see?”</em> Content inspection on the Optimize endpoints, specifically. Say it plainly rather than reaching for the word “bypass” and hoping it passes.
+        <span class="sub">Then name what covers it: tenant-side controls such as Defender for Office 365 and DLP, Conditional Access, endpoint controls, and ThousandEyes path evidence. Section 8's transfer table is the exhibit.</span></p>
+      </li>
+      <li>
+        <p><em>“How large is the exemption, and does it drift?”</em> This is your strongest answer, so do not bury it. The scope is a published, machine-readable list, and Microsoft publishes additions 30 days before they become active.
+        <span class="sub">It is an enumerable set with change notice — not an open-ended trust grant. Commit to a review cadence tied to the feed's monthly updates.</span></p>
+      </li>
+      <li>
+        <p><em>“What happens if this turns out badly?”</em> Per-site reversal, same shift, no approval cycle. Rolling back restores the campus PEP as the enforcement point, so the TIC posture is restored rather than degraded.
+        <span class="sub">State the accompanying commitment: withdrawing the exemption is a tracked step of any rollback, not an implied consequence. Section 10.</span></p>
+      </li>
+      <li>
+        <p><em>“Is this a FedRAMP question?”</em> No — and be ready to explain why, because the framing is common. The exemption is an agency risk decision about inspection at your own egress.
+        <span class="sub">FedRAMP boundary rules govern a provider's assessment scope. Letting the FedRAMP framing in reintroduces exactly the error Section 2 corrects, and hands the AO a question that is not theirs to answer.</span></p>
+      </li>
+    </ol>
+
+    <div class="fix">
+      <span class="label">Do not bring these to the AO</span>
+      <p><strong>The INR unavailability story as a compliance matter.</strong> It is product availability in a sovereign cloud. Presenting it as a FedRAMP or boundary issue invites a compliance debate the programme does not need and cannot win, because the premise is wrong.</p>
+      <p><strong>Vendor and procurement questions.</strong> Whether the embedded ThousandEyes agent supports the government instance is a Cisco question. Branch DRAM sizing is a procurement question. Neither improves by being raised at this table.</p>
+      <p><strong>Any claim that probing replaces INR.</strong> If you tell the AO the capability has been restored, you will be held to that when a service-side degradation goes undetected. It has not been restored; the observability gap is narrowed and the steering input is absent.</p>
+    </div>
+
+    <h3>Who else needs what</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Audience</th>
+            <th scope="col">What they get</th>
+            <th scope="col">What you need back</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Authorizing Official</th>
+            <td>A one-page decision memo carrying the ask above, with this briefing as pre-read — Sections 1, 8 and 10.</td>
+            <td>A signed, scoped risk acceptance naming the endpoint set, the sites, and the review trigger.</td>
+          </tr>
+          <tr>
+            <th scope="row">Architecture review</th>
+            <td>The TIC classification and the capability transfer table.</td>
+            <td>Agreement that this is Branch Office to Cloud Service Provider, and sign-off on the transfer.</td>
+          </tr>
+          <tr>
+            <th scope="row">SOC</th>
+            <td>What changes in their visibility, which new telemetry sources appear, and the CLAW reporting pattern for branch egress.</td>
+            <td>Confirmation that branch telemetry arrives and is usable before fleet rollout.</td>
+          </tr>
+          <tr>
+            <th scope="row">Service desk</th>
+            <td>Pilot site list, what users may notice, and the per-site rollback path.</td>
+            <td>A route for reporting site-level degradation that reaches network operations the same shift.</td>
+          </tr>
+          <tr>
+            <th scope="row">Programme and procurement</th>
+            <td>The Phase 1 to Phase 2 gate and why hardware cannot be ordered before it.</td>
+            <td>Hold on procurement until the sizing inputs land.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Return to the AO when</h3>
+    <p>Record these triggers in the decision memo itself, so returning is a pre-agreed step rather than a renegotiation: the exemption scope widens beyond Optimize; sites are added outside the approved list; a compensating control named in the memo turns out not to be in place; or the exemption is withdrawn during a rollback.</p>
+
+    <div class="fix">
+      <span class="label">Disclose the open items yourself</span>
+      <p>Section 12 lists what this briefing could not confirm. Put the relevant ones in the memo rather than letting the AO's staff find them. An AO who discovers an undisclosed gap discounts everything else in the package, including the parts that are well evidenced — and this package's credibility rests on the discipline of saying what is documented, what is inferred, and what is unknown.</p>
+    </div>
+
+    <div class="note">
+      <span class="label">How to read this section</span>
+      <p>Engineering and programme judgment, not sourced fact, and not legal or compliance advice. Your agency's risk-acceptance process, delegation of authority and memo format govern; adapt the structure to them. The part worth keeping regardless of local process is the discipline of a single bounded ask with a stated reversal path.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Section 12 — Verification</div>
+    <h2>Checks that would settle the open questions</h2>
+    <p>The claims graded <span class="grade g-inf">Inferred</span> and <span class="grade g-uns">Unsupported</span> above are not resolvable from public documentation. These are, in ascending cost:</p>
+    <ol class="checks">
+      <li>
+        <p>Open a GCC Moderate tenant's admin center at <strong>Health → Network connectivity → Settings</strong>.
+        <span class="settles">Absence of the “SD-WAN solution” pane is first-party confirmation in five minutes, stronger than any secondary citation.</span></p>
+      </li>
+      <li>
+        <p>Check the Microsoft 365 Government service description feature-availability tables for INR.
+        <span class="settles">Establishes whether the gap is tracked as a parity item or as out of scope.</span></p>
+      </li>
+      <li>
+        <p>Query the Microsoft 365 roadmap and open a GCC support case asking for the INR parity position.
+        <span class="settles">A roadmap ID with a stated dependency, or an explicit “not planned,” is the only thing that distinguishes an architectural blocker from a backlog decision.</span></p>
+      </li>
+      <li>
+        <p>Confirm Office 365 GCC's current package status on the FedRAMP Marketplace.
+        <span class="settles">Establishes whether Rev 5 or CR26 governs the offering as of the briefing date.</span></p>
+      </li>
+      <li>
+        <p>Ask Cisco whether the M365 telemetry integration in Cloud OnRamp for SaaS is supported on the Catalyst SD-WAN Manager builds the agency runs.
+        <span class="settles">Rules out a vendor-side constraint independent of Microsoft's.</span></p>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="eyebrow">Section 13 — Sources</div>
+    <h2>Citations</h2>
+    <p>Every load-bearing claim above is sourced to a primary document. Secondary commentary is used only for the CR26 transition dates and is marked as such.</p>
+    <ol class="sources">
+      <li><span class="src-kind">Primary</span> <a href="https://learn.microsoft.com/microsoft-365/enterprise/office-365-network-mac-perf-cpe?view=o365-worldwide">Microsoft 365 informed network routing</a> — cloud support statement, bi-directional channel, requirements, data storage.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://learn.microsoft.com/microsoft-365/enterprise/microsoft-365-ip-web-service?view=o365-worldwide">Microsoft 365 IP Address and URL web service</a> — valid <code>Instance</code> values.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://learn.microsoft.com/microsoft-365/enterprise/microsoft-365-network-connectivity-principles?view=o365-worldwide">Microsoft 365 network connectivity principles</a> — local DNS resolution at egress, hairpins from remote lookups, domain-based endpoint identification.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://learn.microsoft.com/microsoft-365/enterprise/urls-and-ip-address-ranges?view=o365-worldwide">Microsoft 365 URLs and IP address ranges (Worldwide +GCC)</a> — the correct feed for GCC Moderate.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://www.fedramp.gov/2026/reference/20x/c/minimum-assessment-scope/">FedRAMP Minimum Assessment Scope (CR26)</a> — scope test and metadata exclusion.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://www.fedramp.gov/marketplace/products/FR2523656707/">Cisco ThousandEyes for Government, FedRAMP Marketplace</a> — authorization status.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://docs.thousandeyes.com/thousandeyes-for-government/thousandeyes-for-government">ThousandEyes for Government: FedRAMP Moderate</a> — government-instance prerequisites and the agent registration options in Section 7.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://docs.thousandeyes.com/product-documentation/global-vantage-points/enterprise-agents/installing">ThousandEyes Enterprise Agent installation</a> — form factors and system requirements.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://www.cisco.com/c/en/us/td/docs/routers/sdwan/17-x/systems-interfaces/systems-interfaces-guide-17-x/monitoring-with-thousandeyes.html">Cisco Catalyst SD-WAN — Monitoring with Cisco ThousandEyes</a> — IOx app-hosting and DRAM requirements for the embedded agent.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://www.cisco.com/c/en/us/td/docs/routers/sdwan/configuration/cloudonramp/ios-xe-17/cloud-onramp-book-xe/cloud-onramp-saas.html">Cisco Catalyst SD-WAN Cloud OnRamp Configuration Guide — Cloud OnRamp for SaaS, 20.15.1 and later</a> — prerequisites, probe endpoints, egress selection. Use the <a href="https://www.cisco.com/c/en/us/td/docs/routers/sdwan/configuration/cloudonramp/ios-xe-17/cloud-onramp-book-xe/cor-saas.html">20.3.1–20.14.x chapter</a> for older releases.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://www.cisco.com/c/en/us/td/docs/routers/sdwan/command/iosxe/qualified-cli-command-reference-guide/cor-saas-commands.html">Cisco IOS XE Catalyst SD-WAN Qualified Command Reference — Cloud OnRamp for SaaS commands</a> — authoritative CLI syntax, not reproduced in Section 6.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://www.cisco.com/c/en/us/solutions/collateral/enterprise-networks/sd-wan/nb-06-cloud-onramp-saas-wp-cte-en.html">Cisco SD-WAN Cloud OnRamp for SaaS white paper</a> — vQoE derivation and bands, INR telemetry integration into best-path selection.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://www.cisa.gov/sites/default/files/2023-05/TIC%203.0%20Branch%20Office%20Use%20Case_508c_0.pdf">CISA TIC 3.0 Branch Office Use Case</a> — the three security patterns and the capability transfer obligation under DIA.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://www.cisa.gov/sites/default/files/2023-04/CISA%20TIC%203.0%20Security%20Capabilities%20Catalog_508c.pdf">CISA TIC 3.0 Core Guidance Vol. 3 — Security Capabilities Catalog</a>. Use the current revision, <a href="https://www.cisa.gov/sites/default/files/2025-07/CISA%20TIC%203.0%20Security%20Capabilities%20Catalog%20v3.3%20(Volume%203).pdf">v3.3 (July 2025)</a>, not the widely-linked <a href="https://www.cisa.gov/news-events/news/updated-tic-30-security-capabilities-catalog-scc-v32">v3.2</a> or v2.0.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://www.cisa.gov/sites/default/files/2025-07/CISA%20TIC%203.0%20Reference%20Architecture%20v1.1.pdf">CISA TIC 3.0 Reference Architecture v1.1</a> — trust zones and PEP placement.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://www.cisa.gov/sites/default/files/2023-02/NCPS%20Cloud%20Interface%20RA%20Volume%20One%202021-05-14.pdf">NCPS Cloud Interface Reference Architecture</a> — reporting patterns for telemetry to CLAW.</li>
+      <li><span class="src-kind">Primary</span> <a href="https://www.cisa.gov/sites/default/files/2026-07/The_Journey_to_Zero_Trust-Using_SAS_in_a_Modern_TIC3.0_Solution.pdf">CISA — Using SASE in a Modern TIC 3.0 Solution</a> (2026) — relevant where the design includes SIG tunnels.</li>
+      <li><span class="src-kind">Vendor</span> <a href="https://www.infoblox.com/news/news-events/press-releases/infobloxs-bloxone-threat-defense-federal-cloud-clears-fedramp-authorization-for-data-security/">Infoblox — BloxOne Threat Defense Federal Cloud FedRAMP Moderate authorization</a> (January 2023). Confirm current status on the FedRAMP Marketplace before relying on it.</li>
+      <li><span class="src-kind">Secondary</span> <a href="https://www.crowell.com/en/insights/client-alerts/time-for-a-change-fedramp-fundamentally-revamps-program-with-consolidated-rules-for-2026">Crowell &amp; Moring, Consolidated Rules for 2026</a> — transition dates and Rev 5 sunset.</li>
+    </ol>
+  </section>
+
+  <footer>
+    <span>Removed from the prior version: techdogs.com, a Facebook video, a LinkedIn post, and a YouTube link used to support the central factual claim.</span>
+    <span>That claim is a single sentence on Microsoft Learn. Cite it directly.</span>
+  </footer>
+
+</div>
