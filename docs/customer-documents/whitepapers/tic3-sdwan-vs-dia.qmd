@@ -662,14 +662,41 @@ proxy has no SWG inline inspection (SI-3), no visibility into the content
 of encrypted communications (**SI-4(10)**, satisfied for proxied flows by
 the SWG's TLS break-and-inspect and absent by design for Optimize-bypassed
 flows), no CASB flow enforcement (AC-4), and no application-layer audit
-record — for those flows the AU-12 evidence
-is five-tuple plus steering metadata on encrypted media, not "user, device,
-app, action, data type." One case is a hard contradiction rather than a
-tradeoff: Microsoft's **tenant restrictions v2** enforcement requires
-header injection at a proxy in the traffic path. You cannot bypass the
-proxy for a flow and enforce tenant restrictions on that same flow;
-tenant-to-tenant exfiltration over an Optimize-categorized path is exactly
-the case an assessor will construct.
+record. Records are still *generated* for those flows, so what degrades is
+their **content** — an AU-3 requirement, which AU-12 incorporates by
+reference: five-tuple plus steering metadata on encrypted media, not "user,
+device, app, action, data type."
+
+One case looks like a hard contradiction and is not — but only if the
+agency does something about it. Tenant-to-tenant exfiltration over an
+Optimize-categorized path is exactly the case an assessor will construct. The natural answer concedes it:
+Microsoft's **tenant restrictions v2** is enforced by header injection at
+an in-path proxy, so a proxy-bypassed flow cannot carry it. That answer is
+wrong, and worth correcting precisely because it is the intuitive one.
+Proxy enforcement is the tenant restrictions **v1** model. Under v2 it
+survives as one of three enforcement paths for a single cross-tenant access
+policy, and it is the *weakest* of the three — the only one that reaches
+the authentication plane alone and never the data plane.
+[Microsoft's setup guidance](https://learn.microsoft.com/en-us/entra/external-id/tenant-restrictions-v2)
+documents two paths that need no proxy: **Windows Group Policy signaling**
+on corporate-owned devices, which carries both authentication-plane and
+data-plane protection with policy evaluation still in the cloud, and
+**universal tenant restrictions via Global Secure Access**, which covers
+the authentication plane on every platform and the data plane for Microsoft
+Graph only.
+
+The control therefore does not vanish with the proxy. It moves to the
+endpoint, where the coverage is better than what the proxy provided. Two
+limits keep that honest. The Group Policy path covers Office applications,
+Universal Windows Platform .NET applications and Microsoft Edge — non-Edge
+browsers and non-Windows devices at an exempted site fall outside it and
+have to be enumerated rather than assumed away. And
+[the Entra federal crosswalk](../learning/entra-security-baseline-federal-crosswalk.qmd)
+records Global Secure Access as non-FIPS in GCC Moderate and unavailable in
+GCC High and DoD, which makes Group Policy signaling the path a FedRAMP
+Moderate agency can actually rely on rather than one option among equals.
+Device-side signaling *configured and verified* is a precondition of the
+carve-out, not a footnote to it.
 
 The compliant shape of the carve-out is therefore not "the steering log
 says so" — documentation alone is not a compensating control. It is
@@ -677,9 +704,10 @@ says so" — documentation alone is not a compensating control. It is
 Optimize-category bypass recorded as a named exception with its supporting
 mission need, reviewed on a cadence, with the steering log as the
 *enforcement evidence* that the exception's boundaries hold — plus
-compensating controls where they exist (identity-tier conditional access
-and tenant allow-listing at the identity plane rather than the proxy;
-endpoint DLP for content controls the network cannot see). Part 7's ledger
+compensating controls where they exist (identity-tier conditional access;
+tenant allow-listing re-signaled from the endpoint rather than the proxy,
+per the paragraphs above; endpoint DLP for content controls the network
+cannot see). Part 7's ledger
 carries an explicit "applies to" scoping per control so the exception is
 visible where an assessor will look for it.
 [Vol I Book 05's M365 appendix](../orgcomp-series/Vol_I_Book_05_OrgComp_Network_Modernization.qmd)
@@ -776,7 +804,7 @@ register.
 | SC-8 / SC-8(1) Transmission Confidentiality and Integrity | Nothing — unencrypted at the network layer | SD-WAN IPsec overlay (circuit-wide) | All overlay-carried flows; **Optimize exception**: bypassing flows rest on their own FIPS-validated TLS/SRTP (the per-flow closure) | Agency-implemented — SD-WAN overlay procured and operated by the agency; not inherited from a CSO by default | [Vol I Book 07](../orgcomp-series/Vol_I_Book_07_OrgComp_Network_Enforcement_Substrate.qmd) |
 | SC-7 Boundary Protection | Nothing — egress outside the assessed boundary | SASE SWG/FWaaS at the distributed PEP | All proxied flows; Optimize bypass documented as an SC-7(4) traffic-flow exception with mission justification and periodic review | **Shared** — inherited from the authorized SASE CSO at the distributed PEP; name the specific CSO and CRM line during acquisition (Part 8) — TBD, no vendor selected in this paper | Vol I Book 07 |
 | SC-7(8) Route Traffic to Authenticated Proxy Servers | Nothing | SWG as the authenticated proxy for the routed classes | Proxied classes only — this is the control that makes the proxy claim assessable | **Shared** — inherited from the authorized SASE CSO; CSO and CRM line TBD at acquisition (Part 8) | Vol I Book 07 |
-| AC-4 Information Flow Enforcement | Nothing | SASE CASB — application, tenant, data type, action | Proxied flows; **not deliverable on Optimize-bypassed flows** — tenant restrictions v2 requires in-path header injection; compensate at the identity plane | **Shared** — inherited from the authorized SASE CSO; CSO and CRM line TBD at acquisition (Part 8) | Vol I Book 07 |
+| AC-4 Information Flow Enforcement | Nothing | SASE CASB — application, tenant, data type, action | Proxied flows; **CASB flow enforcement not deliverable on Optimize-bypassed flows**. Tenant restrictions v2 is *not* lost with the proxy — its Windows Group Policy path needs none and reaches the data plane (§5.5) — but it must be signaled from the endpoint and verified | **Shared** — inherited from the authorized SASE CSO; CSO and CRM line TBD at acquisition (Part 8) | Vol I Book 07 |
 | SC-6 Resource Availability | Nothing | SD-WAN traffic classes and per-class path policy — priority, quota, and unit allocation across classes | All overlay-carried flows | Agency-implemented — SD-WAN overlay traffic-class policy configured by the agency | [Vol II Book 03](../orgcomp-series/Vol_II_Book_03_OrgComp_Database_Consolidation_Network_Physics.qmd) |
 | SC-5 Denial-of-Service Protection | Nothing | **Not closed by traffic-class separation alone** — SC-5 targets adversarial DoS (attack-restriction, capacity/bandwidth/redundancy provisioning, DoS detection); this paper names no rate-limiting or DoS-detection mechanism that would earn even partial credit | Not applicable to this design as described — requires a separate, DoS-specific control | Not applicable | — |
 | SI-3 Malicious Code Protection | Nothing | SWG inline SSL inspection at the nearest PoP | Proxied flows; **no inline inspection on Optimize-bypassed flows** — compensate with endpoint protection and the SC-7(4) exception record | **Shared** — inherited from the authorized SASE CSO; CSO and CRM line TBD at acquisition (Part 8) | [Vol I Book 06](../orgcomp-series/Vol_I_Book_06_OrgComp_Federal_Telecommunications_Modernization.qmd) cross-references |
@@ -936,8 +964,9 @@ Verification Register (EV-M091–M096).
   Risk of Known Exploited Vulnerabilities (established the KEV catalog and
   its CVE-specific remediation deadlines).
 - **Microsoft 365 network connectivity principles** and endpoint categories
-  (Microsoft Learn); **tenant restrictions v2** proxy-enforcement
-  requirements.
+  (Microsoft Learn); **[Set up tenant restrictions
+  v2](https://learn.microsoft.com/en-us/entra/external-id/tenant-restrictions-v2)**
+  — the three enforcement paths and the v1/v2 comparison behind §5.5.
 - **ITU-R Recommendation M.2160 (IMT-2030 framework)**; **3GPP Release
   20/21 6G study and specification timeline**.
 - **RFC 8784, RFC 9370** — post-quantum interim key establishment for
