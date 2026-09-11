@@ -303,7 +303,7 @@
   <div class="lead">
     <h2>Decision requested</h2>
     <p>Approve a <strong>documented traffic-flow exception under SC-7(4)</strong> exempting the Microsoft 365 <strong>Optimize</strong> endpoint set from TLS break-and-inspect at branch direct-internet egress, for the <span class="fill">[N]</span> pilot sites listed at Attachment A.</p>
-    <p class="sub">The controls the exception punctures are named at clause 3. One — tenant restrictions v2 — cannot be compensated at the network layer and is stated at clause 4 rather than left for an assessor to find. Compensating controls are at clause 6 and the reversal commitments at clause 7.</p>
+    <p class="sub">The controls the exception punctures are named at clause 3. One of them — tenant restrictions v2 — cannot be re-established at the network layer once the proxy is bypassed and has to be re-signaled from the endpoint; clause 4 states how, and what it does not cover. Compensating controls are at clause 6 and the reversal commitments at clause 7.</p>
   </div>
 
   <div class="clauses">
@@ -341,9 +341,15 @@
 
     <div class="clause">
       <div class="clause-body">
-        <h2>The one control that cannot be compensated</h2>
-        <p>Microsoft's <strong>tenant restrictions v2</strong> enforcement requires header injection at a proxy in the traffic path. A flow that bypasses the proxy cannot have tenant restrictions enforced on it. This is a structural incompatibility, not a gap awaiting a compensating control, and no configuration of the SD-WAN fabric changes it.</p>
-        <p>The consequence is specific and should be stated rather than discovered: <strong>tenant-to-tenant exfiltration over an Optimize-categorized path</strong> is the case an assessor will construct against this exemption. The agency's answer is that tenant allow-listing moves to the identity plane — Conditional Access and cross-tenant access settings — rather than remaining a proxy function. That answer belongs in the record before the question is asked.</p>
+        <h2>The control that moves off the network path: tenant restrictions</h2>
+        <p><strong>Tenant-to-tenant exfiltration over an Optimize-categorized path</strong> is the case an assessor will construct against this exemption, and it should be answered in the record rather than discovered at assessment.</p>
+        <p>The answer is that tenant restrictions v2 does not depend on the proxy. Microsoft documents three enforcement paths for a single cross-tenant access policy, and proxy header injection is the weakest of them: it signals at the <em>authentication plane only</em> and does not reach the data plane. The agency therefore does not lose this control by bypassing the proxy — it re-signals it from the endpoint, where the coverage is better than what the proxy provided.</p>
+        <ul>
+          <li><strong>Windows Group Policy signaling</strong> on corporate-owned devices — no proxy required, and the only path that carries <em>both</em> authentication-plane and data-plane protection. Policy evaluation remains in the cloud; the device supplies the signal. This is the agency's primary path.</li>
+          <li><strong>Universal tenant restrictions via Global Secure Access</strong> — authentication plane on every operating system, browser and form factor, and data plane for Microsoft Graph only. Availability in the government cloud is unconfirmed, so this is a fallback rather than a plan.</li>
+          <li><strong>Proxy header injection</strong> — the path being given up, and the one the exemption removes. Authentication plane only.</li>
+        </ul>
+        <p>Two limits are stated rather than glossed. The Group Policy path covers Office applications, Universal Windows Platform .NET applications and Microsoft Edge; non-Edge browsers and non-Windows devices are not covered by it, and any such population at a pilot site is in scope for the exemption but not for this compensating control. Parts of tenant restrictions v2 remain in preview. <strong>This control is therefore compensable but not automatically compensated:</strong> it is in force only if the device-side signaling is configured and verified before cutover, which clause 6 records as a precondition and clause 8 as a return trigger.</p>
       </div>
     </div>
 
@@ -364,7 +370,7 @@
         <h2>Compensating controls, by plane</h2>
         <p>Each of these is named because the network can no longer see what it covers. A control listed here without a reference is not yet a compensating control.</p>
         <ul>
-          <li><strong>Identity plane</strong> — Conditional Access on the affected services, and cross-tenant access settings carrying the tenant allow-listing that the proxy can no longer enforce: <span class="fill">[policy references]</span>.</li>
+          <li><strong>Identity plane</strong> — Conditional Access on the affected services, and a cross-tenant access policy with tenant restrictions v2 signaled from the endpoint per clause 4. <strong>Precondition to cutover:</strong> device-side signaling configured and verified at every pilot site, with the uncovered device and browser population enumerated: <span class="fill">[policy references; GPO or Intune configuration; uncovered population]</span>.</li>
           <li><strong>Service plane</strong> — Defender for Office 365 and Purview DLP for content the network cannot inspect: <span class="fill">[policies in force]</span>.</li>
           <li><strong>Endpoint</strong> — EDR and endpoint DLP on managed devices, which see the content after decryption: <span class="fill">[EDR / configuration baseline]</span>.</li>
           <li><strong>Evidence</strong> — the SD-WAN steering log as SC-7(4) enforcement evidence, plus branch policy enforcement point telemetry reaching CISA's Cloud Log Aggregation Warehouse under reporting pattern <span class="fill">[reference]</span>. This is the AU-12 contract for the SD-WAN layer.</li>
@@ -384,7 +390,7 @@
     <div class="clause">
       <div class="clause-body">
         <h2>Return to the Authorizing Official</h2>
-        <p>The system owner will return for a further decision if: the exception scope widens beyond the Optimize category; sites are added outside Attachment A; a compensating control named above is found not to be in place; the SC-7(4) review finds the steering log no longer evidences the exception's boundaries; or the exception is withdrawn during a rollback.</p>
+        <p>The system owner will return for a further decision if: the exception scope widens beyond the Optimize category; sites are added outside Attachment A; a compensating control named above is found not to be in place, including tenant restrictions v2 device-side signaling at a site being cut over; the SC-7(4) review finds the steering log no longer evidences the exception's boundaries; or the exception is withdrawn during a rollback.</p>
       </div>
     </div>
 
@@ -395,6 +401,7 @@
         <ul>
           <li>Whether ThousandEyes Enterprise Agents hosted on Catalyst routers can register to the government platform instance. Standalone agent deployment is the fallback and does not affect this exception.</li>
           <li>Microsoft publishes no rationale for the GCC limitation. None is required for this decision — the limitation is documented and the exception does not rest on why it exists.</li>
+          <li>Whether Global Secure Access, and therefore universal tenant restrictions, is available to this tenant in the government cloud. The Windows Group Policy path at clause 4 does not depend on the answer; the fallback does.</li>
           <li>Engineering detail in the supporting material was assembled from vendor and CISA documentation accessed indirectly, and is being reconfirmed against current versions — including the TIC 3.0 Security Capabilities Catalog revision cited at Attachment B.</li>
         </ul>
       </div>
