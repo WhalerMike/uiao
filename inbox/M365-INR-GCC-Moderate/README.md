@@ -274,33 +274,60 @@ actually rely on, a sharper conclusion than "three paths exist".
 The reconciliation's three corrections are discharged, its five additive items
 are folded into their owners, all three instruments are rebuilt, and the §5.5
 error the set inherited is fixed at source. **One thing remains unverified
-rather than open:** Attachment B's twelve PEP capability group names rest on
-convergent secondary evidence because cisa.gov is blocked from this
-environment. That is disclosed in Attachment B's own note and in the catalog
-sourcing section above. It closes when someone on an unrestricted network
-opens the v3.3 catalog and counts the capability-group tables.
+rather than open:** Attachment B's twelve PEP capability group names have not
+been read from the catalog, and cannot be from this environment — cisa.gov is
+refused at the egress proxy. A verification attempt on 11 September 2026
+confirmed the block and failed to establish the list by any other allowed
+means. See *Catalog sourcing* above for what is and is not known, and note
+that the earlier claim of "two independent derivations" was itself overstated.
+It closes when someone on an unrestricted network opens the v3.3 catalog and
+counts the capability-group tables.
 
-### Catalog sourcing, and what it is worth
+### Catalog sourcing — the group list is NOT verified
 
-cisa.gov is blocked by this environment's egress policy — it was blocked
-during drafting and still is, both for the core-guidance page and for the
-catalog PDFs directly. Attachment B's catalog facts therefore rest on
-**convergent secondary evidence, not the document**:
+cisa.gov is blocked by this environment's egress policy. The block is at the
+proxy, not the tool: `curl` fails at the CONNECT tunnel with **403**, for the
+core-guidance page and the catalog PDFs alike. The proxy's own guidance is to
+report blocked hosts rather than route around them, so no mirror of the
+document was sought.
 
-- **v3.3 (July 2025) is current**, and no later revision was found as of
-  September 2026.
-- **Twelve PEP capability groups.** Search results enumerate ten from the
-  2023 catalog — Files, Email, Web, Networking, Resiliency, DNS, Intrusion
-  Detection, Enterprise, Unified Communications and Collaboration, Data
-  Protection — and separately report that **v3.3 added Services and Identity**.
-  Ten plus two is the twelve in the table; the two derivations are
-  independent, which is the only reason this is worth recording at all.
-- The **"eight groups"** phrasing that recurs in search results is stale body
-  text from earlier revisions, which is what makes a copied-forward table
-  dangerous: it reads as complete while missing four groups.
+**Attachment B's PEP capability group list has not been checked against the
+catalog, and cannot be from this environment.** An earlier version of this
+section described the twelve-group figure as resting on "two independent
+derivations". *That was overstated, and the overstatement is the point worth
+recording.* Both derivations — the ten groups named in the 2023 catalog, and
+Services and Identity added in v3.3 — came from the same search tool
+summarizing the same corpus of cisa.gov PDFs that it can read and this
+environment cannot. Two claims through one intermediary is not two sources.
 
-This is weaker sourcing than anything else in the set, and Attachment B says
-so in its own note rather than leaving the reader to assume otherwise.
+What is known, at the confidence it is actually known:
+
+| Claim | Status |
+| --- | --- |
+| v3.3 exists, filed under `2025-07` | **Solid** — an artifact-level fact from a returned URL path |
+| No revision later than v3.3 as of September 2026 | Absence of evidence from one search tool |
+| Twelve PEP capability groups, and their names | **Unverified** — one intermediary, no primary read |
+| Services and Identity are new in v3.3 | **Unverified** — same intermediary |
+| Universal Security Capabilities are a separate category from PEP groups | Consistent across every source seen, including the structure of the 2023 catalog |
+
+A later attempt to pin the v3.3 table of contents by search produced a result
+that **echoed the query back** — returning "Enterprise Services" as a group
+name, which is two of the names in the query run together — and simultaneously
+denied that v3.3 exists, contradicting the search that surfaced its path. That
+is what this class of evidence looks like when pushed, and it is why the table
+above stops where it does.
+
+The **"eight groups"** phrasing that recurs in search results is stale body
+text from earlier revisions. Whatever the true current count, a table copied
+forward from an old revision reads as complete while being short, so the
+version must be named wherever the list is used.
+
+**How this closes:** open
+[the v3.3 catalog](https://www.cisa.gov/sites/default/files/2025-07/CISA%20TIC%203.0%20Security%20Capabilities%20Catalog%20v3.3%20(Volume%203).pdf)
+and count the PEP capability group tables, or allowlist cisa.gov for this
+environment. Until one of those happens, Attachment B's list is a working
+assumption that is disclosed as one — in its own note and here — and not a
+verified enumeration.
 
 ## Research limitation
 
