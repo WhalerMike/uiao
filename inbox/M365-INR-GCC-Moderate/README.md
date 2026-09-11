@@ -196,11 +196,48 @@ This correction belongs in §5.5 and is **not** in this set's PR, which is
   their content, which is **AU-3**'s requirement, incorporated by AU-12.
   The memo now names AU-3 with AU-12 by reference. §5.5 could take the same
   refinement.
+- **`attachment-b-architecture-review.html` rebuilt.** The Web row now names
+  SI-3, SI-4(10), AC-4 and AU-3 and says SC-8 is not punctured, instead of
+  "inspection of that set is forgone". Every PEP row carries a proposed
+  NIST SP 800-53 mapping, with the column labelled as the board's own work
+  product — the catalog maps PEP capabilities to NIST CSF, not to 800-53, so
+  presenting that column as a catalog citation would be wrong. The Enterprise
+  row carries the tenant-restrictions-v2 move to endpoint signaling from memo
+  clause 4, and device-side signaling becomes a re-assessment trigger.
+- **Two structural defects fixed in Attachment B.** The capability table had a
+  **duplicate Enterprise row** while claiming twelve groups, and it carried
+  **"Universal capabilities" as a thirteenth row inside a table headed "PEP
+  capability group"**. Universal Security Capabilities are a separate catalog
+  category — enterprise-level and expected in every use case, where PEP
+  capabilities apply according to use-case scope. They now have their own
+  table covering the three this design actually changes: Central Log
+  Management with Analysis, Auditing and Accounting, and **Policy Enforcement
+  Parity**, the capability the design is most in tension with.
 - **Still open:** `tic3-sdwan-vs-dia` §5.5 carries the overstatement above and
-  is unfixed; Attachment B's Web row still reads "content inspection forgone"
-  and should carry SI-3, SI-4(10), AC-4 and AU-12 instead; item 5
-  (terminology) is not yet folded into feature-gap §6; Attachment B's twelve
-  PEP capability group names are unverified against SCC v3.3 from source.
+  is unfixed; item 5 (terminology) is not yet folded into feature-gap §6;
+  Attachment A has not been rebuilt.
+
+### Catalog sourcing, and what it is worth
+
+cisa.gov is blocked by this environment's egress policy — it was blocked
+during drafting and still is, both for the core-guidance page and for the
+catalog PDFs directly. Attachment B's catalog facts therefore rest on
+**convergent secondary evidence, not the document**:
+
+- **v3.3 (July 2025) is current**, and no later revision was found as of
+  September 2026.
+- **Twelve PEP capability groups.** Search results enumerate ten from the
+  2023 catalog — Files, Email, Web, Networking, Resiliency, DNS, Intrusion
+  Detection, Enterprise, Unified Communications and Collaboration, Data
+  Protection — and separately report that **v3.3 added Services and Identity**.
+  Ten plus two is the twelve in the table; the two derivations are
+  independent, which is the only reason this is worth recording at all.
+- The **"eight groups"** phrasing that recurs in search results is stale body
+  text from earlier revisions, which is what makes a copied-forward table
+  dangerous: it reads as complete while missing four groups.
+
+This is weaker sourcing than anything else in the set, and Attachment B says
+so in its own note rather than leaving the reader to assume otherwise.
 
 ## Research limitation
 
