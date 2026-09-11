@@ -206,6 +206,7 @@
     margin: 0;
   }
   .lead p { margin: 0; font-size: 16.5px; line-height: 1.5; }
+  .lead p.sub { font-size: 14px; line-height: 1.55; color: var(--ink-2); }
 
   /* ---------- decision block ---------- */
 
@@ -287,20 +288,22 @@
   <div class="draftbar">Draft for completion — bracketed fields require agency values before routing for signature</div>
 
   <header>
-    <h1>Risk acceptance: Microsoft 365 Optimize endpoint inspection exemption at branch direct-internet egress</h1>
+    <h1>SC-7(4) traffic-flow exception: Microsoft 365 Optimize endpoint set at branch direct-internet egress</h1>
     <dl class="fields">
       <div><dt>To</dt><dd><span class="fill">[Authorizing Official — name, title]</span></dd></div>
       <div><dt>From</dt><dd><span class="fill">[System Owner / ISSO — name, title]</span></dd></div>
       <div><dt>System</dt><dd><span class="fill">[System name and FISMA identifier]</span></dd></div>
       <div><dt>Date</dt><dd><span class="fill">[Date]</span></dd></div>
       <div><dt>Decision by</dt><dd><span class="fill">[Date needed]</span> — gates pilot cutover</dd></div>
-      <div><dt>Appendix</dt><dd>Technical briefing, <em>Informed Network Routing in GCC</em> — Sections 1, 8 and 10</dd></div>
+      <div><dt>Controls</dt><dd>SC-7(4) exception; SI-3, SI-4(10), AC-4, AU-3/AU-12 affected; SC-8 not affected</dd></div>
+      <div><dt>Appendix</dt><dd>Technical briefing, <em>Informed Network Routing in GCC</em> — Sections 1, 8 and 10; contract fixture FINDING-001</dd></div>
     </dl>
   </header>
 
   <div class="lead">
     <h2>Decision requested</h2>
-    <p>Accept the risk of exempting the Microsoft 365 <strong>Optimize</strong> endpoint set from TLS break-and-inspect at branch direct-internet egress, for the <span class="fill">[N]</span> pilot sites listed at Attachment A, subject to the compensating controls at clause 4 and the reversal commitments at clause 5.</p>
+    <p>Approve a <strong>documented traffic-flow exception under SC-7(4)</strong> exempting the Microsoft 365 <strong>Optimize</strong> endpoint set from TLS break-and-inspect at branch direct-internet egress, for the <span class="fill">[N]</span> pilot sites listed at Attachment A.</p>
+    <p class="sub">The controls the exception punctures are named at clause 3. One of them — tenant restrictions v2 — cannot be re-established at the network layer once the proxy is bypassed and has to be re-signaled from the endpoint; clause 4 states how, and what it does not cover. Compensating controls are at clause 6 and the reversal commitments at clause 7.</p>
   </div>
 
   <div class="clauses">
@@ -308,15 +311,45 @@
     <div class="clause">
       <div class="clause-body">
         <h2>Background</h2>
-        <p>Microsoft 365 Informed Network Routing, which supplies Microsoft's network-quality signal to SD-WAN path selection, is not available to GCC Moderate tenants. Microsoft states this directly in its product documentation. Commercial and sovereign cloud feature parity is sequenced rather than simultaneous, and the capability is absent from all five of the non-commercial clouds Microsoft names. The agency's Catalyst SD-WAN fabric will therefore steer Microsoft 365 traffic using Cloud OnRamp for SaaS probe measurements alone, with local direct internet access at branch sites.</p>
-        <p>This is a product availability limitation in the government cloud, not a FedRAMP or authorization boundary matter, and it requires no FedRAMP action.</p>
+        <p>Microsoft 365 Informed Network Routing, which supplies Microsoft's network-quality signal to SD-WAN path selection, is not available to GCC Moderate tenants. Microsoft states this directly in its product documentation, and the agency's own substrate encodes it as a machine-enforced contract fixture — <strong>FINDING-001</strong> — so the constraint is designed for rather than missed. Commercial and sovereign cloud feature parity is sequenced rather than simultaneous; the capability is absent from all five of the non-commercial clouds Microsoft names.</p>
+        <p>The agency's Catalyst SD-WAN fabric will therefore steer Microsoft 365 traffic using Cloud OnRamp for SaaS probe measurements alone, with local direct internet access at branch sites. This is a product-availability limitation in the government cloud, not a FedRAMP or authorization boundary matter, and it requires no FedRAMP action.</p>
       </div>
     </div>
 
     <div class="clause">
       <div class="clause-body">
-        <h2>Risk being accepted</h2>
-        <p>Traffic to Microsoft 365 Optimize endpoints will egress locally at pilot branch sites without traversing the campus policy enforcement point, and will not be subject to TLS break-and-inspect or packet inspection at that egress. Content inspection of this specific traffic is forgone. This follows Microsoft's published connectivity guidance, which recommends bypassing such inspection for these endpoints because they are encrypted and secured at the client and service ends, and because re-encrypting inspected traffic can introduce protocol errors and risk of its own. The agency is implementing the vendor's documented design, not departing from it.</p>
+        <h2>What is being sought: an SC-7(4) traffic-flow exception</h2>
+        <p>This is not a general risk acceptance. It is a <strong>documented traffic-flow exception under SC-7(4)</strong>, and it carries that control's discipline: a named exception with its supporting mission need, reviewed on a stated cadence, with the SD-WAN steering log serving as the <em>enforcement evidence</em> that the exception's boundaries hold.</p>
+        <p>The distinction matters at assessment. Documentation alone is not a compensating control. What makes the carve-out defensible is that the DPI classification steering an Optimize flow around the overlay is itself a logged, per-flow record of which traffic rests on application-layer encryption and which rides the tunnel.</p>
+      </div>
+    </div>
+
+    <div class="clause">
+      <div class="clause-body">
+        <h2>Controls affected, named</h2>
+        <p>Traffic to Microsoft 365 Optimize endpoints will egress locally at pilot branch sites without traversing the campus policy enforcement point. Naming what that punctures, rather than describing it as "inspection forgone":</p>
+        <ul>
+          <li><strong>SI-3</strong> — no secure web gateway inline malicious-code inspection on the bypassed flows.</li>
+          <li><strong>SI-4(10)</strong> — no visibility into the content of encrypted communications. The TLS break-and-inspect that satisfies this control for proxied flows is absent by design here.</li>
+          <li><strong>AC-4</strong> — no CASB information-flow enforcement on those flows.</li>
+          <li><strong>AU-3, and AU-12 by reference</strong> — records are still generated for the bypassed flows, so what degrades is their <em>content</em>: five-tuple plus steering metadata over encrypted media, not user, device, application, action and data type. AU-12 requires generation with the content AU-3 defines, so naming AU-3 states the degradation precisely.</li>
+        </ul>
+        <p><strong>SC-8 is explicitly not a gap</strong>, and the memo says so to forestall the obvious challenge. Optimize flows carry their own FIPS-validated encryption — TLS, and SRTP for Teams media — and the IPsec overlay continues to encrypt every flow that does not. This is the per-flow closure the coverage doctrine already concedes, not a new hole.</p>
+        <p>This follows Microsoft's published connectivity guidance, which recommends bypassing inspection for these endpoints because they are secured at the client and service ends and because re-encrypting inspected traffic introduces protocol errors and risk of its own. The agency is implementing the vendor's documented design, not departing from it.</p>
+      </div>
+    </div>
+
+    <div class="clause">
+      <div class="clause-body">
+        <h2>The control that moves off the network path: tenant restrictions</h2>
+        <p><strong>Tenant-to-tenant exfiltration over an Optimize-categorized path</strong> is the case an assessor will construct against this exemption, and it should be answered in the record rather than discovered at assessment.</p>
+        <p>The answer is that tenant restrictions v2 does not depend on the proxy. Microsoft documents three enforcement paths for a single cross-tenant access policy, and proxy header injection is the weakest of them: it signals at the <em>authentication plane only</em> and does not reach the data plane. The agency therefore does not lose this control by bypassing the proxy — it re-signals it from the endpoint, where the coverage is better than what the proxy provided.</p>
+        <ul>
+          <li><strong>Windows Group Policy signaling</strong> on corporate-owned devices — no proxy required, and the only path that carries <em>both</em> authentication-plane and data-plane protection. Policy evaluation remains in the cloud; the device supplies the signal. This is the agency's primary path.</li>
+          <li><strong>Universal tenant restrictions via Global Secure Access</strong> — authentication plane on every operating system, browser and form factor, and data plane for Microsoft Graph only. Availability in the government cloud is unconfirmed, so this is a fallback rather than a plan.</li>
+          <li><strong>Proxy header injection</strong> — the path being given up, and the one the exemption removes. Authentication plane only.</li>
+        </ul>
+        <p>Two limits are stated rather than glossed. The Group Policy path covers Office applications, Universal Windows Platform .NET applications and Microsoft Edge; non-Edge browsers and non-Windows devices are not covered by it, and any such population at a pilot site is in scope for the exemption but not for this compensating control. Parts of tenant restrictions v2 remain in preview. <strong>This control is therefore compensable but not automatically compensated:</strong> it is in force only if the device-side signaling is configured and verified before cutover, which clause 6 records as a precondition and clause 8 as a return trigger.</p>
       </div>
     </div>
 
@@ -325,8 +358,8 @@
         <h2>Scope, and why it is bounded</h2>
         <ul>
           <li><strong>Endpoints:</strong> the Optimize category only, enumerated from the Microsoft 365 IP and URL web service, <code>Instance=Worldwide</code> — the instance serving GCC. The Allow and Default categories are <em>not</em> in scope and remain subject to existing inspection.</li>
-          <li><strong>Change control:</strong> the set is machine-readable and published, with additions released 30 days before they become active. Scope is reviewed on the feed's monthly update cadence.</li>
-          <li><strong>Sites:</strong> the pilot sites at Attachment A only. Fleet expansion is not authorized by this memo.</li>
+          <li><strong>Change control:</strong> the set is machine-readable and published, with additions released 30 days before they become active. Scope is reviewed on the feed's monthly update cadence — which is also the SC-7(4) review cadence.</li>
+          <li><strong>Sites:</strong> the pilot sites at Attachment A only, recorded per circuit rather than per site. Fleet expansion is not authorized by this memo.</li>
           <li><strong>Architecture:</strong> classified under TIC 3.0 as Branch Office to Cloud Service Provider. Architecture review sign-off at Attachment B.</li>
         </ul>
       </div>
@@ -334,13 +367,14 @@
 
     <div class="clause">
       <div class="clause-body">
-        <h2>Compensating controls</h2>
+        <h2>Compensating controls, by plane</h2>
+        <p>Each of these is named because the network can no longer see what it covers. A control listed here without a reference is not yet a compensating control.</p>
         <ul>
-          <li>Tenant-side content controls — <span class="fill">[Defender for Office 365 / DLP policies in force]</span>.</li>
-          <li>Conditional Access enforcement on the affected services — <span class="fill">[policy references]</span>.</li>
-          <li>Endpoint controls on managed devices — <span class="fill">[EDR / configuration baseline]</span>.</li>
-          <li>Path and application monitoring via Cisco ThousandEyes for Government (FedRAMP Moderate authorized), with pre-cutover baselines captured at every pilot site.</li>
-          <li>Branch policy enforcement point telemetry reaching CISA's Cloud Log Aggregation Warehouse under reporting pattern <span class="fill">[reference]</span>.</li>
+          <li><strong>Identity plane</strong> — Conditional Access on the affected services, and a cross-tenant access policy with tenant restrictions v2 signaled from the endpoint per clause 4. <strong>Precondition to cutover:</strong> device-side signaling configured and verified at every pilot site, with the uncovered device and browser population enumerated: <span class="fill">[policy references; GPO or Intune configuration; uncovered population]</span>.</li>
+          <li><strong>Service plane</strong> — Defender for Office 365 and Purview DLP for content the network cannot inspect: <span class="fill">[policies in force]</span>.</li>
+          <li><strong>Endpoint</strong> — EDR and endpoint DLP on managed devices, which see the content after decryption: <span class="fill">[EDR / configuration baseline]</span>.</li>
+          <li><strong>Evidence</strong> — the SD-WAN steering log as SC-7(4) enforcement evidence, plus branch policy enforcement point telemetry reaching CISA's Cloud Log Aggregation Warehouse under reporting pattern <span class="fill">[reference]</span>. This is the AU-12 contract for the SD-WAN layer.</li>
+          <li><strong>Path assurance</strong> — Cisco ThousandEyes for Government (FedRAMP Moderate authorized), with pre-cutover baselines captured at every pilot site, and agents verified as registered to the government instance.</li>
         </ul>
       </div>
     </div>
@@ -349,14 +383,14 @@
       <div class="clause-body">
         <h2>Reversal</h2>
         <p>Steering reverts per site within one shift by network operations, without an approval cycle. Reversion returns traffic to backhaul through the campus policy enforcement point, restoring the prior enforcement posture rather than degrading it.</p>
-        <p>Withdrawal of this exemption is a tracked step of any such rollback. The agency commits that the exemption will not remain in force at sites returned to backhaul.</p>
+        <p>Withdrawal of the exception is a tracked step of any such rollback. The agency commits that the exception will not remain in force at sites returned to backhaul — leaving it in place would retain the accepted risk while forfeiting the performance it was accepted for.</p>
       </div>
     </div>
 
     <div class="clause">
       <div class="clause-body">
         <h2>Return to the Authorizing Official</h2>
-        <p>The system owner will return for a further decision if: the exemption scope widens beyond the Optimize category; sites are added outside Attachment A; a compensating control named at clause 4 is found not to be in place; or the exemption is withdrawn during a rollback.</p>
+        <p>The system owner will return for a further decision if: the exception scope widens beyond the Optimize category; sites are added outside Attachment A; a compensating control named above is found not to be in place, including tenant restrictions v2 device-side signaling at a site being cut over; the SC-7(4) review finds the steering log no longer evidences the exception's boundaries; or the exception is withdrawn during a rollback.</p>
       </div>
     </div>
 
@@ -365,9 +399,10 @@
         <h2>Matters not yet confirmed</h2>
         <p>Disclosed for completeness; none blocks this decision, and each is tracked to closure:</p>
         <ul>
-          <li>Whether ThousandEyes Enterprise Agents hosted on Catalyst routers can register to the government platform instance. Standalone agent deployment is the fallback and does not affect this exemption.</li>
-          <li>Microsoft has published no rationale for the GCC limitation; the agency's working explanation is inference, not a vendor statement.</li>
-          <li>The engineering detail in the appendix was assembled from vendor and CISA documentation accessed indirectly, and is being reconfirmed against current versions.</li>
+          <li>Whether ThousandEyes Enterprise Agents hosted on Catalyst routers can register to the government platform instance. Standalone agent deployment is the fallback and does not affect this exception.</li>
+          <li>Microsoft publishes no rationale for the GCC limitation. None is required for this decision — the limitation is documented and the exception does not rest on why it exists.</li>
+          <li>Whether Global Secure Access, and therefore universal tenant restrictions, is available to this tenant in the government cloud. The Windows Group Policy path at clause 4 does not depend on the answer; the fallback does.</li>
+          <li>Engineering detail in the supporting material was assembled from vendor and CISA documentation accessed indirectly, and is being reconfirmed against current versions — including the TIC 3.0 Security Capabilities Catalog revision cited at Attachment B.</li>
         </ul>
       </div>
     </div>

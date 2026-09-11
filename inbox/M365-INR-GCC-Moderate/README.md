@@ -26,10 +26,11 @@ reasoning carries three errors recorded below.
 The briefing grades every claim documented / inferred / unsupported and
 names the check that would settle the open ones.
 
-The memo carries one bounded ask: risk acceptance for exempting the
-M365 Optimize endpoint set from TLS break-and-inspect at branch DIA
-egress. Attachment A is the site and egress-range register; Attachment B
-is the TIC 3.0 classification and PEP capability transfer.
+The memo carries one bounded ask: a **documented SC-7(4) traffic-flow
+exception** exempting the M365 Optimize endpoint set from TLS
+break-and-inspect at branch DIA egress. Attachment A is the site and
+egress-range register; Attachment B is the TIC 3.0 classification and PEP
+capability transfer.
 
 All three instruments are **templates with bracketed fields**, not
 completed records.
@@ -86,13 +87,12 @@ Three of these are load-bearing. Fix them before any of this is reused.
    Azure storage cannot by itself explain exclusion from GCC Moderate. What
    survives of the inference is the third-party SaaS handoff to the SD-WAN
    vendor; the sovereign-storage premise does not.
-2. **The AO memo omits a structural incompatibility an assessor will
-   construct.** Per tic3-sdwan-vs-dia §5.5, Microsoft's **tenant restrictions
-   v2** enforcement requires header injection at a proxy in the traffic path.
-   A flow that bypasses the proxy cannot have tenant restrictions enforced on
-   it, and tenant-to-tenant exfiltration over an Optimize-categorized path is
-   named there as exactly the case an assessor will build. The memo's
-   compensating-controls list does not mention this.
+2. **The AO memo omits the tenant-restrictions question an assessor will
+   construct.** Per tic3-sdwan-vs-dia §5.5, tenant-to-tenant exfiltration over
+   an Optimize-categorized path is exactly the case an assessor will build, and
+   the memo's compensating-controls list did not mention it. **§5.5's stated
+   reason is itself wrong** — see *Correction the briefing makes to the repo*
+   below. The gap in the memo was real; the explanation offered for it was not.
 3. **The exemption is framed too loosely.** The repo's compliant shape is
    **SC-7(4) documented traffic-flow exception discipline** — a named
    exception with its mission need, a review cadence, and the steering log as
@@ -135,6 +135,72 @@ owns the subject. Fold items 1–4 above into that appendix and item 5 into
 feature-gap §6. The three instruments (memo, Attachment A, Attachment B) are
 the genuinely new artifacts and are worth keeping, but should be rebuilt on
 the repo's own control vocabulary and cite FINDING-001.
+
+### Correction the briefing makes to the repo
+
+**`tic3-sdwan-vs-dia` §5.5 overstates the tenant-restrictions-v2
+constraint, and Book 05 Appendix A should not inherit it.** §5.5 says
+enforcement requires header injection at a proxy in the traffic path, so a
+proxy-bypassed flow cannot have tenant restrictions enforced on it. Microsoft
+Learn's *Set up tenant restrictions v2* page documents otherwise. A single
+cross-tenant access policy has **three** enforcement paths:
+
+| Path | Proxy required | Authentication plane | Data plane |
+| --- | --- | --- | --- |
+| Windows Group Policy on corporate-owned devices | No | Yes | **Yes** |
+| Universal tenant restrictions (Global Secure Access) | No | Yes, all platforms | Graph only |
+| Corporate proxy header injection | Yes | Yes | **No** |
+
+The v1-versus-v2 comparison table on the same page is explicit that proxy
+enforcement is the **v1** model, and that v2's Windows device-management path
+"provides both authentication plane and data plane protection… A corporate
+proxy isn't required for policy enforcement." The proxy path is not merely
+optional under v2 — it is the *weakest* of the three, being the only one that
+does not reach the data plane.
+
+So the constraint is real in a narrower form: the agency loses the proxy
+signaling path and must re-signal from the endpoint. It is not a structural
+incompatibility and not uncompensable. Two genuine limits survive: the Group
+Policy path covers Office apps, UWP .NET apps and Microsoft Edge, so non-Edge
+browsers and non-Windows devices are uncovered; and Global Secure Access
+availability in the government cloud is unconfirmed.
+
+Source: <https://learn.microsoft.com/en-us/entra/external-id/tenant-restrictions-v2>.
+This correction belongs in §5.5 and is **not** in this set's PR, which is
+`inbox/`-only.
+
+### Rebuild status
+
+- **Items 1–4 folded** into Book 05 Appendix A (PR #1513).
+- **`ao-decision-memo.html` rebuilt** on the control vocabulary. It now
+  opens on SC-7(4) rather than generic risk acceptance, cites FINDING-001
+  in the background clause, names SI-3, SI-4(10), AC-4 and AU-12 as the
+  punctured controls, states that **SC-8 is not a gap** to forestall the
+  obvious challenge, carries tenant restrictions v2 as its own clause, and
+  groups compensating controls by plane with the rule that a control listed
+  without a reference is not yet a compensating control. The retracted
+  commercial-Azure inference is gone: the memo now says Microsoft publishes
+  no rationale and none is required for this decision. Corrections 1–3 above
+  are all discharged in the memo.
+- **Memo clause 4 corrected after first draft.** The rebuild initially wrote
+  tenant restrictions v2 as a structural incompatibility, following §5.5. The
+  Microsoft Learn check above contradicted it. The clause now reads as a
+  control that moves from the network plane to the endpoint, names all three
+  enforcement paths, makes device-side signaling a precondition to cutover and
+  a return trigger, and states what the Group Policy path does not cover.
+- **Control mapping verified.** SI-3, SI-4(10), AC-4, SC-7(4) and SC-8 are
+  each used against their NIST SP 800-53 Rev 5 definitions; SC-7(4)(c)-(d)
+  is the exception-documentation and review-cadence discipline the memo
+  claims it is. One refinement: §5.5 and the first draft cited **AU-12** for
+  thin audit content, but records are still generated — what degrades is
+  their content, which is **AU-3**'s requirement, incorporated by AU-12.
+  The memo now names AU-3 with AU-12 by reference. §5.5 could take the same
+  refinement.
+- **Still open:** `tic3-sdwan-vs-dia` §5.5 carries the overstatement above and
+  is unfixed; Attachment B's Web row still reads "content inspection forgone"
+  and should carry SI-3, SI-4(10), AC-4 and AU-12 instead; item 5
+  (terminology) is not yet folded into feature-gap §6; Attachment B's twelve
+  PEP capability group names are unverified against SCC v3.3 from source.
 
 ## Research limitation
 
