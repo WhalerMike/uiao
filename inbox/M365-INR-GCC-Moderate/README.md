@@ -242,11 +242,43 @@ actually rely on, a sharper conclusion than "three paths exist".
 - **Rule-label collision fixed.** The completion rules render as `A1`–`A5`
   badges, which collided with the table numbering once Table A1 existed. They
   are now `R1`–`R5` and the checklist references them by that name.
-- **Still open:** item 5 (terminology) is not yet folded into feature-gap §6;
-  the memo and Attachment B still list Global Secure Access availability in
-  the government cloud as unconfirmed, which
-  `entra-security-baseline-federal-crosswalk` answers — non-FIPS in GCC
-  Moderate, unavailable in GCC High and DoD.
+- **Item 5 folded into feature-gap §6.** The section said "GCC Moderate" is
+  not a Microsoft product name. Right in substance, overstated as written:
+  Microsoft's own informed network routing page says the feature "supports
+  tenants in WW Commercial cloud but not the **GCC Moderate**, GCC High, DoD,
+  Germany, or China clouds", read firsthand from
+  <https://learn.microsoft.com/en-us/microsoft-365/enterprise/office-365-network-mac-perf-cpe>
+  on 11 September 2026. §6 now distinguishes the two: "GCC Moderate" is not an
+  *offering* name — the offering is Government Community Cloud and the listing
+  is `MSO365MT` — but it is Microsoft's own usage for the *cloud environment*.
+  An agency writing it for the environment is following Microsoft; what it
+  cannot do is treat the phrase as naming a distinct product or a distinct
+  FedRAMP authorization.
+- **The GSA question is closed, and the answer narrows the design.** The memo
+  and Attachment B recorded Global Secure Access availability in the
+  government cloud as unconfirmed.
+  `entra-security-baseline-federal-crosswalk` answers it: **non-FIPS in GCC
+  Moderate, unavailable in GCC High and DoD**. Both documents now say so. The
+  consequence is not cosmetic — with the proxy path given up by the exemption
+  and GSA unavailable, **Windows Group Policy signaling is not the preferred
+  tenant-restrictions path but the only one**, which raises the stakes on the
+  population it does not cover (non-Edge browsers, non-Windows devices).
+- **Memo's sourcing disclosure tightened.** It said engineering detail came
+  from "vendor and CISA documentation accessed indirectly". Microsoft
+  documentation has since been read firsthand twice and cited directly; CISA
+  and Cisco remain indirect. The bullet now says which is which and names
+  Attachment B's capability-group list as the weakest-sourced claim in the set.
+
+### All README items are now closed
+
+The reconciliation's three corrections are discharged, its five additive items
+are folded into their owners, all three instruments are rebuilt, and the §5.5
+error the set inherited is fixed at source. **One thing remains unverified
+rather than open:** Attachment B's twelve PEP capability group names rest on
+convergent secondary evidence because cisa.gov is blocked from this
+environment. That is disclosed in Attachment B's own note and in the catalog
+sourcing section above. It closes when someone on an unrestricted network
+opens the v3.3 catalog and counts the capability-group tables.
 
 ### Catalog sourcing, and what it is worth
 
