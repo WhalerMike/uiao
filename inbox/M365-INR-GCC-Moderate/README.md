@@ -93,6 +93,8 @@ Three of these are load-bearing. Fix them before any of this is reused.
    the memo's compensating-controls list did not mention it. **§5.5's stated
    reason is itself wrong** — see *Correction the briefing makes to the repo*
    below. The gap in the memo was real; the explanation offered for it was not.
+   **§5.5 has since been corrected** and no longer carries either the
+   tenant-restrictions overstatement or the AU-12/AU-3 imprecision.
 3. **The exemption is framed too loosely.** The repo's compliant shape is
    **SC-7(4) documented traffic-flow exception discipline** — a named
    exception with its mission need, a review cadence, and the steering log as
@@ -166,8 +168,12 @@ browsers and non-Windows devices are uncovered; and Global Secure Access
 availability in the government cloud is unconfirmed.
 
 Source: <https://learn.microsoft.com/en-us/entra/external-id/tenant-restrictions-v2>.
-This correction belongs in §5.5 and is **not** in this set's PR, which is
-`inbox/`-only.
+**This correction has been applied to §5.5**, along with the same document's
+Part 7 ledger row and references entry. §5.5 additionally now records that
+`entra-security-baseline-federal-crosswalk` lists Global Secure Access as
+non-FIPS in GCC Moderate and unavailable in GCC High and DoD — which makes
+the Windows Group Policy path the only one a FedRAMP Moderate agency can
+actually rely on, a sharper conclusion than "three paths exist".
 
 ### Rebuild status
 
@@ -213,9 +219,34 @@ This correction belongs in §5.5 and is **not** in this set's PR, which is
   table covering the three this design actually changes: Central Log
   Management with Analysis, Auditing and Accounting, and **Policy Enforcement
   Parity**, the capability the design is most in tension with.
-- **Still open:** `tic3-sdwan-vs-dia` §5.5 carries the overstatement above and
-  is unfixed; item 5 (terminology) is not yet folded into feature-gap §6;
-  Attachment A has not been rebuilt.
+- **`attachment-a-site-register.html` rebuilt.** The register asserted the
+  memo's SC-7(4) discipline without carrying the fields the control requires.
+  SC-7(4)(c) wants each exception documented with its **supporting mission
+  need and the duration of that need**; (d) wants the exceptions **reviewed
+  on a cadence and removed when the need lapses**. The register had site IDs,
+  circuits and egress ranges and none of that. New **Table A1 — Exception
+  record** carries mission need, in-force date, expiry-or-ending-condition
+  and last review, one row per site (where the scope table is one row per
+  circuit, because mission need is a site property and an egress range is a
+  circuit property). The change log now records SC-7(4) reviews including the
+  ones that change nothing, since a register showing no reviews evidences no
+  reviews. Expiry may be a condition rather than a date but may not be blank:
+  an exception with no end is a permanent traffic-flow policy change, which
+  is a different decision from the one the memo asks for.
+- **The cutover gate now matches the memo.** The memo and Attachment B both
+  make device-side tenant restrictions signaling a precondition to cutover,
+  but Attachment A — the document that actually gates a site — had no such
+  check. Added as a readiness column and an admission-checklist line, with
+  the uncovered device and browser population to be enumerated rather than
+  assumed empty.
+- **Rule-label collision fixed.** The completion rules render as `A1`–`A5`
+  badges, which collided with the table numbering once Table A1 existed. They
+  are now `R1`–`R5` and the checklist references them by that name.
+- **Still open:** item 5 (terminology) is not yet folded into feature-gap §6;
+  the memo and Attachment B still list Global Secure Access availability in
+  the government cloud as unconfirmed, which
+  `entra-security-baseline-federal-crosswalk` answers — non-FIPS in GCC
+  Moderate, unavailable in GCC High and DoD.
 
 ### Catalog sourcing, and what it is worth
 
