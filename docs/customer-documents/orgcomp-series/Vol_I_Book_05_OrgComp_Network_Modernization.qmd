@@ -404,6 +404,8 @@ The following table maps each concept in this narrative to the federal mandate, 
 **INR telemetry is a commercial-cloud capability — it is unavailable in this appendix's own scope.** Microsoft 365 Informed Network Routing is not offered in the GCC Moderate cloud. Microsoft Learn states the feature "supports tenants in WW Commercial cloud but not the GCC Moderate, GCC High, DoD, Germany, or China clouds," and the substrate encodes this as a machine-enforced contract fixture — **FINDING-001** (`tests/fixtures/contract/m365/informed-network-routing-unavailable-gcc-moderate.yaml`), which requires the adapter to return a `CapabilityUnavailable` claim rather than assume INR telemetry.
 
 **What this means for the architecture below.** The INR-fed telemetry channel — Microsoft sharing per-endpoint path and performance signals with the SD-WAN fabric — is **not** available to a GCC Moderate agency. Everything else in this appendix holds: the branch still runs **Cloud OnRamp for SaaS**, which probes the published M365 GCC Optimize/Allow endpoints directly and steers to the best local-breakout path from its own measurements. The control table, KSI evidence contracts, and TIC alignment are satisfied by probe-based steering; only the Microsoft-fed telemetry enrichment is lost. Where the sections below reference INR telemetry, read them as the commercial-cloud target state and Cloud OnRamp probe-based steering as the GCC Moderate implementation. Cite FINDING-001 in the boundary documentation so an assessor sees the constraint was designed for, not missed.
+
+**Confirming it in your own tenant.** The check is first-party and takes five minutes, and it is worth running before the architecture is drawn rather than after. In the Microsoft 365 admin center, open **Health → Network connectivity → Settings**. A commercial tenant offers an **SD-WAN solution** configuration pane there; a GCC Moderate tenant does not. Absence of that pane is tenant-specific evidence an assessor can act on, which a documentation citation alone is not.
 :::
 
 ## A.1 — Cisco Catalyst SD-WAN: What It Is and What It Is Not
@@ -478,9 +480,17 @@ The integration is implemented through **Cisco SD-WAN Cloud OnRamp for SaaS**, a
 
 : Cisco Catalyst SD-WAN + Microsoft INR Integration Paths — FedRAMP Moderate {.striped .hover}
 
+::: {.aan-important}
+**The failure mode that looks like success: resolution that is not local to the egress.** Cloud OnRamp measures the path to whichever front door the branch actually resolves. Microsoft's connectivity principles require name resolution to occur **close to the network egress**, and name remote lookups as a cause of network hairpin — the Distributed Service Front Door steers on where the *resolver* appears to be, not where the client is. A branch that egresses locally but resolves through a datacenter resolver is therefore given a datacenter-proximate front door, and then reaches it across the local circuit.
+
+That defeats the local-breakout benefit while leaving every indicator green. The probes report the path healthy because it *is* healthy; it is simply the wrong front door, and no SD-WAN telemetry says so. The per-location network scores that would expose it are part of the admin-center layer GCC does not have.
+
+Two consequences for the build. First, A.4.2's Umbrella requirement closes SC-20/SC-21 and the TIC DNS capability, but the geographic question is a separate one and has to be answered on its own terms: confirm that the resolver a branch actually uses yields a front door near that branch, measured **from the branch** rather than inferred from configuration. Second, audit conditional forwarders — a rule returning Microsoft 365 queries to a core resolver reintroduces the hairpin however the branch is otherwise built.
+:::
+
 ## A.4 — FedRAMP-Specific Considerations
 
-The Cisco Catalyst SD-WAN + Microsoft INR architecture introduces three categories of FedRAMP-specific compliance questions that do not arise in the platform-neutral SD-WAN narrative.
+The Cisco Catalyst SD-WAN + Microsoft INR architecture introduces four categories of FedRAMP-specific compliance questions that do not arise in the platform-neutral SD-WAN narrative.
 
 ### A.4.1 — Boundary Documentation
 
@@ -498,11 +508,18 @@ In a Cisco Catalyst SD-WAN + Microsoft INR deployment, the boundary documentatio
 | Azure Virtual WAN hub (commercial) | **Outside** — FedRAMP-authorized external service | Azure FedRAMP Moderate package reference; data flow to/from |
 | MAPS carrier hand-off point | **Outside** — carrier service | Service agreement; no federal data at rest at carrier POP |
 | Cloud OnRamp probes to M365 | Telemetry only; no federal data in probe | Document as monitoring telemetry; not a data flow |
+| Cisco ThousandEyes for Government, where the ADR-057 rebuild path is adopted | **Outside** — FedRAMP-authorized external service | ThousandEyes for Government package reference; evidence that agents registered to the government instance and not the commercial platform |
 
 : Cisco Catalyst SD-WAN + INR — FedRAMP Boundary Component Classification {.striped .hover}
 
 ::: {.aan-important}
 **The most common boundary documentation error.** Agencies document the WAN Edge hardware and stop. They do not document the SD-WAN management plane (SD-WAN Manager) as a separate component with its own authorization surface. If SD-WAN Manager is cloud-hosted by Cisco, it must either be covered by a FedRAMP-authorized Cisco offering or excluded from the boundary with an ISA documenting what data crosses to it — typically configuration and telemetry, not federal mission data. Check Cisco's current FedRAMP authorization status with the FedRAMP Marketplace before designing the boundary.
+:::
+
+::: {.aan-important}
+**A ThousandEyes agent registers to the commercial platform unless it is told not to.** Where [ADR-057](../../adr/adr-057-thousandeyes-networks-pillar-scope.qmd)'s rebuild path puts Cisco ThousandEyes in the architecture, note that **ThousandEyes for Government is a separate platform instance**, not a setting inside the commercial one. Agents have to be directed to it: for a Linux-package agent that means adding the `-m advanced` option to the installation script with the value set to `FEDRAMP`. Docker installs carry their own government-instance prerequisites, taken from the ThousandEyes for Government documentation rather than the general installation pages.
+
+An agent installed without that step registers to the **commercial** platform, placing agency branch-path telemetry outside the authorized boundary. That is a data-placement incident rather than a configuration defect, and a component inventory will not catch it — the agent is present, healthy and reporting, just to the wrong platform. Make registration an explicit build step with a post-install check that each agent appears in the government console and nowhere else.
 :::
 
 ### A.4.2 — TIC 3.0 Alignment
@@ -530,6 +547,24 @@ TIC 3.0 Use Cases E (Branch/Remote Office Internet Access) and F (Remote Users) 
 | **IR-4** Incident Handling | Contain and isolate during incident | SD-WAN Manager policy can be pushed to isolate a branch or device within seconds — change the data-plane policy to block all traffic except OOB management; no physical access to branch required |
 
 : Cisco Catalyst SD-WAN + Microsoft INR — NIST SP 800-53 Rev 5 Control Satisfaction {.striped .hover}
+
+### A.4.4 — Branch Egress Ranges and the Scope of the Optimize Exemption
+
+A.4.2's second condition exempts the Optimize category from proxy inspection. That exemption has a scope, and the scope is a list of circuits — which makes the per-circuit public egress range a boundary artifact rather than a network-engineering detail. Record one row per **circuit**, not per site: a site with two internet circuits occupies two rows, because attribution and steering both operate per circuit.
+
+Five rules govern the range column. Each describes an error that yields a fabric which looks correctly configured while attributing traffic to the wrong place:
+
+1. **Record the post-NAT public address the branch presents to the internet** — not the WAN interface address, and not the inside pool. The address Microsoft and the probe endpoints observe is the one that identifies the circuit.
+
+2. **Give each circuit a unique range.** Where two circuits at a site share a NAT pool, per-circuit attribution is not possible. Fix the NAT design before listing the site, or record why path comparison at that site is not meaningful.
+
+3. **Ranges must be static and assigned to the agency** for the life of the exemption. A dynamically assigned or ISP-rotated address moves a site outside the approved scope without anyone deciding to move it.
+
+4. **Verify from the branch, then reconcile to IPAM** — not the reverse. The site is authoritative and the record is not; a register built from IPAM alone inherits whatever has drifted.
+
+5. **List the IPv6 range wherever the circuit is dual-stacked.** An IPv6-capable client egressing on an unlisted range sits outside the recorded scope even though its site is listed.
+
+Completed, this register is a map of branch egress — public addressing, circuit topology, and which sites carry reduced inline inspection. Mark and handle it under the agency's own rules for network architecture information.
 
 ## A.5 — FedRAMP 20x KSI Evidence Contracts
 
