@@ -188,6 +188,14 @@ This correction belongs in §5.5 and is **not** in this set's PR, which is
   control that moves from the network plane to the endpoint, names all three
   enforcement paths, makes device-side signaling a precondition to cutover and
   a return trigger, and states what the Group Policy path does not cover.
+- **Control mapping verified.** SI-3, SI-4(10), AC-4, SC-7(4) and SC-8 are
+  each used against their NIST SP 800-53 Rev 5 definitions; SC-7(4)(c)-(d)
+  is the exception-documentation and review-cadence discipline the memo
+  claims it is. One refinement: §5.5 and the first draft cited **AU-12** for
+  thin audit content, but records are still generated — what degrades is
+  their content, which is **AU-3**'s requirement, incorporated by AU-12.
+  The memo now names AU-3 with AU-12 by reference. §5.5 could take the same
+  refinement.
 - **Still open:** `tic3-sdwan-vs-dia` §5.5 carries the overstatement above and
   is unfixed; Attachment B's Web row still reads "content inspection forgone"
   and should carry SI-3, SI-4(10), AC-4 and AU-12 instead; item 5
