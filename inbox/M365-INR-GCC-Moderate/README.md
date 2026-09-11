@@ -26,10 +26,11 @@ reasoning carries three errors recorded below.
 The briefing grades every claim documented / inferred / unsupported and
 names the check that would settle the open ones.
 
-The memo carries one bounded ask: risk acceptance for exempting the
-M365 Optimize endpoint set from TLS break-and-inspect at branch DIA
-egress. Attachment A is the site and egress-range register; Attachment B
-is the TIC 3.0 classification and PEP capability transfer.
+The memo carries one bounded ask: a **documented SC-7(4) traffic-flow
+exception** exempting the M365 Optimize endpoint set from TLS
+break-and-inspect at branch DIA egress. Attachment A is the site and
+egress-range register; Attachment B is the TIC 3.0 classification and PEP
+capability transfer.
 
 All three instruments are **templates with bracketed fields**, not
 completed records.
@@ -135,6 +136,25 @@ owns the subject. Fold items 1–4 above into that appendix and item 5 into
 feature-gap §6. The three instruments (memo, Attachment A, Attachment B) are
 the genuinely new artifacts and are worth keeping, but should be rebuilt on
 the repo's own control vocabulary and cite FINDING-001.
+
+### Rebuild status
+
+- **Items 1–4 folded** into Book 05 Appendix A (PR #1513).
+- **`ao-decision-memo.html` rebuilt** on the control vocabulary. It now
+  opens on SC-7(4) rather than generic risk acceptance, cites FINDING-001
+  in the background clause, names SI-3, SI-4(10), AC-4 and AU-12 as the
+  punctured controls, states that **SC-8 is not a gap** to forestall the
+  obvious challenge, carries tenant restrictions v2 as its own clause — a
+  structural incompatibility rather than a gap awaiting a compensating
+  control — and groups compensating controls by plane with the rule that a
+  control listed without a reference is not yet a compensating control. The
+  retracted commercial-Azure inference is gone: the memo now says Microsoft
+  publishes no rationale and none is required for this decision. Corrections
+  1–3 above are all discharged in the memo.
+- **Still open:** Attachment B's Web row still reads "content inspection
+  forgone" and should carry SI-3, SI-4(10), AC-4 and AU-12 instead; item 5
+  (terminology) is not yet folded into feature-gap §6; Attachment B's twelve
+  PEP capability group names are unverified against SCC v3.3 from source.
 
 ## Research limitation
 
