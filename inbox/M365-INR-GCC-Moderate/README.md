@@ -12,15 +12,29 @@ reconciliation recorded below.
 
 | File | Authoritative copy | Artifact |
 | --- | --- | --- |
-| `inr-gcc-briefing.html` | **this file** — not published to the site | <https://claude.ai/code/artifact/e838b388-b500-4a62-b7e9-6983bfb9526c> |
-| `ao-decision-memo.html` | [`sc7-4-exception-memo.qmd`](../../docs/customer-documents/operational-guides/m365-optimize-exemption/sc7-4-exception-memo.qmd) | <https://claude.ai/code/artifact/55276b46-12c5-471a-99f7-a380b6e46691> |
-| `attachment-a-site-register.html` | [`attachment-a-site-register.qmd`](../../docs/customer-documents/operational-guides/m365-optimize-exemption/attachment-a-site-register.qmd) | <https://claude.ai/code/artifact/5a691d7b-1f59-4712-b82f-11c08af33188> |
-| `attachment-b-architecture-review.html` | [`attachment-b-architecture-review.qmd`](../../docs/customer-documents/operational-guides/m365-optimize-exemption/attachment-b-architecture-review.qmd) | <https://claude.ai/code/artifact/85f62eaf-395d-43f9-9b8d-2caeac76b36f> |
+| `inr-gcc-briefing.html` | **this file** — not published to the site | [live](https://claude.ai/code/artifact/e838b388-b500-4a62-b7e9-6983bfb9526c) |
+| `ao-decision-memo.html` | [`sc7-4-exception-memo.qmd`](../../docs/customer-documents/operational-guides/m365-optimize-exemption/sc7-4-exception-memo.qmd) | [retired](https://claude.ai/code/artifact/55276b46-12c5-471a-99f7-a380b6e46691) |
+| `attachment-a-site-register.html` | [`attachment-a-site-register.qmd`](../../docs/customer-documents/operational-guides/m365-optimize-exemption/attachment-a-site-register.qmd) | [retired](https://claude.ai/code/artifact/5a691d7b-1f59-4712-b82f-11c08af33188) |
+| `attachment-b-architecture-review.html` | [`attachment-b-architecture-review.qmd`](../../docs/customer-documents/operational-guides/m365-optimize-exemption/attachment-b-architecture-review.qmd) | [retired](https://claude.ai/code/artifact/85f62eaf-395d-43f9-9b8d-2caeac76b36f) |
 
-Republishing an artifact means editing the HTML here and publishing it from a
-session that holds the URL; publishing without the URL creates a new artifact
-instead of updating the existing one. **That is now a separate distribution
-channel from the site** — the two do not update each other.
+**The three instrument artifacts were retired on 14 September 2026.** Those
+URLs now serve a supersession notice pointing at the published page; they no
+longer carry the documents. Claude Artifacts cannot be deleted, so a notice at
+the address is what retirement means here — anyone holding a bookmark or a
+forwarded link learns where the current version is instead of reading a stale
+template.
+
+**The briefing artifact stays live**, because it is the only rendered copy
+there is. The briefing was deliberately not promoted to the site (see
+*Disposition*), so retiring its artifact would leave `inr-gcc-briefing.html`
+in this directory as the sole readable form. It has no published page to drift
+from, so it has none of the problem the other three had.
+
+Republishing an artifact still means editing the HTML here and publishing it
+from a session that holds the URL; publishing without the URL creates a new
+artifact instead of updating the existing one. For the three retired ones,
+doing that would un-retire them — the notices live only at those addresses and
+nothing in the repository regenerates them.
 
 ## What they are
 
@@ -173,14 +187,17 @@ Three consequences worth being explicit about:
    It points backwards at this directory as provenance; it does not make the
    HTML the master.
 
-**Open decision, and it is not the writer's to make in passing:** whether to
-keep the artifacts alive. Two coherent answers — *retire them*, treating the
-site as the only channel and letting the private links lapse; or *keep them*,
-accepting that every future `.qmd` change needs the HTML updated and the
-artifact republished by hand. Drifting into the second by neglect gives the
-worst of both: live links serving stale documents. Until this is settled,
-treat the artifacts as a snapshot dated by the file timestamps in this
-directory.
+**Settled 14 September 2026: the artifacts are retired.** The site is the only
+maintained channel for the three instruments. The alternative — republishing
+each artifact by hand on every `.qmd` change — was rejected because neglecting
+it even once gives the worst outcome available: a live private link serving a
+stale version of a document somebody signs.
+
+Retirement took the only form available, since Claude Artifacts cannot be
+deleted. Each of the three URLs now serves a supersession notice naming the
+published page, the retirement date, and the repository path the content is
+preserved at. The documents were templates with bracketed fields throughout, so
+no completed record was withdrawn from anyone.
 
 ### Correction the briefing makes to the repo
 
