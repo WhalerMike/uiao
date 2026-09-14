@@ -273,67 +273,85 @@ actually rely on, a sharper conclusion than "three paths exist".
 
 The reconciliation's three corrections are discharged, its five additive items
 are folded into their owners, all three instruments are rebuilt, and the §5.5
-error the set inherited is fixed at source. **One thing remains unverified
-rather than open:** Attachment B's twelve PEP capability group names have not
-been read from the catalog, and cannot be from this environment — cisa.gov is
-refused at the egress proxy. A verification attempt on 11 September 2026
-confirmed the block and failed to establish the list by any other allowed
-means. See *Catalog sourcing* above for what is and is not known, and note
-that the earlier claim of "two independent derivations" was itself overstated.
-It closes when someone on an unrestricted network opens the v3.3 catalog and
-counts the capability-group tables.
+error the set inherited is fixed at source. **The last unverified claim is now
+verified.** Attachment B's twelve PEP capability group names were checked
+against the v3.3 catalog on 14 September 2026 — supplied directly, cisa.gov
+still being refused at the egress proxy. The list, the ordering and the
+universal-versus-PEP distinction all hold; one version-attribution error was
+found and corrected. See *Catalog sourcing* below.
 
-### Catalog sourcing — the group list is NOT verified
+No load-bearing claim in this set now rests on a secondary source.
 
-cisa.gov is blocked by this environment's egress policy. The block is at the
-proxy, not the tool: `curl` fails at the CONNECT tunnel with **403**, for the
-core-guidance page and the catalog PDFs alike. The proxy's own guidance is to
-report blocked hosts rather than route around them, so no mirror of the
-document was sought.
+### Catalog sourcing — verified against the document
 
-**Attachment B's PEP capability group list has not been checked against the
-catalog, and cannot be from this environment.** An earlier version of this
-section described the twelve-group figure as resting on "two independent
-derivations". *That was overstated, and the overstatement is the point worth
-recording.* Both derivations — the ten groups named in the 2023 catalog, and
-Services and Identity added in v3.3 — came from the same search tool
-summarizing the same corpus of cisa.gov PDFs that it can read and this
-environment cannot. Two claims through one intermediary is not two sources.
+**The catalog has been read from source.** On 14 September 2026 the PDF —
+*CISA TIC 3.0 Security Capabilities Catalog, Volume 3, v3.3, July 2025* — was
+supplied directly, cisa.gov still being refused at this environment's egress
+proxy. Attachment B's list is now checked, not assumed.
 
-What is known, at the confidence it is actually known:
+**The twelve PEP capability groups are confirmed**, by name and order, against
+Tables 4–15 and the catalog's own bulleted list in §4.2:
 
-| Claim | Status |
-| --- | --- |
-| v3.3 exists, filed under `2025-07` | **Solid** — an artifact-level fact from a returned URL path |
-| No revision later than v3.3 as of September 2026 | Absence of evidence from one search tool |
-| Twelve PEP capability groups, and their names | **Unverified** — one intermediary, no primary read |
-| Services and Identity are new in v3.3 | **Unverified** — same intermediary |
-| Universal Security Capabilities are a separate category from PEP groups | Consistent across every source seen, including the structure of the 2023 catalog |
+| # | Group | Table | # | Group | Table |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Files | 4 | 7 | Intrusion Detection | 10 |
+| 2 | Email | 5 | 8 | Enterprise | 11 |
+| 3 | Web | 6 | 9 | Unified Communications and Collaboration | 12 |
+| 4 | Networking | 7 | 10 | Data Protection | 13 |
+| 5 | Resiliency | 8 | 11 | Services | 14 |
+| 6 | Domain Name System | 9 | 12 | Identity | 15 |
 
-A later attempt to pin the v3.3 table of contents by search produced a result
-that **echoed the query back** — returning "Enterprise Services" as a group
-name, which is two of the names in the query run together — and simultaneously
-denied that v3.3 exists, contradicting the search that surfaced its path. That
-is what this class of evidence looks like when pushed, and it is why the table
-above stops where it does.
+Also confirmed: **Universal Security Capabilities are a separate category**
+(Table 3, §4.1, "enterprise-level capabilities"), and §4.2 draws the
+distinction in nearly the terms Attachment B used — *"In contrast to the
+universal security capabilities, which are expected to apply in each use case,
+PEP security capabilities may or may not be applicable based on the use case
+scope."* The three universal capabilities Attachment B names are real and
+correctly titled: **Central Log Management with Analysis** (`3.UNI.CLMAN`),
+**Auditing and Accounting** (`3.UNI.AACCO`), and **Policy Enforcement Parity**
+(`3.UNI.PEPAR`) — the last defined as *"consistently applying security
+protections and other policies, independent of the communication mechanism,
+forwarding path, or endpoints used"*, which is precisely the tension a
+per-category exemption has to answer.
 
-The **"eight groups"** phrasing that recurs in search results is stale body
-text from earlier revisions. Whatever the true current count, a table copied
-forward from an old revision reads as complete while being short, so the
-version must be named wherever the list is used.
+### One error the verification found
 
-**How this closes:** open
-[the v3.3 catalog](https://www.cisa.gov/sites/default/files/2025-07/CISA%20TIC%203.0%20Security%20Capabilities%20Catalog%20v3.3%20(Volume%203).pdf)
-and count the PEP capability group tables, or allowlist cisa.gov for this
-environment. Until one of those happens, Attachment B's list is a working
-assumption that is disclosed as one — in its own note and here — and not a
-verified enumeration.
+**Services and Identity are not new in v3.3.** The catalog's revision history
+puts both under **v3.0 (April 2023)** — "Added Policy Enforcement Point (PEP)
+Group of Security Capabilities: Services", and the same for Identity, pages 19
+and 20. **v3.3 (July 2025) added no capability groups at all**; its sole
+recorded change is "Removed NCPS reference in Appendix A".
+
+The claim came from a search summary that attributed a batch of v3.0 changes to
+v3.3, and it had reached Attachment B in three places. All three are corrected.
+That is the third error in this line of work traceable to a secondary source —
+after §5.5's tenant-restrictions-v1 claim and the "independent derivations"
+overstatement — and the only one a primary read caught rather than created.
+
+**Withdrawn as unverifiable:** the claim that earlier revisions carried eight
+groups. The v3.3 text gives no count, saying only that capabilities are
+"divided into groups around shared themes" and that "the PEP security
+capability groups listing is not exhaustive". The revision history logs
+Services and Identity as group additions but does not record when UCC or Data
+Protection were added, so the pre-v3.0 total is not established by this
+document. What survives — and is all the point needs — is that the list grew
+and the count is a property of the revision.
 
 ## Research limitation
 
-cisco.com, cisa.gov, docs.thousandeyes.com and fedramp.gov were all
-blocked by the session's network egress policy. Cisco, CISA and
-ThousandEyes content was assembled from search summaries rather than
-read from source. Microsoft Learn was reachable directly and its
-citations are firsthand. Each document carries its own verification-limit
-block saying which of its content is affected.
+cisco.com, cisa.gov, docs.thousandeyes.com and fedramp.gov were all blocked
+by the session's network egress policy, and cisa.gov still is. **Two of the
+four have since been closed out of band:** Microsoft Learn was reachable
+directly throughout and its citations are firsthand, and the TIC 3.0 Security
+Capabilities Catalog v3.3 was supplied as a file and read from source (see
+*Catalog sourcing*).
+
+**Still assembled from search summaries rather than read from source:** Cisco
+material (Catalyst SD-WAN, Cloud OnRamp, IOx sizing) and ThousandEyes
+material (agent deployment, the `-m advanced FEDRAMP` registration flag). The
+TIC 3.0 Reference Architecture and Branch Office Use Case — separate documents
+from the catalog — are also still unread. Each document carries its own
+verification-limit block saying which of its content is affected.
+
+Three errors in this line of work trace to secondary sources. Treat the
+remaining unread-source material with that in mind.
