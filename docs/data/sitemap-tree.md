@@ -484,6 +484,11 @@
   - [Enterprise Application Access Governance and Approval Model](customer-documents/operational-guides/helpdesk-entra-operations/enterprise-application-access-governance.html)
   - [OrgPath Identity Governance Structure](customer-documents/operational-guides/helpdesk-entra-operations/orgpath-identity-governance-structure.html)
   - [Help Desk Flow — Intake, Triage, and Routing](customer-documents/operational-guides/helpdesk-entra-operations/helpdesk-flow.html)
+- **M365 Optimize Inspection Exemption (decision instruments)**
+  - [M365 Optimize Inspection Exemption — Decision Instruments](customer-documents/operational-guides/m365-optimize-exemption/index.html)
+  - [SC-7(4) Traffic-Flow Exception — M365 Optimize at Branch Direct-Internet Egress](customer-documents/operational-guides/m365-optimize-exemption/sc7-4-exception-memo.html)
+  - [Attachment A — Pilot Site Register and Egress IP Ranges](customer-documents/operational-guides/m365-optimize-exemption/attachment-a-site-register.html)
+  - [Attachment B — Architecture Review Determination](customer-documents/operational-guides/m365-optimize-exemption/attachment-b-architecture-review.html)
 - **Federal AI Identity Governance**
   - [Federal AI Identity Governance](customer-documents/operational-guides/ai-identity-governance/index.html)
   - [Federal AI Identity Governance — Manual Path](customer-documents/operational-guides/ai-identity-governance/manual-path.html)
