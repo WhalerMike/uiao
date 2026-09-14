@@ -68,6 +68,23 @@ jobs:
     # speculative. The cost of accepting a 52x is narrow: a site that dies
     # permanently behind Cloudflare stops being reported, but such a site
     # normally ends up 404ing or failing DNS, both still failures here.
+    #
+    # 504 was added on 2026-09-14 under that same rule: it actually broke a
+    # run. PR #1521 went red on 24 errors, every one a 504 Gateway Timeout on
+    # github.com -- 23 release-asset downloads under
+    # releases/download/downloads-latest/ plus one commits URL -- across 15
+    # files the PR did not touch. The re-run 5 minutes later failed with 42
+    # errors across 34 files and had spread to openvex.dev, so it was not
+    # GitHub-specific. Link Check had passed on the immediately preceding head
+    # of that same branch 18 minutes earlier.
+    #
+    # 504 belongs with 503 and 522 rather than with 404: all three report an
+    # intermediary failing to reach an origin, which is the publisher's
+    # infrastructure being unavailable, not the URL being wrong. Accepting it
+    # costs the narrow case of a permanently-dead host that answers 504
+    # forever instead of 404ing or failing DNS. Unlike the 52x family this is
+    # not Cloudflare-specific -- any gateway, load balancer or CDN emits it,
+    # GitHub's included.
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -124,7 +141,7 @@ jobs:
             --max-retries 3
             --retry-wait-time 5
             --timeout 20
-            --accept 200,202,206,403,406,429,503,522
+            --accept 200,202,206,403,406,429,503,504,522
             --exclude '^https?://(www\.)?onedrive\.com(/|$)'
             --exclude '^https?://onedrive\.live\.com(/|$)'
             --exclude '^https?://download\.microsoft\.com/download/'
