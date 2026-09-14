@@ -1,19 +1,26 @@
 # M365 Informed Network Routing — GCC Moderate briefing set
 
-Source HTML for four published Claude Artifacts. These are the durable
-copies; the artifacts themselves live outside the repo and the session
-scratchpad that produced them is ephemeral.
+Source HTML for four Claude Artifacts, and working material for the
+reconciliation recorded below.
 
-| File | Artifact |
-| --- | --- |
-| `inr-gcc-briefing.html` | <https://claude.ai/code/artifact/e838b388-b500-4a62-b7e9-6983bfb9526c> |
-| `ao-decision-memo.html` | <https://claude.ai/code/artifact/55276b46-12c5-471a-99f7-a380b6e46691> |
-| `attachment-a-site-register.html` | <https://claude.ai/code/artifact/5a691d7b-1f59-4712-b82f-11c08af33188> |
-| `attachment-b-architecture-review.html` | <https://claude.ai/code/artifact/85f62eaf-395d-43f9-9b8d-2caeac76b36f> |
+> [!IMPORTANT]
+> **For the three instruments, the HTML in this directory is no longer the
+> authoritative copy.** They are published as Quarto pages under
+> `docs/customer-documents/operational-guides/m365-optimize-exemption/`, and
+> those pages are what readers see. **Editing the HTML here changes nothing
+> on the site.** See *Disposition* below.
 
-Republishing an artifact means editing the file here and publishing it
-from a session that holds the URL; publishing without the URL creates a
-new artifact instead of updating the existing one.
+| File | Authoritative copy | Artifact |
+| --- | --- | --- |
+| `inr-gcc-briefing.html` | **this file** — not published to the site | <https://claude.ai/code/artifact/e838b388-b500-4a62-b7e9-6983bfb9526c> |
+| `ao-decision-memo.html` | [`sc7-4-exception-memo.qmd`](../../docs/customer-documents/operational-guides/m365-optimize-exemption/sc7-4-exception-memo.qmd) | <https://claude.ai/code/artifact/55276b46-12c5-471a-99f7-a380b6e46691> |
+| `attachment-a-site-register.html` | [`attachment-a-site-register.qmd`](../../docs/customer-documents/operational-guides/m365-optimize-exemption/attachment-a-site-register.qmd) | <https://claude.ai/code/artifact/5a691d7b-1f59-4712-b82f-11c08af33188> |
+| `attachment-b-architecture-review.html` | [`attachment-b-architecture-review.qmd`](../../docs/customer-documents/operational-guides/m365-optimize-exemption/attachment-b-architecture-review.qmd) | <https://claude.ai/code/artifact/85f62eaf-395d-43f9-9b8d-2caeac76b36f> |
+
+Republishing an artifact means editing the HTML here and publishing it from a
+session that holds the URL; publishing without the URL creates a new artifact
+instead of updating the existing one. **That is now a separate distribution
+channel from the site** — the two do not update each other.
 
 ## What they are
 
@@ -110,7 +117,7 @@ Fold these into their existing owners rather than promoting the briefing.
 
 1. **The local-DNS performance trap** (briefing §6). Front-door selection
    follows the resolver's apparent location, so branches resolving centrally
-   reach a datacentre-proximate front door while egressing locally — and
+   reach a datacenter-proximate front door while egressing locally — and
    Cloud OnRamp probes report that path healthy, because it is. §5.6 covers
    DNS as a control flow (Protective DNS, RPZ, split-horizon); this failure
    mode is not covered. Belongs in Book 05 Appendix A.
@@ -132,11 +139,48 @@ Fold these into their existing owners rather than promoting the briefing.
 
 ### Disposition
 
-Do not promote the briefing as a standalone whitepaper; Book 05 Appendix A
-owns the subject. Fold items 1–4 above into that appendix and item 5 into
-feature-gap §6. The three instruments (memo, Attachment A, Attachment B) are
-the genuinely new artifacts and are worth keeping, but should be rebuilt on
-the repo's own control vocabulary and cite FINDING-001.
+**All of it is done. What follows is the outcome, not a plan.**
+
+- **The briefing is not promoted**, and should not be. Book 05 Appendix A owns
+  the subject, and `inr-gcc-briefing.html` in this directory remains the only
+  repo copy. Items 1–4 were folded into that appendix (PR #1513) and item 5
+  into feature-gap §6 (PR #1518).
+- **The three instruments were rebuilt** on the repo's control vocabulary and
+  cite FINDING-001 (PRs #1514, #1515, #1517), then **published to the site**
+  (PR #1521) as `.qmd` under
+  `docs/customer-documents/operational-guides/m365-optimize-exemption/`.
+
+#### Which copy is authoritative
+
+Publishing left two copies of the three instruments, so this states which
+wins rather than leaving it to whoever edits first.
+
+**The `.qmd` pages are authoritative.** They are what renders, what the nav
+and sitemap point at, and what every CI gate in the repo checks. The HTML in
+this directory is now two narrower things: the provenance the `.qmd` front
+matter records in `canon-source`, and the source the Claude Artifacts are
+republished from.
+
+Three consequences worth being explicit about:
+
+1. **Editing the HTML here does not change the site.** `inbox/**` is outside
+   the Quarto render set, which matches only `**/*.qmd`. A change made here
+   in the belief it will publish is a change nobody will ever read.
+2. **The two copies will drift, and nothing detects it.** No gate compares
+   them. A correction made to a `.qmd` page leaves the HTML and its artifact
+   stale and silently wrong.
+3. **`canon-source` records where a page came from, not what governs it.**
+   It points backwards at this directory as provenance; it does not make the
+   HTML the master.
+
+**Open decision, and it is not the writer's to make in passing:** whether to
+keep the artifacts alive. Two coherent answers — *retire them*, treating the
+site as the only channel and letting the private links lapse; or *keep them*,
+accepting that every future `.qmd` change needs the HTML updated and the
+artifact republished by hand. Drifting into the second by neglect gives the
+worst of both: live links serving stale documents. Until this is settled,
+treat the artifacts as a snapshot dated by the file timestamps in this
+directory.
 
 ### Correction the briefing makes to the repo
 
