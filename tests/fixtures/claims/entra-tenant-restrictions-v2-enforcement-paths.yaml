@@ -1,0 +1,92 @@
+# Canonical record of Microsoft Entra tenant restrictions v2 enforcement paths.
+#
+# WHY THIS FILE EXISTS
+#
+# This claim has already been wrong once in this repository. Before #1516,
+# tic3-sdwan-vs-dia.qmd 5.5 stated that tenant restrictions v2 "is enforced by
+# header injection at an in-path proxy", and concluded that a proxy-bypassed
+# flow cannot carry it. That is the v1 model. The error propagated into the
+# SC-7(4) exception memo before it was caught, and it is load-bearing: the
+# whole Optimize exemption argument turns on whether giving up the proxy
+# gives up this control.
+#
+# The claim is now stated in five published documents. This file is the single
+# place it is recorded, and tests/test_tenant_restrictions_v2_claim.py asserts
+# the documents agree with it. Change the documents and the record together, or
+# CI fails.
+#
+# SCOPE: what a cross-tenant access policy can be signaled by, and what each
+# signaling path covers. NOT in scope: the policy's own contents, the Graph
+# API shape that reads it, or per-tenant configuration.
+
+claim_id: entra-trv2-enforcement-paths
+subject: "Microsoft Entra tenant restrictions v2 — enforcement paths for a single cross-tenant access policy"
+
+# Exactly three, per the cited source. A fourth appearing here without a
+# citation is the failure mode this record exists to prevent.
+paths:
+  - id: windows-group-policy
+    label_contains: "Windows Group Policy"
+    # Looser aliases for prose, where the path is named in running text rather
+    # than tabulated -- the site register says "the Group Policy path".
+    prose_names: ["windows group policy", "group policy"]
+    requires_proxy: false
+    authentication_plane: "yes"
+    data_plane: "yes"
+    note: >-
+      Corporate-owned devices. Policy evaluation stays in the cloud; the device
+      supplies the signal. The only path reaching the data plane. Covers Office
+      applications, Universal Windows Platform .NET applications and Microsoft
+      Edge — non-Edge browsers and non-Windows devices fall outside it.
+
+  - id: universal-tenant-restrictions-global-secure-access
+    label_contains: "Global Secure Access"
+    prose_names: ["global secure access", "universal tenant restrictions"]
+    requires_proxy: false
+    authentication_plane: "yes, all platforms"
+    data_plane: "graph only"
+    note: >-
+      Recorded as unavailable to a FedRAMP Moderate agency: non-FIPS in GCC
+      Moderate, unavailable in GCC High and DoD, per
+      docs/customer-documents/learning/entra-security-baseline-federal-crosswalk.qmd.
+
+
+  - id: corporate-proxy-header-injection
+    label_contains: "proxy header injection"
+    prose_names: ["proxy header injection", "header injection"]
+    requires_proxy: true
+    authentication_plane: "yes"
+    data_plane: "no"
+    note: >-
+      The weakest of the three, and the one an Optimize inspection exemption
+      gives up. Authentication plane only.
+
+# The specific misstatement that #1516 corrected. Kept as a named fact so the
+# retraction cannot quietly un-retract.
+v1_versus_v2: >-
+  Proxy header injection is the tenant restrictions v1 enforcement model. Under
+  v2 it survives as one of three paths, not as a requirement. A document that
+  presents it as a v2 requirement is wrong.
+
+provenance:
+  primary:
+    url: "https://learn.microsoft.com/en-us/entra/external-id/tenant-restrictions-v2"
+    title: "Set up tenant restrictions v2"
+    accessed: "2026-09-11"
+    read: firsthand
+    captured_by: "PR #1516 — the change that corrected the v1/v2 error at source"
+  federal_availability:
+    path: "docs/customer-documents/learning/entra-security-baseline-federal-crosswalk.qmd"
+    supports: "Global Secure Access non-FIPS in GCC Moderate; unavailable in GCC High and DoD"
+
+# Documents stating this claim. Each is asserted against this record.
+# The memo carries the full table; the others carry prose.
+asserted_against:
+  table:
+    path: "docs/customer-documents/operational-guides/m365-optimize-exemption/sc7-4-exception-memo.qmd"
+    header: "| Path | Proxy required | Authentication plane | Data plane |"
+  prose:
+    - "docs/customer-documents/whitepapers/tic3-sdwan-vs-dia.qmd"
+    - "docs/customer-documents/operational-guides/m365-optimize-exemption/index.qmd"
+    - "docs/customer-documents/operational-guides/m365-optimize-exemption/attachment-a-site-register.qmd"
+    - "docs/customer-documents/operational-guides/m365-optimize-exemption/attachment-b-architecture-review.qmd"
