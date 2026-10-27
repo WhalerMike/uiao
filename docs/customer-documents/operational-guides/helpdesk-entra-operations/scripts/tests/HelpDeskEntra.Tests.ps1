@@ -54,6 +54,11 @@ Describe 'Execution matches what the Entra ID spoke documents' {
         (Get-Rule 'EnterpriseAppAccess').Execution | Should -Be 'Manual'
     }
 
+    It 'directory audit-log reads are manual (the spoke only looks up sign-ins)' {
+        (Get-Rule 'AuditLogRetrieval').Execution  | Should -Be 'Manual'
+        (Get-Rule 'SignInLogRetrieval').Execution | Should -Be 'Spoke'
+    }
+
     It 'ImmutableID repair is escalate-only for the Help Desk' {
         $r = Get-Rule 'ImmutableIdRepair'
         $r.TeamRole | Should -Be 'TriageEscalateOnly'
@@ -98,6 +103,8 @@ Describe 'Resolve-RequestRoute' {
         @{ Text = 'Need a G3 licence for the new analyst';      Key = 'LicenseAssignment' }
         @{ Text = 'Disable the device LAPTOP-042';              Key = 'DeviceManagement' }
         @{ Text = 'Sync mismatch - duplicate account in Entra'; Key = 'ImmutableIdRepair' }
+        @{ Text = 'Pull the sign-in logs for this user';     Key = 'SignInLogRetrieval' }
+        @{ Text = 'Need the directory audit log for a change'; Key = 'AuditLogRetrieval' }
     ) {
         (Resolve-RequestRoute -Text $Text).Key | Should -Be $Key
     }

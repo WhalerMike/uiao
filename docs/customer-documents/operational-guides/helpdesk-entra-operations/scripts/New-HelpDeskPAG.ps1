@@ -31,7 +31,9 @@
     Scope: by default roles are assigned tenant-wide ('/'). To scope them to an
     administrative unit, pass -DirectoryScopeId '/administrativeUnits/<id>'
     (Helpdesk, Password and Authentication Administrator support AU scope; an
-    AU-scoped role acts only on members who hold no admin role). For one role
+    AU-scoped role acts only on members who hold no admin role). The custom
+    app-assignment role holds a service-principal permission and can't take AU
+    scope, so it is always assigned tenant-wide ('/'). For one role
     per group and scope - the pattern the Responsibilities Guide recommends -
     run the script once per group with a single -Roles value.
 
@@ -43,7 +45,7 @@
          the group object).
       3. Add each technician as an ELIGIBLE member (PIM for Groups).
 
-    The PIM ACTIVATION POLICY (Tier 2: 8h ceiling, MFA on activation,
+    The PIM ACTIVATION POLICY (Tier 2: 8h ceiling, Conditional Access authentication context on activation,
     justification and ticket number required, 180-day eligibility) is
     documented in the guide and should be applied
     via the portal or the role-management-policy cmdlets, then verified — those
@@ -117,14 +119,21 @@ foreach ($roleName in $Roles) {
     $roleDef = Get-MgRoleManagementDirectoryRoleDefinition -Filter "displayName eq '$roleName'"
     if (-not $roleDef) { Write-HelpDeskLog -Level ERROR -Message "Role not found: $roleName"; continue }
 
+    # Custom roles with only service-principal permissions can't be scoped to an AU.
+    $scope = $DirectoryScopeId
+    if ($roleName -eq $appRoleName -and $scope -ne '/') {
+        Write-HelpDeskLog -Level WARN -Message "$roleName can't take administrative-unit scope; assigning it tenant-wide ('/')."
+        $scope = '/'
+    }
+
     $existing = Get-MgRoleManagementDirectoryRoleAssignment -Filter "principalId eq '$($group.Id)' and roleDefinitionId eq '$($roleDef.Id)'" -ErrorAction SilentlyContinue |
-        Where-Object { $_.DirectoryScopeId -eq $DirectoryScopeId }
+        Where-Object { $_.DirectoryScopeId -eq $scope }
     if ($existing) { Write-HelpDeskLog -Level INFO -Message "Role already on group: $roleName"; continue }
 
     if ($PSCmdlet.ShouldProcess("$roleName -> $GroupName", 'Assign directory role to PAG')) {
         New-MgRoleManagementDirectoryRoleAssignment -PrincipalId $group.Id `
-            -RoleDefinitionId $roleDef.Id -DirectoryScopeId $DirectoryScopeId | Out-Null
-        Write-HelpDeskLog -Level ACTION -Message "Assigned role to PAG: $roleName"
+            -RoleDefinitionId $roleDef.Id -DirectoryScopeId $scope | Out-Null
+        Write-HelpDeskLog -Level ACTION -Message "Assigned role to PAG: $roleName (scope $scope)"
     }
 }
 
@@ -162,7 +171,9 @@ Write-HelpDeskLog -Level INFO -Message @"
 PAG structural setup complete. REMAINING (apply + verify in portal or via
 Update-MgPolicyRoleManagementPolicyRule on the group's member policy):
   - Max activation duration : 8-hour ceiling (Tier 2); shortening it is tenant-wide per role
-  - MFA on activation       : required (phishing-resistant)
+  - Activation sign-in       : Conditional Access authentication context with a
+                               phishing-resistant authentication strength (PIM's own
+                               MFA option doesn't set the method)
   - Justification + ticket   : required (ServiceNow RITM number). PIM does not validate the
                                number, so correlate activations to tickets in the SIEM.
   - Approval to activate     : per your risk acceptance; the task's approval lives in the ticket

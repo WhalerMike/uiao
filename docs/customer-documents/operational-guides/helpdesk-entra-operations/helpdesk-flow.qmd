@@ -38,9 +38,13 @@ review when the Help Desk (and automation) cannot perform a task.
 ::: {.callout-important title="Integrating ServiceNow's shipped functions — not reinventing them"}
 This is an **integration and customization** of capabilities ServiceNow already
 ships — not a new automation engine. ServiceNow's **Microsoft Entra ID Spoke**
-"provides spoke actions to automate Microsoft Entra ID tasks for application management, audit logs, device management, group management, license management, organization management, password management, service principal management, user authentication, and user management".[^sn-spoke] This kit routes those shipped actions through the agency's
+"provides actions to automate Entra tasks when events occur in ServiceNow", grouped into ten categories: application management, audit logs, device management, group management, license management, organization management, password management, service principal management, user authentication, and user management.[^sn-spoke] This kit routes those shipped actions through the agency's
 Help Desk authority model and the ServiceNow / SAM approval pipelines, and fills
 only the gaps the spoke does not cover.
+:::
+
+::: {.callout-note title="Design guidance"}
+The recommendations, the triage order, the authority tiers and the flow-definition fields on this page are the program's design guidance for the agency to adopt or adjust. Platform behavior is footnoted to ServiceNow and Microsoft sources.
 :::
 
 ## The recommended target architecture
@@ -53,7 +57,7 @@ exists; the Help Desk performs the manual gaps.
 
 ![The recommended target architecture: an inbound request (user, Microsoft, or manager email) is redirected by an Exchange transport rule into a ServiceNow triage queue, classified by required authority, and routed to either the ServiceNow approval pipeline (A0/A1, manager approval) or the SAM approval pipeline (A2/A3, owner or IGO approval), or escalated out of scope. Approved work executes automatically through the Microsoft Entra ID Spoke where an action exists, and falls to a manual Help Desk task otherwise.](images/helpdesk-flow-diagram-01-target-architecture.png){#fig-arch fig-alt="A left-to-right blueprint. An email source box feeds an Exchange transport rule box, which feeds a navy ServiceNow triage queue. The triage queue feeds a decision diamond, classify by authority, which branches three ways: A0/A1 to a ServiceNow pipeline box, A2/A3 to a SAM pipeline box, and out-of-scope to a red escalate box. Both pipeline boxes converge on a decision, does the Entra ID Spoke cover it, branching to a teal Spoke auto-action box or a navy manual Help Desk task box." width="100%"}
 
-### The four recommendations
+### The five recommendations
 
 1. **Make ServiceNow the single front door.** Redirect the Cloud Services mailbox
    into a ServiceNow triage queue (Exchange transport rule → Inbound Email
@@ -73,14 +77,13 @@ exists; the Help Desk performs the manual gaps.
 `Execution` is the recommended default: **Spoke** = Flow Designer auto-executes;
 **Manual** = a Help Desk task; **SAM** = SAM connector; **Escalate/OOS** = out of
 the team's hands. The column reflects what ServiceNow's spoke page documents
-today, checked action by action — an earlier version of this crosswalk mapped
-more tasks to the spoke than its documentation supports.[^sn-spoke]
+today, checked action by action.[^sn-spoke]
 
 | Task | What the spoke documents | Tier | Execution |
 |---|---|---|---|
 | Password reset — **cloud-only** user | Reset Password, for users created in Entra ID only; not federated users | A0 | Spoke, **after identity verification** |
 | Password reset — **synced** user | Not covered | A0 | Manual, after identity verification — Entra admin center with password writeback (never the Microsoft 365 admin center, which doesn't write back), else on-prem AD[^ms-writeback] |
-| Sign-in / audit-log retrieval | Audit log actions | A0 | Spoke (read-only) |
+| Sign-in / audit-log retrieval | Look up Sign Ins Stream — the only audit-logs action; no directory-audit action | A0 | Spoke for sign-ins (read-only); directory audit log manual |
 | MFA / auth-method reset, Temporary Access Pass | **No action** — the user-authentication category lists only Revoke User SignIn Sessions | A1 | Manual, after identity verification |
 | License assign / remove | Assign / Remove User License | A1 | Spoke |
 | User enable / update / assign manager | Enable / Disable / Update User | A1 | Spoke |
@@ -90,11 +93,11 @@ more tasks to the spoke than its documentation supports.[^sn-spoke]
 | User create / disable (joiner / leaver) | User management | A2 | Spoke (via SAM lifecycle) |
 | Device enable / disable / delete | **Not covered** — device group membership only | OOS | Device team |
 | Enterprise App access (group → app role) | Create / Delete Application Assignment; the page doesn't say whether these handle group-to-app-role assignment | A2 | Spoke for group membership; **manual** app-role binding until a pilot proves the action |
-| OneDrive provisioning / client-side | none (M365) | A0/A1 | Manual (pre-provisioning: SharePoint Administrator) |
-| ImmutableID hard-match repair | Not covered | A3 | **Identity Engineering, not the Help Desk** — usually fixed in AD (`mS-DS-ConsistencyGuid`) after two approvals |
+| OneDrive provisioning / client-side | none (M365) | A0/A1 | Manual (pre-provisioning: SharePoint Administrator)[^ms-odprov] |
+| ImmutableID hard-match repair | Not covered | A3 | **Identity Engineering, not the Help Desk** — usually fixed in AD (`mS-DS-ConsistencyGuid`) after two approvals[^ms-hardmatch] |
 | Admin Consent | Not covered | A3 | Escalate — never auto |
 | Conditional Access | none | OOS | Manual / Security Admin |
-| Directory role / Service Principal | Service principal actions exist; governance keeps them manual | OOS | Manual / Identity Eng |
+| Directory role / Service Principal | Service principal look-up actions only; no directory-role action | OOS | Manual / Identity Eng |
 
 ### What the ServiceNow Entra ID Spoke ships
 
@@ -109,12 +112,13 @@ tenant that obtains OAuth 2.0 tokens for Microsoft Graph — delegated permissio
 with the authorization-code grant, or application permissions with client
 credentials — so each action carries the matching Graph permission and admin
 consent. For the on-premises side of a hybrid estate, ServiceNow also ships a
-separate **Microsoft Active Directory spoke**; ImmutableID problems, which the
+separate **Microsoft Active Directory spoke**, which also needs Integration Hub
+and a MID Server;[^sn-adspoke] ImmutableID problems, which the
 Entra ID Spoke does not cover, go to Identity Engineering.
 
 ::: {.callout-warning title="Two limits that matter on a hybrid, work/school estate"}
 - **Password reset only covers cloud-only users.** ServiceNow's Reset Password action "resets the password of users created in Entra ID only and does not reset the password of the federated users"[^sn-spoke] — so **synced / federated users' password resets stay on-prem** (SSPR with password writeback, or on-prem AD), not the Spoke.
-- **The connection type decides which password actions work.** Reset Password accepts the application permission `User-PasswordProfile.ReadWrite.All`; Change Password and the user-management Revoke User SignIn Sessions action support only **delegated (work or school)** permissions.[^sn-spoke] (v1.5 of this kit said none of the three ran app-only; that is corrected. The spoke's pervasive "Not supported" entries are for *personal Microsoft accounts*, which a federal tenant never uses.)
+- **The connection type decides which password actions work.** Reset Password accepts the application permission `User-PasswordProfile.ReadWrite.All`; Change Password and the user-management Revoke User SignIn Sessions action support only **delegated (work or school)** permissions.[^sn-spoke] (The spoke's pervasive "Not supported" entries are for *personal Microsoft accounts*, which a federal tenant never uses.)
 - **No MFA reset.** The spoke has no authentication-method action, so an MFA reset stays a person's task — which makes identity verification the control that matters.
 :::
 
@@ -130,14 +134,15 @@ unchanged.
 ## Mechanism A — redirect an email into the triage queue
 
 An Exchange Online transport rule routes mail addressed to the Cloud Services
-mailbox to the ServiceNow inbound address; a *New*-type Inbound Email Action
-creates the record in a triage queue with the assignee left blank. Use
+mailbox to the ServiceNow inbound address; an Inbound Email Action for mail
+ServiceNow classifies as *new* (no watermark, reply or forward marker) creates
+the record in a triage queue with the assignee left blank.[^sn-iea] Use
 `-RedirectMessageTo`, not `-BlindCopyTo`: a blind copy leaves the original mailbox
 receiving the message, which is two queues, not one front door. Pilot the rule in
 `Audit` mode, which writes what it would have done to the message tracking log
 without changing delivery, then enforce it.[^exo-rule]
 
-![Email intake mechanism: a sender's email to the Cloud Services mailbox is redirected by an Exchange Online transport rule to the address bound to a ServiceNow Email Account; Email Filters drop loops and junk; a New-type Inbound Email Action creates the record in the triage queue with no assignee, and a Business Rule reroutes any ticket already assigned to Cloud Services back into triage.](images/helpdesk-flow-diagram-05-email-intake.png){#fig-intake fig-alt="A left-to-right blueprint. A sender box feeds an Exchange Online transport rule box, which feeds a ServiceNow Email Account box, which feeds an Email Filters box, which feeds an Inbound Email Action box, which creates a record in a navy Triage queue box with assignee blank. Below, a separate box labelled ticket already on Cloud Services feeds a red Business Rule box, reroute to triage, which also points into the Triage queue." width="100%"}
+![Email intake mechanism: a sender's email to the Cloud Services mailbox is redirected by an Exchange Online transport rule to the address bound to a ServiceNow Email Account; Email Filters drop loops and junk; an Inbound Email Action for new mail creates the record in the triage queue with no assignee, and a Business Rule reroutes any ticket already assigned to Cloud Services back into triage.](images/helpdesk-flow-diagram-05-email-intake.png){#fig-intake fig-alt="A left-to-right blueprint. A sender box feeds an Exchange Online transport rule box, which feeds a ServiceNow Email Account box, which feeds an Email Filters box, which feeds an Inbound Email Action box, which creates a record in a navy Triage queue box with assignee blank. Below, a separate box labelled ticket already on Cloud Services feeds a red Business Rule box, reroute to triage, which also points into the Triage queue." width="100%"}
 
 ```powershell
 # Exchange Online — route Cloud Services intake to ServiceNow.  # CONFIGURE addresses
@@ -157,10 +162,10 @@ reroutes it — Cloud Services is escalation-only, not the routine intake queue.
 Triage applies the authority matrix. Any mail from `@microsoft.com` or one of its
 subdomains is forced to A3, escalate-only, and is never actioned from the email.
 The sender check only routes; it is not proof a message is genuine — Microsoft
-sends from several addresses, and look-alikes exist. The proof is the matching event
+sends from several addresses, and look-alikes exist.[^ms-senders] The proof is the matching event
 in the Entra audit log.
 
-The checks run in a fixed order, because the first match wins and the early checks
+The checks run in a fixed order (design guidance), because the first match wins and the early checks
 catch the dangerous cases:
 
 1. **Does the message claim to come from Microsoft?** A3, escalate only.
@@ -179,8 +184,10 @@ catch the dangerous cases:
 
 **ServiceNow pipeline (A0 / A1)** — Flow Designer asks the requester's manager
 for approval, then executes: a Spoke action where one exists, otherwise an SCTASK
-to the Help Desk. Set a due date on every approval whose outcome is **reject or
-cancel, never approve**, so silence can't grant access.[^sn-fd]
+to the Help Desk. An approval due date can be configured to approve, reject or
+cancel when approvers don't respond;[^sn-fd] set one on every approval with the
+outcome **reject or cancel, never approve** (design guidance), so silence can't
+grant access.
 
 ![The ServiceNow pipeline: an A0 record executes immediately; an A1 record goes through a Flow Designer Ask-for-Approval step to the requester's manager. On approval, a decision tests whether the Entra ID Spoke covers the task — if yes, the Spoke action auto-executes (cloud-only password reset, add-to-group, license); if no, an SCTASK is assigned to the Help Desk. Both paths end in validate, close, and log.](images/helpdesk-flow-diagram-03-servicenow-pipeline.png){#fig-snpipe fig-alt="A blueprint flow. An A0/A1 record box feeds a decision, A0 no approval; yes goes straight to execute, no goes to a Flow Designer manager-approval box. Approved feeds a decision, Spoke covers it; yes to a teal Spoke action box, no to a navy SCTASK to Help Desk box; both converge on a validate-close-log box. A rejected branch leads to a close box." width="100%"}
 
@@ -248,7 +255,7 @@ ServiceNow, with the Entra audit-log reference attached.
 | Exchange transport rule | Exchange Online | Redirect Cloud Services mail → ServiceNow inbound |
 | Email Account | ServiceNow → Email Accounts | Connect the inbound mailbox |
 | Email Filters | ServiceNow → Filters | Drop loops/junk; pre-route |
-| Inbound Email Action (New) | ServiceNow → Inbound Actions | Create the triage record, assignee blank |
+| Inbound Email Action (new email) | ServiceNow → Inbound Actions | Create the triage record, assignee blank |
 | Reroute Business Rule | ServiceNow → Business Rules | Pull Cloud-Services-assigned mail back to triage |
 | Triage subflow / classifier | Flow Designer / kit `scripts/` | Classify by authority |
 | Approval subflows | Flow Designer | Manager / Owner / IGO approval + SLA |
@@ -270,7 +277,7 @@ enablement.
 
 - *Inbound email actions* — <https://www.servicenow.com/docs/bundle/yokohama-platform-administration/page/administer/notification/concept/c_InboundEmailActions.html>
 - *Email filters* — <https://www.servicenow.com/docs/r/platform-administration/c_EmailFilters.html>
-- *Flow Designer approvals overview* — <https://www.servicenow.com/community/workflow-automation-articles/flow-designer-approvals-overview-workflow-automation-center-of/ta-p/2528202>
+- *Ask for Approval action* (Flow Designer) — <https://www.servicenow.com/docs/r/QG7EzyJSIJf6bo5K1OVTbw/eNjrggHQNOdpv8E3iNKJ4w>
 - *Microsoft Entra ID Spoke (Integration Hub)* — <https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/microsoft-azure-ad-spoke.html>
 
 **Microsoft documentation**
@@ -282,11 +289,15 @@ enablement.
 - *What is Privileged Identity Management?* — <https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-configure>
 - *Enable Microsoft Entra self-service password reset* — <https://learn.microsoft.com/en-us/entra/identity/authentication/tutorial-enable-sspr>
 
-[^sn-ef]: ServiceNow, *Email filters*. <https://www.servicenow.com/docs/r/platform-administration/c_EmailFilters.html>
-[^sn-iea]: ServiceNow, *Inbound email actions*. <https://www.servicenow.com/docs/bundle/yokohama-platform-administration/page/administer/notification/concept/c_InboundEmailActions.html>
-[^sn-fd]: ServiceNow, *Flow Designer approvals overview*. <https://www.servicenow.com/community/workflow-automation-articles/flow-designer-approvals-overview-workflow-automation-center-of/ta-p/2528202>
-[^sn-spoke]: ServiceNow, *Microsoft Entra ID Spoke (formerly Microsoft Azure Active Directory spoke), Integration Hub*. <https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/microsoft-azure-ad-spoke.html>
-[^ms-graph]: Microsoft, *Microsoft Entra built-in roles* — the Spoke calls Microsoft Graph and needs the matching role/permission consent. <https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/permissions-reference>
-[^ms-writeback]: Microsoft Learn, "How does self-service password reset writeback work in Microsoft Entra ID?," <https://learn.microsoft.com/entra/identity/authentication/concept-sspr-writeback>; and "Troubleshoot admin password resets in Microsoft 365 admin center," <https://learn.microsoft.com/troubleshoot/entra/entra-id/user-prov-sync/password-writeback-microsoft-365-admin-center> (both accessed Oct 21, 2026).
-[^exo-rule]: Microsoft Learn, "New-TransportRule," parameters `-BlindCopyTo`, `-RedirectMessageTo`, `-SentTo` and `-Mode`, <https://learn.microsoft.com/powershell/module/exchangepowershell/new-transportrule> (accessed Oct 21, 2026).
-[^cisa-spider]: Cybersecurity and Infrastructure Security Agency, Cybersecurity Advisory AA23-320A, *Scattered Spider*, revised July 29, 2025, <https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a> (accessed Oct 21, 2026).
+[^sn-ef]: ServiceNow, *Email filters*, ServiceNow AI Platform Administration. <https://www.servicenow.com/docs/r/platform-administration/c_EmailFilters.html> (accessed Oct 27, 2026).
+[^sn-iea]: ServiceNow, *Inbound email actions*, Platform Administration (Yokohama release). <https://www.servicenow.com/docs/bundle/yokohama-platform-administration/page/administer/notification/concept/c_InboundEmailActions.html> (accessed Oct 27, 2026).
+[^sn-fd]: ServiceNow, "Ask for Approval action," Build Workflows (Yokohama release). <https://www.servicenow.com/docs/r/QG7EzyJSIJf6bo5K1OVTbw/eNjrggHQNOdpv8E3iNKJ4w> (accessed Oct 27, 2026).
+[^sn-spoke]: ServiceNow, *Microsoft Entra ID spoke (formerly Microsoft Azure Active Directory spoke)*, Integration Hub (Zurich release), including the action lists and the permission tables for Reset Password, Change Password and Revoke User SignIn Sessions. <https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/microsoft-azure-ad-spoke.html> (accessed Oct 27, 2026).
+[^ms-graph]: Microsoft Learn, "Microsoft Graph permissions reference" — delegated and application permissions, each marked with whether admin consent is required, <https://learn.microsoft.com/graph/permissions-reference>; the per-action Graph permissions are listed on the ServiceNow Microsoft Entra ID spoke page (accessed Oct 27, 2026).
+[^ms-writeback]: Microsoft Learn, "How does self-service password reset writeback work in Microsoft Entra ID?," <https://learn.microsoft.com/entra/identity/authentication/concept-sspr-writeback>; and "Troubleshoot admin password resets in Microsoft 365 admin center," <https://learn.microsoft.com/troubleshoot/entra/entra-id/user-prov-sync/password-writeback-microsoft-365-admin-center> (both accessed Oct 27, 2026).
+[^exo-rule]: Microsoft Learn, "New-TransportRule," parameters `-BlindCopyTo`, `-RedirectMessageTo`, `-SentTo` and `-Mode`, <https://learn.microsoft.com/powershell/module/exchangepowershell/new-transportrule> (accessed Oct 27, 2026).
+[^cisa-spider]: Cybersecurity and Infrastructure Security Agency, Cybersecurity Advisory AA23-320A, *Scattered Spider*, revised July 29, 2025, <https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a> (accessed Oct 27, 2026).
+[^sn-adspoke]: ServiceNow, *Microsoft Active Directory spoke*, Integration Hub (Zurich release). <https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/microsoft-ad-spoke.html> (accessed Oct 27, 2026).
+[^ms-senders]: Microsoft Learn, "Email notifications in PIM," section "Sender email address and subject line," <https://learn.microsoft.com/entra/id-governance/privileged-identity-management/pim-email-notifications>; and "Microsoft Entra general operations guide reference," section "Notifications," <https://learn.microsoft.com/entra/architecture/ops-guide-ops> (both accessed Oct 27, 2026).
+[^ms-hardmatch]: Microsoft Learn, "Configure Microsoft Entra Connect for an existing tenant," section "Hard match vs soft match," <https://learn.microsoft.com/entra/identity/hybrid/connect/how-to-connect-install-existing-tenant> (accessed Oct 27, 2026).
+[^ms-odprov]: Microsoft Learn, "Pre-provision OneDrive for users in your organization," <https://learn.microsoft.com/sharepoint/pre-provision-accounts> (accessed Oct 27, 2026).

@@ -99,7 +99,7 @@ function Write-HelpDeskLog {
 # An app holding ANY of these as an *application* permission => Tier 1.
 # ---------------------------------------------------------------------------
 $script:CriticalAppPermissions = @(
-    'Mail.ReadWrite.All','Mail.Send','Files.ReadWrite.All','User.ReadWrite.All',
+    'Mail.ReadWrite','Mail.Send','Files.ReadWrite.All','User.ReadWrite.All',
     'Directory.ReadWrite.All','RoleManagement.ReadWrite.Directory','Group.ReadWrite.All',
     'Application.ReadWrite.All','AppRoleAssignment.ReadWrite.All','Sites.FullControl.All'
 )
@@ -163,7 +163,9 @@ $script:RequestRoutingTable = @(
     [pscustomobject]@{ Key='LicenseAssignment'; Authority='A1'; Destination='ServiceNow'; Execution='Spoke'; Approver="Requester's manager"; TeamRole='ExecuteAfterApproval'; PimRole='License Administrator'; Verification='None'; Match='licen[cs]e|\b[eg][35]\b|\bsku\b' }
     [pscustomobject]@{ Key='UserEnableUpdate'; Authority='A1'; Destination='ServiceNow'; Execution='Spoke'; Approver="Requester's manager"; TeamRole='ExecuteAfterApproval'; PimRole='User Administrator'; Verification='None'; Match='enable (the )?(user|account)|unlock (the )?account|update (user|profile|attribute)|assign manager|set manager|change (title|department|display name)' }
     [pscustomobject]@{ Key='OneDriveProvisioning'; Authority='A1'; Destination='ServiceNow'; Execution='Manual'; Approver="Requester's manager (pre-provisioning is a SharePoint Administrator task)"; TeamRole='ExecuteAfterApproval'; PimRole=$null; Verification='None'; Match='provision onedrive|create onedrive|onedrive not (created|provisioned)' }
-    [pscustomobject]@{ Key='AuditLogRetrieval'; Authority='A0'; Destination='ServiceNow'; Execution='Spoke'; Approver='None'; TeamRole='Execute'; PimRole='Reports Reader'; Verification='None'; Match='sign-?in log|audit log|directory audit|who (signed in|accessed)|access evidence' }
+    [pscustomobject]@{ Key='SignInLogRetrieval'; Authority='A0'; Destination='ServiceNow'; Execution='Spoke'; Approver='None'; TeamRole='Execute'; PimRole='Reports Reader'; Verification='None'; Match='sign-?in log|who signed in' }
+    # The spoke's audit-logs category has only a sign-in look-up; directory audit reads are manual.
+    [pscustomobject]@{ Key='AuditLogRetrieval'; Authority='A0'; Destination='ServiceNow'; Execution='Manual'; Approver='None'; TeamRole='Execute'; PimRole='Reports Reader'; Verification='None'; Match='audit log|directory audit|who accessed|access evidence' }
     [pscustomobject]@{ Key='OneDriveClientSide'; Authority='A0'; Destination='ServiceNow'; Execution='Manual'; Approver='None'; TeamRole='Execute'; PimRole=$null; Verification='None'; Match='onedrive (sync|not syncing|stuck|error)|kfm|known folder|onedrive cache|reset onedrive' }
     # Password reset: text triage cannot tell a cloud-only user from a synced one,
     # so the matched row is the conservative Manual default. Resolve-RequestRoute

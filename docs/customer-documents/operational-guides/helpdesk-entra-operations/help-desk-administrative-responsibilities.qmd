@@ -33,6 +33,10 @@ responsibilities and Admin Consent governance. This guide should be read in
 conjunction with both companion documents.
 :::
 
+::: {.callout-note title="Design guidance"}
+Approval chains, authority boundaries, service levels, escalation triggers, review cadences, PIM setting values and naming conventions in this guide are the program's design guidance for the agency to adopt or adjust. Platform behavior is footnoted to Microsoft, ServiceNow and federal sources.
+:::
+
 ## Purpose and scope
 
 ### Purpose
@@ -107,7 +111,7 @@ records shall be maintained in the agency's personnel training system.
 
 ## Authority boundaries
 
-The following table defines the precise boundary of Help Desk authority in
+The following table (design guidance) defines the precise boundary of Help Desk authority in
 Microsoft Entra ID operations. This boundary is enforced by the **principle of
 least privilege**, PIM-gated role elevation, and SAM-originated approval chains.
 No action outside the "Authorized" column may be performed by Help Desk personnel
@@ -194,7 +198,7 @@ In Active Directory, helpdesk delegation was scoped by placing the target users 
 | OU ACL giving group membership write | Groups Administrator scoped to department AU |
 | Standing delegated admin (persistent) | PIM-eligible assignment — never standing active |
 
-AU membership is driven by OrgPath facet predicates (e.g., `extensionAttribute2 -eq "IT"`), so scope tracks org structure automatically without manual OU management. The PAG and PIM configuration below operationalize the role-binding side of this model.
+AU membership is driven by OrgPath facet predicates in a dynamic membership rule (e.g., `user.extensionAttribute2 -eq "IT"`), so scope tracks org structure automatically without manual OU management. Dynamic AU membership needs an Entra ID P1 license for each member and is not available in specialized clouds such as Azure Government.[^ms-au-dynamic] The PAG and PIM configuration below operationalize the role-binding side of this model.
 
 Two limits of AU scope matter. An AU-scoped role acts only on members of the unit
 who hold **no** administrator role, so a reset for a limited administrator inside
@@ -248,9 +252,10 @@ Engineering team during initial deployment:
 | Option B | **IDM-HelpDesk-Operations** | Security Group, Role-Assignable | Agencies with a separate Identity Management (IDM) function within IT |
 
 The group **must** be created as a **Role-Assignable Security Group** in Entra ID.
-Standard security groups and Microsoft 365 Groups cannot be used for PIM-governed
-role assignment. Group creation is performed by Identity Engineering, not by Help
-Desk.
+A group created without the role-assignable setting can never hold a Microsoft
+Entra role; the setting is available for security and Microsoft 365 groups and only
+at creation.[^ms-rag] Group creation is performed by Identity Engineering (it needs
+Privileged Role Administrator), not by Help Desk.
 
 ::: {.callout-note title="Note"}
 Role-assignable groups require **Entra ID P1**; just-in-time activation through PIM
@@ -270,7 +275,7 @@ Entra Privileged Identity Management (PIM). Under no circumstances shall Help De
 personnel hold **Active (standing)** role assignments for Helpdesk Administrator,
 Password Administrator, Authentication Administrator, User Administrator, or the
 custom app-assignment role. The following PIM configuration settings apply (the
-Tier 2 values; PIM settings are per role, so every holder of a role in the tenant
+Tier 2 values, as design guidance; PIM settings are per role, so every holder of a role in the tenant
 shares them):[^ms-pim-settings]
 
 | **PIM setting** | **Required value** | **Rationale** |
@@ -279,7 +284,7 @@ shares them):[^ms-pim-settings]
 | Maximum activation duration | **8-hour ceiling** (Tier 2); shorter (1–24 hours) is possible but applies tenant-wide to that role | Minimizes exposure window for privileged session |
 | Approval required for activation | **The task approval lives in the ticket.** PIM approval is optional for Tier 2 under a documented risk acceptance, and required for the high-risk tasks that need a second approver | Two-person integrity without double-approving routine work |
 | Justification required | **Yes** — ServiceNow RITM number and brief action description required in justification and ticket fields | Links every elevation to a governed work item |
-| MFA required on activation | **Yes** — Phishing-resistant MFA (FIDO2 or certificate-based) required | Prevents credential-based elevation abuse |
+| MFA required on activation | **Yes** — Phishing-resistant MFA (FIDO2 or certificate-based), enforced through a Conditional Access authentication context with a phishing-resistant authentication strength; PIM's own MFA option does not fix the method and may not prompt again in a session[^ms-pim-authctx] | Prevents credential-based elevation abuse |
 | Eligible assignment expiration | **180 days** — PAG membership reviewed quarterly; must be re-approved | Ensures access certifications are enforced |
 | Notification on activation | **Yes** — Alert to Help Desk Supervisor and Identity Engineering inbox | Real-time awareness of privilege use |
 
@@ -331,7 +336,7 @@ Each is the least-privileged role Microsoft documents for its task.[^ms-by-task]
 
 | **Role** | **Required / Optional** | **Authorized tasks** | **NOT authorized under this role** | **Notes** |
 |---|---|---|---|---|
-| **Helpdesk Administrator** (or the narrower **Password Administrator**) | **Required** | Reset passwords for users with no admin role. Invalidate refresh tokens (revoke sessions). | Resetting anyone who holds an admin role, or a member or owner of a role-assignable group. | Helpdesk Administrator can also act on a few limited roles (other Helpdesk Administrators, Message Center Reader, Reports Reader); Password Administrator acts only on non-admins, Directory Readers, Guest Inviters and other Password Administrators.[^ms-privileged] Choose Password Administrator where resets are the only need. |
+| **Helpdesk Administrator** (or the narrower **Password Administrator**) | **Required** | Reset passwords for users with no admin role. Invalidate refresh tokens (revoke sessions). | Resetting anyone who holds an admin role, or a member or owner of a role-assignable group. | Helpdesk Administrator can also act on a few limited roles (Directory Readers, Guest Inviters, Password Administrators, other Helpdesk Administrators, Message Center Readers, Reports Readers, Usage Summary Reports Readers and User Experience Success Managers); Password Administrator acts only on non-admins, Directory Readers, Guest Inviters and other Password Administrators.[^ms-privileged] Choose Password Administrator where resets are the only need. |
 | **Authentication Administrator** | **Required** | Delete or reset a user's authentication methods. Require MFA re-registration. Issue a Temporary Access Pass to members (not to administrators, not to self). Register a method on a user's behalf after verification. | Managing methods for users holding admin roles. Changing authentication methods policy, MFA settings or the Temporary Access Pass policy (Authentication Policy Administrator). Disabling MFA. | It **cannot** "disable MFA": tenant MFA settings belong to Authentication Policy Administrator, and the program does not use per-user MFA.[^ms-privileged] A user who has lost every method gets a Temporary Access Pass. The role can also delete, disable and enable users — a capability the Help Desk may not use. |
 | **Help Desk Enterprise App Assignment** (custom role) | **Required** | Assign and remove users and groups on enterprise applications. | Creating apps, granting consent, adding credentials, changing app configuration. | A custom role holding only `microsoft.directory/servicePrincipals/appRoleAssignedTo/update`, scoped to one app or the tenant; each assignee needs Entra ID P1.[^ms-custom-apps] `New-HelpDeskPAG.ps1 -CreateAppAssignmentRole` creates it. |
 | **User Administrator** | **Optional — Restricted** (IGO authorization required; use with caution) | Update basic profile attributes per a SAM-initiated change request, where the attribute is not HR-mastered and the user is cloud-managed. | Deleting user accounts. Creating guests. Assigning directory roles. Managing users who hold admin roles. | The broadest optional role: it can delete users, create guests, change licenses and reset limited administrators.[^ms-by-task][^ms-privileged] Activate only for the specific task authorized in the RITM. Annual IGO re-authorization required. |
@@ -415,7 +420,7 @@ information.
 
 | **Action** | **Why SAM cannot automate** | **Help Desk action required** | **PIM role required** |
 |---|---|---|---|
-| Admin Consent approval | Requires a human administrator action in the Entra portal with Global Admin or Privileged Role Administrator rights. Cannot be scripted via SAM connector safely. | **ESCALATE ONLY** — Help Desk triages, documents, and escalates to IGO via Application Owner. IGO acts directly. Help Desk documents outcome. | N/A — Help Desk does not perform this action. |
+| Admin Consent approval | Requires a human administrator decision. Tenant-wide consent needs Privileged Role Administrator (any permission), or Cloud Application or Application Administrator (any permission except Microsoft Graph application permissions).[^ms-grant-consent] Cannot be scripted via SAM connector safely. | **ESCALATE ONLY** — Help Desk triages, documents, and escalates to IGO via Application Owner. IGO acts directly. Help Desk documents outcome. | N/A — Help Desk does not perform this action. |
 | Group assignment to Enterprise Application role | SAM Entra connector may lack write access to app role assignment endpoint for specific applications. Not all apps are connector-provisioned. | Assign the SAM-approved group to the specified app role in Entra Enterprise Apps blade. | Yes — custom app-assignment role |
 | ImmutableID mismatch | Not connector-executable, and not a Help Desk task. Usually fixed in AD (set `mS-DS-ConsistencyGuid`) by Identity Engineering; Entra ID blocks risky hard matches since July 1, 2026. | **Detect and escalate** to Identity Engineering with the evidence. See the Hybrid identity operations section. | No — Help Desk holds no role for this |
 | MFA method reset | No connector action: neither SAM nor the Entra ID spoke manages authentication methods. | Verify the person, then reset the specified methods via Entra admin center → Users → Authentication methods, or issue a Temporary Access Pass. | Yes — Authentication Administrator |
@@ -460,8 +465,8 @@ full procedure.
    proof — Step 3 is.
 2. **Identify notification type** — Is this an Admin Consent request, a risk
    alert, an identity protection detection, or a service health notice?
-3. **Check Entra Audit Logs** — Navigate to Entra Portal → Monitoring → Audit
-   Logs. Filter by the relevant user or application. Confirm whether any action
+3. **Check Entra Audit Logs** — Navigate to Entra admin center → Entra ID →
+   Monitoring & health → Audit logs.[^ms-activity-logs] Filter by the relevant user or application. Confirm whether any action
    has already been taken in the tenant (e.g., a consent grant already executed).
 4. **Do NOT approve** Admin Consent grants based on the email. See the Admin
    Consent triage workflow.
@@ -621,8 +626,8 @@ their authority.
    or commonly used vendor application? Document findings. A request for an unknown
    application or one with no verifiable business justification should be flagged
    as high-risk in the ticket.
-4. **Check Entra Audit Logs for consent grant activity.** Navigate to Entra Portal
-   → Monitoring → Audit Logs. Filter Activity: "Consent to application." Look for
+4. **Check Entra Audit Logs for consent grant activity.** Navigate to Entra admin center
+   → Entra ID → Monitoring & health → Audit logs. Filter Activity: "Consent to application."[^ms-audit-activities] Look for
    any consent events associated with the application or the requesting user. If
    consent has already been granted, document it and escalate immediately — an
    unauthorized grant may have occurred and requires security review.
@@ -672,8 +677,10 @@ Application, granting the group's members access to the application.
    status, all SAM approvals are complete, and the RITM contains the group name,
    application name, and app role name.
 2. **Activate PIM — app-assignment role:** Navigate to Entra admin center →
-   Identity Governance → Privileged Identity Management → My Roles → Eligible
-   Assignments. Activate the **Help Desk Enterprise App Assignment** custom role.
+   ID Governance → Privileged Identity Management → My roles → **Groups** (eligible
+   PAG membership) or **Microsoft Entra roles** (an eligible role held directly) →
+   Eligible assignments. Activate the PAG membership that carries the **Help Desk
+   Enterprise App Assignment** custom role.[^ms-pim-groups-activate]
    Enter the RITM number and a brief action description in the justification and
    ticket fields. If PIM approval is configured, wait for it before proceeding.
 3. **Navigate to Enterprise Applications:** In the Entra Portal, navigate to
@@ -685,7 +692,8 @@ Application, granting the group's members access to the application.
    **None Selected** under Users and groups. Search for and select the Entra
    security group specified in the RITM.
 6. **Select App Role:** Click **None Selected** under Select a role. Select the app
-   role specified in the RITM. If only one role exists, it will be pre-selected.
+   role specified in the RITM. If the application defines no roles, the assignment
+   uses **Default Access**.[^ms-app-assign]
 7. **Confirm Assignment:** Click **Assign**. Verify the group now appears in the
    Users and groups list for the application with the correct role.
 8. **Validate:** Confirm the group assignment persists after page refresh. If the
@@ -789,7 +797,7 @@ any changes:
 - In Entra Portal → Users → [User]: Check "On-premises sync enabled" status. If it
   shows "No" for a user who should be hybrid-synced, a sync issue is present.
 - Check "Last sync time" under the user's On-Premises section. If sync is stale
-  (older than the Entra Connect sync cycle — typically 30 minutes), escalate to
+  (older than the Entra Connect sync cycle — 30 minutes by default[^ms-scheduler]), escalate to
   Identity Engineering to check Entra Connect health.
 - Check for duplicate user objects: Search Entra ID for the user's display name and
   confirm only one active object exists with the correct UPN.
@@ -800,8 +808,10 @@ any changes:
 ### Entra Connect health checks
 
 Help Desk may perform read-only Entra Connect Health monitoring as a diagnostic
-step. Navigate to Entra Portal → Entra Connect → Connect Health. Review sync
-errors, agent status, and alert notifications. Help Desk **may not** modify Entra
+step. Navigate to Entra Connect Health in the Entra admin center. Review sync
+errors, agent status, and alert notifications. Connect Health uses its own Azure
+RBAC: a technician needs the **Reader** role on Connect Health, which none of the
+Entra roles above grant, and Connect Health itself needs Entra ID P1.[^ms-connect-health] Help Desk **may not** modify Entra
 Connect sync rules, connector configurations, or schedules. All modifications to
 Entra Connect are reserved for Identity Engineering.
 
@@ -837,15 +847,15 @@ Help Desk may not modify CA policies.
 | Account not licensed for OneDrive / SharePoint | License | **Yes** — with License Administrator role and Departmental Owner approval | Requires SAM-originated RITM with approval before license assignment. |
 | Conditional Access policy blocking device or session | Conditional Access | **No — Escalate** | Help Desk identifies CA as the cause. Escalates to Security Admin. Help Desk cannot modify CA policy. |
 | Device not Entra-joined or not registered | Device Compliance | **Partial** — Help Desk checks; may escalate | Help Desk can verify device join status and guide user through device re-registration where policy permits. Compliance remediation may escalate. |
-| Known Folder Move (KFM) conflict | Client-side | **Yes** | Disable KFM, re-enable, or reset KFM policy in local OneDrive settings. |
+| Known Folder Move (KFM) conflict | Client-side | **Yes** — unless policy prevents it | Stop and restart folder backup in OneDrive settings (Backup → Manage backup). If the "prevent users from redirecting known folders" policy (`KFMBlockOptOut`) is set, the user can't stop backup; KFM policy changes go to device management.[^ms-kfm] |
 | File path too long | Client-side | **Yes** | The decoded path, including the file name, can't exceed 400 characters in OneDrive and SharePoint;[^ms-spo-limits] a 260-character limit is a Windows-side limit, not the service limit. Instruct user to shorten file or folder names. |
-| Corrupted OneDrive sync cache | Client-side | **Yes** | Reset cache: %localappdata%\Microsoft\OneDrive\onedrive.exe /reset |
-| SharePoint site quota exceeded | Storage | **Yes** — notify site owner; may require SharePoint Admin for quota increase | Help Desk identifies the site quota status in SharePoint Admin Center. Quota increase requires SharePoint Admin. |
+| Corrupted OneDrive sync cache | Client-side | **Yes** | Reset cache: %localappdata%\Microsoft\OneDrive\onedrive.exe /reset (a reset triggers a full sync)[^ms-od-reset] |
+| SharePoint site quota exceeded | Storage | **Partial** — identify from the user's error and notify the site owner; quota changes escalate to SharePoint Admin | Site storage limits are viewed and changed in the SharePoint admin center, which needs a SharePoint Administrator; the Help Desk routes the request. A user's own OneDrive has a separate per-user quota and turns read-only when it is exceeded.[^ms-spo-storage] |
 | UPN changed without re-sign-in to OneDrive client | Identity | **Yes** | Expected behavior after UPN change. User must sign out and sign back in to OneDrive client. No Entra action needed. |
 | ImmutableID mismatch / duplicate cloud account | Hybrid Identity | **No — Escalate** | Detect and escalate to Identity Engineering per the Hybrid identity operations section. |
 | OneDrive not yet created after licensing | Provisioning | **Usually no action** | OneDrive is created the first time the user browses to it. Pre-provisioning (`Request-SPOPersonalSite`) needs a SharePoint Administrator; the user must be licensed and allowed to sign in.[^ms-od-provision] |
 | MFA prompt loop / modern authentication failure | Identity | **Yes** — with Authentication Administrator role if method reset needed | First attempt sign-out/sign-in. If auth method is broken, reset via Entra Auth Methods with PIM elevation. |
-| Blocked file types (SharePoint policy) | Policy | **Partial** — Help Desk identifies; policy change escalates to SharePoint Admin | Check SharePoint Admin Center → Settings → Blocked file types. Help Desk cannot modify the blocked list. |
+| Blocked file types (sync upload policy) | Policy | **Partial** — Help Desk identifies; policy change escalates to SharePoint Admin | The tenant setting is SharePoint admin center → Settings → Sync → "Block upload of specific file types" (it blocks upload, not download); device policy can also exclude files from upload. Help Desk cannot modify the blocked list.[^ms-block-types] |
 
 ### Step-by-step triage workflow
 
@@ -860,10 +870,11 @@ Help Desk may not modify CA policies.
    "On-premises sync enabled" status is correct for the user type.
 3. **Check for Conditional Access blocks in sign-in logs.** Use Reports Reader to
    read the logs and Security Reader to see which Conditional Access policies
-   applied. Navigate to Entra admin center → Monitoring → Sign-in Logs. Filter by the user's UPN
+   applied. Navigate to Entra admin center → Entra ID → Monitoring & health →
+   Sign-in logs. Filter by the user's UPN
    and the OneDrive or SharePoint application. Look for sign-in events with Status
-   "Failure" and check the Conditional Access tab within the event. If a CA policy
-   shows "Failed," that CA policy is the root cause — document and escalate. Do not
+   "Failure" and check the Conditional Access tab within the event. If an enforced CA
+   policy shows "Failure" (a report-only result doesn't block),[^ms-signin-ca] that CA policy is the root cause — document and escalate. Do not
    modify CA policy.
 4. **Check device compliance status.** In Entra Portal → Devices, search for the
    user's device by name or device ID. Confirm: Device is Entra Joined or
@@ -897,7 +908,7 @@ Help Desk may not modify CA policies.
 
 | **Action** | **Required role** | **PIM required** | **Steps** |
 |---|---|---|---|
-| Check sign-in logs for OneDrive app | Reports Reader (Security Reader for applied CA policies) | Yes, if eligible-only | Entra admin center → Monitoring → Sign-in Logs → filter by user and OneDrive app |
+| Check sign-in logs for OneDrive app | Reports Reader (Security Reader for applied CA policies) | Yes, if eligible-only | Entra admin center → Entra ID → Monitoring & health → Sign-in logs → filter by user and OneDrive app |
 | Confirm or assign OneDrive license | License Administrator | Yes | Entra admin center → Users → [User] → Licenses → Assign; requires RITM + Departmental Owner approval |
 | Pre-provision OneDrive | SharePoint Administrator (not Help Desk) | — | Route to SharePoint Administrator (`Request-SPOPersonalSite`); Global Reader is read-only and cannot do this |
 | Reset MFA blocking authentication | Authentication Administrator | Yes | Verify the person first; Entra admin center → Users → [User] → Authentication methods → delete broken method; requires Help Desk Supervisor approval |
@@ -915,7 +926,8 @@ Help Desk may not modify CA policies.
    account (e.g., license removed during access certification). SAM automatically
    creates a ServiceNow incident and assigns to Help Desk with the affected user's
    UPN and specific failure reason.
-3. **Azure Monitor / Entra Alert:** An Azure Monitor alert or Entra diagnostic rule
+3. **Azure Monitor / Entra Alert:** An Azure Monitor log search alert, running on
+   Entra sign-in logs sent to Log Analytics by a diagnostic setting,[^ms-monitor-itsm]
    detects repeated sign-in failures for the OneDrive application from a specific
    user or group of users. The alert fires a webhook that auto-creates a ServiceNow
    incident assigned to Help Desk for investigation.
@@ -962,15 +974,17 @@ is to identify, document, and escalate.
 :::
 
 ::: {.callout-note title="UPN change behavior"}
-A UPN change in Entra ID will **always** break OneDrive sync until the user signs
-out of the OneDrive client and signs back in with the new UPN. This is expected
-behavior, not a bug. No Entra-level action is required. Inform the user and
-instruct them to sign out and sign back in to the OneDrive client on all devices.
+A UPN change in Entra ID **can** break OneDrive sync; Microsoft documents that
+OneDrive might be unable to sync after a UPN change.[^ms-od-cache] This is expected
+behavior, not a bug. No Entra-level action is required. Instruct the user to sign
+out of the OneDrive client on all devices, clear the cached credentials as in
+Step 7(c) of the triage workflow, and sign back in with the new UPN.
 :::
 
 ::: {.callout-note title="Password reset sync errors"}
-Password reset sync errors in OneDrive **almost always resolve** by signing out and
-back in to the OneDrive client after the password change is complete. Help Desk
+Password reset sync errors in OneDrive **usually resolve** by signing out and
+back in to the OneDrive client after the password change is complete, clearing the
+cached credentials (Step 7(c)) if they persist.[^ms-od-cache] Help Desk
 should verify this simple step before escalating or performing any Entra-level
 action.
 :::
@@ -985,6 +999,8 @@ emergency change process through ServiceNow.
 :::
 
 ## Escalation matrix
+
+Escalation targets and triggers below are design guidance.
 
 | **Issue type** | **Help Desk can handle?** | **Escalate to** | **Escalation trigger** |
 |---|---|---|---|
@@ -1025,6 +1041,8 @@ without adequate work notes documentation will be returned for completion by the
 Help Desk Supervisor.
 
 ### SAM-originated RITM SLA requirements
+
+These service levels are the program's starting values (design guidance), to be tuned against the agency's queue data.
 
 | **RITM priority** | **Acknowledgement SLA** | **Resolution SLA** | **Escalation trigger** |
 |---|---|---|---|
@@ -1120,12 +1138,16 @@ structural revisions increment the major version number.
 
 ::: {.callout-important title="Integrating ServiceNow's shipped functions — not reinventing them"}
 This guidance does **not** build a parallel automation engine. ServiceNow already
-ships the integration: the **Microsoft Entra ID Spoke** "provides spoke actions to automate Microsoft Entra ID tasks for application management, audit logs, device management, group management, license management, organization management, password management, service principal management, user authentication, and user management"
-([ServiceNow documentation](https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/microsoft-azure-ad-spoke.html)). What this kit adds is **integration and
-customization** — routing those shipped actions through the agency's Help Desk
-authority model and the ServiceNow / SAM approval pipelines, and filling only the
-residual gaps the spoke does not cover (OneDrive, ImmutableID hard-match,
-Conditional Access). It runs ServiceNow-first: requests enter a triage queue, are
+ships the integration: the **Microsoft Entra ID Spoke**, an Integration Hub spoke
+(it needs an Integration Hub subscription), provides actions to automate Entra
+tasks when events occur in ServiceNow, in ten categories: audit logs, group,
+license, application, device, organization, user authentication, service principal,
+password and user management. Its Reset Password action resets only users created
+in Entra ID, and it has no authentication-method reset action.[^sn-spoke] What this
+kit adds is **integration and customization** — routing those shipped actions
+through the agency's Help Desk authority model and the ServiceNow / SAM approval
+pipelines, and filling only the residual gaps the spoke does not cover (OneDrive,
+authentication-method resets, ImmutableID hard-match, Conditional Access). It runs ServiceNow-first: requests enter a triage queue, are
 classified by required authority, and route to the ServiceNow or SAM pipeline. See
 [Help Desk Flow — Intake, Triage, and Routing](helpdesk-flow.qmd) for the full
 mechanisms and the task ↔ Spoke capability crosswalk.
@@ -1151,3 +1173,19 @@ mechanisms and the task ↔ Spoke capability crosswalk.
 [^ms-od-cache]: Microsoft Learn, "OneDrive for Business can't sync after tenant migration," <https://learn.microsoft.com/troubleshoot/sharepoint/sync/cant-sync-after-migration> (accessed Oct 21, 2026).
 [^cisa-spider]: Cybersecurity and Infrastructure Security Agency, Cybersecurity Advisory AA23-320A, *Scattered Spider*, November 16, 2023, revised July 29, 2025, <https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a> (accessed Oct 21, 2026).
 [^nist-63b]: National Institute of Standards and Technology, SP 800-63B-4, *Digital Identity Guidelines: Authentication and Authenticator Management*, July 2025, sections 3.2.5 and 4.2, <https://pages.nist.gov/800-63-4/sp800-63b.html> (accessed Oct 21, 2026).
+[^ms-au-dynamic]: Microsoft Learn, "Manage users or devices for an administrative unit with rules for dynamic membership groups," section "Prerequisites," <https://learn.microsoft.com/entra/identity/role-based-access-control/admin-units-members-dynamic>; and "Manage rules for dynamic membership groups in Microsoft Entra ID," <https://learn.microsoft.com/entra/identity/users/groups-dynamic-membership> (both accessed Oct 27, 2026).
+[^ms-pim-authctx]: Microsoft Learn, "Configure Microsoft Entra role settings in Privileged Identity Management," sections "On activation, require multifactor authentication" and "On activation, require Microsoft Entra Conditional Access authentication context," <https://learn.microsoft.com/entra/id-governance/privileged-identity-management/pim-how-to-change-default-settings>; and "Configure PIM for Groups settings," <https://learn.microsoft.com/entra/id-governance/privileged-identity-management/groups-role-settings> (both accessed Oct 27, 2026).
+[^ms-grant-consent]: Microsoft Learn, "Grant tenant-wide admin consent to an application," section "Prerequisites," <https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent> (accessed Oct 27, 2026).
+[^ms-activity-logs]: Microsoft Learn, "How to access activity logs in Microsoft Entra ID," section "View logs through the Microsoft Entra admin center," <https://learn.microsoft.com/entra/identity/monitoring-health/howto-access-activity-logs> (accessed Oct 27, 2026).
+[^ms-audit-activities]: Microsoft Learn, "Microsoft Entra audit log categories and activities," section "Core Directory" (ApplicationManagement: "Consent to application"), <https://learn.microsoft.com/entra/identity/monitoring-health/reference-audit-activities> (accessed Oct 27, 2026).
+[^ms-pim-groups-activate]: Microsoft Learn, "Activate your group membership or ownership in Privileged Identity Management," section "Activate a role," <https://learn.microsoft.com/entra/id-governance/privileged-identity-management/groups-activate-roles> (accessed Oct 27, 2026).
+[^ms-app-assign]: Microsoft Learn, "Manage users and groups assignment to an application," sections "Prerequisites" and "Assign users and groups to an application using the Microsoft Entra admin center," <https://learn.microsoft.com/entra/identity/enterprise-apps/assign-user-or-group-access-portal> (accessed Oct 27, 2026).
+[^ms-scheduler]: Microsoft Learn, "Microsoft Entra Connect Sync: Scheduler," <https://learn.microsoft.com/entra/identity/hybrid/connect/how-to-connect-sync-feature-scheduler> (accessed Oct 21, 2026).
+[^ms-connect-health]: Microsoft Learn, "Microsoft Entra Connect Health operations," section "Manage access with Azure RBAC," <https://learn.microsoft.com/entra/identity/hybrid/connect/how-to-connect-health-operations>; and "What is Microsoft Entra Connect?," section "License requirements for using Microsoft Entra Connect Health," <https://learn.microsoft.com/entra/identity/hybrid/connect/whatis-azure-ad-connect> (both accessed Oct 27, 2026).
+[^ms-kfm]: Microsoft Learn, "Redirect and move Windows known folders to OneDrive," section "About the Known Folder Move policies," <https://learn.microsoft.com/sharepoint/redirect-known-folders>; and "IT Admins - Use OneDrive policies to control sync settings," section "Prevent users from redirecting their Windows known folders to their PC," <https://learn.microsoft.com/sharepoint/use-group-policy> (both accessed Oct 27, 2026).
+[^ms-spo-storage]: Microsoft Learn, "Manage site storage limits in SharePoint in Microsoft 365," <https://learn.microsoft.com/sharepoint/manage-site-collection-storage-limits>; and "OneDrive site is read-only because storage quota was exceeded," <https://learn.microsoft.com/troubleshoot/sharepoint/sites/site-storage-quota-exceeded> (both accessed Oct 27, 2026).
+[^ms-block-types]: Microsoft Learn, "Block syncing of specific file types," <https://learn.microsoft.com/sharepoint/block-file-types> (accessed Oct 27, 2026).
+[^ms-signin-ca]: Microsoft Learn, "Learn about the sign-in log activity details," section "Sign-in activity details," <https://learn.microsoft.com/entra/identity/monitoring-health/concept-sign-in-log-activity-details>; and "What is Conditional Access report-only mode?," section "Policy evaluation results," <https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-report-only> (both accessed Oct 27, 2026).
+[^ms-monitor-itsm]: Microsoft Learn, "Integrate Microsoft Entra logs with Azure Monitor logs," <https://learn.microsoft.com/entra/identity/monitoring-health/howto-integrate-activity-logs-with-azure-monitor-logs>; and "Configure Azure to connect ITSM tools by using Secure Webhook," <https://learn.microsoft.com/azure/azure-monitor/alerts/itsm-connector-secure-webhook-connections-azure-configuration> (both accessed Oct 27, 2026).
+[^ms-od-reset]: Microsoft Learn, "Error 0x8004de85 or 0x8004de8a when signing in to OneDrive," section "Solution 2: Reset OneDrive," <https://learn.microsoft.com/troubleshoot/sharepoint/sync/sign-into-onedrive-error-0x8004de85-or-0x8004de8a> (accessed Oct 21, 2026).
+[^sn-spoke]: ServiceNow, "Microsoft Entra ID spoke," Integration Hub (Zurich release), <https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/microsoft-azure-ad-spoke.html> (accessed Oct 27, 2026).

@@ -29,6 +29,10 @@ Series documents: IDG-GOV-001 (Entra ID Identity Lifecycle) · IDG-GOV-002
 (Privileged Access and PIM Model) · IDG-GOV-003 (Enterprise Application Access
 Governance — this document).*
 
+::: {.callout-note title="Design guidance"}
+Approval chains, risk tiers, permission risk ratings, service levels, review cadences, alert priorities and response times, retention minimums, the group naming convention, exception limits and the RACI in this document are the program's design guidance for the agency to adopt or adjust. Platform behavior is footnoted to Microsoft, ServiceNow and federal sources.
+:::
+
 ## Purpose, scope, and authority
 
 ### Purpose
@@ -109,7 +113,7 @@ regulations:
 | NIST SP 800-53 Rev. 5 (AC Family) | Access enforcement (AC-3), least privilege (AC-6), account management (AC-2), and separation of duties (AC-5) controls directly implemented in this model |
 | NIST SP 800-207 (Zero Trust Architecture) | Least-privilege, continuous validation, and explicit trust verification principles applied to every access workflow |
 | OMB Memorandum M-22-09 | Federal Zero Trust Strategy requirements, including phased adoption of application-level access controls |
-| CISA Zero Trust Maturity Model | Application pillar maturity requirements for identity-based access |
+| CISA Zero Trust Maturity Model | Applications and Workloads pillar maturity requirements for identity-based access[^cisa-ztmm] |
 | Agency Information Security Policy | Parent agency policy governing all information system access |
 
 ## Definitions and key terms
@@ -158,7 +162,7 @@ group, key responsibilities, and approval authority level.
 | **Departmental Owner (Ownership Layer 2)** | Member of Dept-Owners-[DeptCode] security group | Validates business justification for access requests; approves Tier 3 application access requests; confirms staffing changes that affect application access; escalates unresolved access requests to Application Owner; reviews department-level group memberships semi-annually | **Level 4** — departmental access validation |
 | **Help Desk Operator** | Entra-HelpDesk-Operators PAG (grants Helpdesk Administrator, Authentication Administrator and the custom enterprise-app assignment role via PIM activation) | Executes approved access changes in Entra ID (group assignments, app assignments); must activate role via PIM before performing any Entra action; closes ServiceNow RITM with execution confirmation; does not approve access — execution only; triages Microsoft Security notification emails per the Microsoft Security notification section; escalates anomalous consent or permission events to IGO | **Execution only** — no approval authority |
 | **End User / Requester** | Standard user account (no elevated role) | Submits access requests via ServiceNow catalog; provides business justification for access needs; acknowledges acceptable use requirements upon access grant; reports unauthorized access or anomalous application behavior | **None** — requestor only |
-| **ServiceNow Workflow Automation** | ServiceNow Integration Service Account (Entra ID service account, no interactive sign-in) | Routes RITM tickets to approvers based on risk tier; sends automated notifications at each workflow stage; logs all approval actions to RITM audit trail; enforces SLA timers and escalation triggers | **System actor** — no human approval authority |
+| **ServiceNow Workflow Automation** | ServiceNow integration app registration (the OAuth 2.0 client in Entra ID that the Microsoft Entra ID spoke authenticates with; no user account)[^sn-entra-spoke] | Routes RITM tickets to approvers based on risk tier; sends automated notifications at each workflow stage; logs all approval actions to RITM audit trail; enforces SLA timers and escalation triggers | **System actor** — no human approval authority |
 
 ::: {.callout-warning title="No single built-in Help Desk role"}
 Microsoft Entra ID has no single built-in role that covers all Help Desk identity
@@ -233,8 +237,8 @@ criteria:
   application)
 - Is **externally facing** and accessible outside the agency network perimeter
 - Has been granted one or more **highly privileged Microsoft Graph permissions**
-  (e.g., Mail.ReadWrite.All, User.ReadWrite.All, Files.ReadWrite.All at
-  application level)
+  (e.g., Mail.ReadWrite, Mail.Send, User.ReadWrite.All, Files.ReadWrite.All at
+  application level)[^ms-graph-perms]
 - Has no named Application Owner (orphaned — automatic Tier 1 classification
   applies)
 
@@ -307,7 +311,7 @@ permission scope examples and the required approval chains for each tier.
 | **App Owner Required** | Mandatory + Backup Owner | Mandatory | Required |
 | **Executive Sign-Off (Initial)** | Yes (CISO or Deputy) | No | No |
 | **SIEM Alert Required** | Yes — all permission changes | Yes — consent grants only | No (standard audit log) |
-| **Example Permission Scopes** | Mail.ReadWrite.All (App), User.ReadWrite.All (App), Files.ReadWrite.All (App), Directory.ReadWrite.All (App) | Files.ReadWrite (Delegated), Calendars.ReadWrite (Delegated), Mail.Read (Delegated) | User.Read (Delegated), openid, profile, email, offline_access |
+| **Example Permission Scopes** | Mail.ReadWrite (App), User.ReadWrite.All (App), Files.ReadWrite.All (App), Directory.ReadWrite.All (App) | Files.ReadWrite (Delegated), Calendars.ReadWrite (Delegated), Mail.Read (Delegated) | User.Read (Delegated), openid, profile, email, offline_access |
 | **Example Applications** | Payroll systems, HR platforms, third-party SIEM connectors, external partner portals | Internal project management tools, department reporting apps, internal SharePoint integrations | Internal productivity tools, single-sign-on only applications, read-only dashboards |
 
 ::: {.callout-note title="Reclassification"}
@@ -402,9 +406,14 @@ procedure is as follows:
 6. Update the Application Registry to reflect the change within 1 business day
 
 ::: {.callout-note title="Entra ID Owners tab"}
-The Entra ID Enterprise Application Owners tab does not confer any Entra
-administrative role to the assigned individual. It is a metadata designation used
-for governance tracking. Operational capabilities (PIM elevation, group
+The Entra ID Enterprise Application Owners tab does not assign an Entra directory
+role, but it is not a metadata-only designation. An owner can manage the
+application's organization-specific configuration — single sign-on, provisioning
+and user assignment — and can add or remove other owners, with the same
+permissions as an Application Administrator scoped to that one application. Where
+the application holds more permissions than the owner, an owner can act as the
+application beyond their own access.[^ms-owners] Treat ownership as a privilege.
+Help Desk operational capabilities (PIM elevation, group
 assignment) are granted separately through the Help Desk PAG or other role
 assignments as defined in the Governance roles and responsibilities section.
 :::
@@ -505,7 +514,7 @@ a security-critical action requiring rigorous review.
 | **2** | ServiceNow automation looks up the application's Risk Tier in the Application Registry and routes the RITM to the appropriate approval chain based on the tier decision table below. | ServiceNow Automation | ServiceNow + Application Registry | Automated (immediate) | RITM routed per tier-specific approval chain |
 | **3** | **Security review:** IGO office (or delegated security analyst) reviews the requested permissions against least-privilege principles. Validates that: (a) only necessary permissions are requested, (b) delegated permissions are used where application permissions are not required, (c) no permissions are flagged as critical risk without documented necessity. | IGO / Security Analyst | Microsoft Graph permissions reference; RITM review | 2 business days | Security review finding documented in RITM |
 | **4** | Approval by designated authority per risk tier (see Escalation Decision Table below). Approver documents decision in ServiceNow RITM with approval rationale. | Per tier (see table) | ServiceNow (approval task) | 3 business days (from Step 3) | RITM approved or denied with documented rationale |
-| **5** | If approved: Help Desk Operator activates Privileged Role via PIM. IGO or authorized administrator grants Admin Consent in Entra admin portal: Applications → Enterprise Applications → [App] → Permissions → Grant admin consent. | Help Desk (PIM) + IGO or delegated authority (consent action) | Entra ID admin portal | Same day as final approval | Consent granted; Entra audit log entry created |
+| **5** | If approved: the IGO or authorized administrator activates through PIM the role that can grant the requested permissions — Privileged Role Administrator for Microsoft Graph application permissions; Cloud Application Administrator or Application Administrator for delegated permissions and other APIs[^ms-grant-admin] — and grants Admin Consent in Entra admin portal: Applications → Enterprise Applications → [App] → Permissions → Grant admin consent. | IGO or delegated authority (PIM activation and consent action) | Entra ID admin portal | Same day as final approval | Consent granted; Entra audit log entry created |
 | **6** | Consent grant logged in RITM with: consent timestamp, grantor UPN, permission scopes granted, Entra audit log entry reference number. RITM closed. | Help Desk Operator | ServiceNow | Within 1 hour of consent grant | Full audit record in both ServiceNow and Entra |
 | **7** | Automated notification sent to Application Owner and requestor confirming consent grant. Application Registry updated with new permission scopes and consent grant date. | ServiceNow Automation + IGO office | ServiceNow; Application Registry | Automated on RITM close | Application Owner informed; Registry current |
 
@@ -517,7 +526,7 @@ a security-critical action requiring rigorous review.
 | **Tier 2 — Moderate Risk** | Application Owner submits → Security Review (IGO analyst) → Application Owner confirms → **IGO review and approval** | Application Owner + IGO | 5 business days |
 | **Tier 3 — Low Risk** | Application Owner submits → Security Review (IGO analyst) → **Application Owner approval** → IGO notified | Application Owner; IGO informed | 3 business days |
 | **Any Tier — Application Permission Type** | Regardless of tier: **IGO approval is mandatory** for any Application Permission (non-delegated). Automatic escalation to Tier 1 treatment. | IGO (mandatory); CISO notified | 5 business days |
-| **Any Tier — Critical Scope** | If permission includes \*.All at application level (e.g., Mail.ReadWrite.All): automatic escalation to IGO + CISO dual review regardless of tier. | IGO + CISO (dual review) | 5 business days |
+| **Any Tier — Critical Scope** | If the permission is rated Critical in the permission scope risk reference table (e.g., Files.ReadWrite.All or Directory.ReadWrite.All at application level, or the Mail.ReadWrite and Mail.Send application permissions, which have no .All suffix[^ms-graph-perms]): automatic escalation to IGO + CISO dual review regardless of tier. | IGO + CISO (dual review) | 5 business days |
 
 ### Workflow C — emergency / break-glass access
 
@@ -641,7 +650,8 @@ and the Application Registry updated accordingly.
 ::: {.callout-important title="Nested groups are restricted"}
 Nested groups (groups whose members include other groups) are **not permitted**
 for Enterprise Application access assignments. Microsoft Entra ID does not honor
-nested group memberships for Enterprise Application user assignment, which can
+nested group memberships for Enterprise Application user assignment (and
+group-based assignment itself requires Entra ID P1 or P2),[^ms-assign] which can
 create invisible access gaps and audit failures. All access groups assigned to
 Enterprise Applications must have direct individual user members only. Any nested
 group configurations discovered during access reviews must be remediated
@@ -707,8 +717,9 @@ Admin Consent is high-risk because:
   explicitly revoked
 - Compromised applications with Admin Consent can become vectors for large-scale
   data exfiltration or ransomware delivery
-- Consent phishing attacks specifically target the Admin Consent mechanism to
-  gain unauthorized access to organizational data
+- Consent phishing attacks trick users into granting permissions to malicious
+  applications; a lure that reaches an administrator who can grant Admin Consent
+  yields tenant-wide access to organizational data[^ms-consent-phishing]
 
 ### Permission types — delegated vs. application
 
@@ -723,11 +734,13 @@ The following table provides risk level assessments for commonly requested
 Microsoft Graph API permissions. This table is used during security review
 (Workflow B, Step 3) to guide least-privilege analysis. Applications requesting
 permissions at or above the "High" risk level must provide detailed
-justification.
+justification. Risk levels and approvals are the program's design guidance;
+permission names and descriptions follow the Microsoft Graph permissions
+reference.[^ms-graph-perms]
 
 | Permission scope | Type | Risk level | Description | Approval required |
 |---|---|---|---|---|
-| Mail.ReadWrite.All | Application | **Critical** | Read and write all users' mail | IGO + CISO dual review |
+| Mail.ReadWrite | Application | **Critical** | Read and write mail in all mailboxes | IGO + CISO dual review |
 | Mail.Send | Application | **Critical** | Send mail as any user in the tenant | IGO + CISO dual review |
 | Files.ReadWrite.All | Application | **Critical** | Read and write all files in all user OneDrives and SharePoint | IGO + CISO dual review |
 | User.ReadWrite.All | Application | **Critical** | Read and write all user profiles in the directory | IGO + CISO dual review |
@@ -774,9 +787,11 @@ automatically by a triggered security alert. The procedure is as follows:
    for immediate revocation)
 2. Application Owner notified of revocation and given 24 hours to respond (waived
    for security-incident-driven revocations)
-3. Help Desk Operator (with PIM elevation) navigates to Entra admin center →
-   Applications → Enterprise Applications → [App] → Permissions and removes the
-   consent grant
+3. An administrator holding at least Cloud Application Administrator (activated
+   through PIM) navigates to Entra admin center → Applications → Enterprise
+   Applications → [App] → Permissions → Admin consent and revokes the permission;
+   grants on the User consent tab can't be revoked in the portal and are removed
+   through Microsoft Graph or PowerShell[^ms-revoke]
 4. Revocation confirmed in Entra audit log and logged in ServiceNow RITM
 5. Application Registry updated to reflect revoked consent
 6. Application Owner and IGO notified of completed revocation
@@ -833,10 +848,10 @@ This requirement serves two critical governance functions:
 | Request type | ServiceNow catalog item name | Approval chain | SLA | Risk Tier routing |
 |---|---|---|---|---|
 | Standard Application Access Request | Enterprise App Access Request | Dept Owner → App Owner → Help Desk Execution | 3 business days | All tiers; Tier 1 adds IGO notification step |
-| Admin Consent Request (Tier 1) | Admin Consent Grant Request — High Risk | App Owner → Security Review → IGO → CISO Notification → Help Desk Execution | 5 business days | Tier 1 only; auto-routed for Application Permission type |
-| Admin Consent Request (Tier 2) | Admin Consent Grant Request — Moderate Risk | App Owner → Security Review → App Owner Confirm → IGO Review → Help Desk Execution | 5 business days | Tier 2 only |
-| Admin Consent Request (Tier 3) | Admin Consent Grant Request — Low Risk | App Owner → Security Review → App Owner Approval → IGO Notification → Help Desk Execution | 3 business days | Tier 3 only |
-| Admin Consent Revocation | Admin Consent Revocation Request | Requestor → App Owner Notification → IGO Authorization → Help Desk Execution | 1 business day | All tiers |
+| Admin Consent Request (Tier 1) | Admin Consent Grant Request — High Risk | App Owner → Security Review → IGO → CISO Notification → IGO-Office Execution | 5 business days | Tier 1 only; auto-routed for Application Permission type |
+| Admin Consent Request (Tier 2) | Admin Consent Grant Request — Moderate Risk | App Owner → Security Review → App Owner Confirm → IGO Review → IGO-Office Execution | 5 business days | Tier 2 only |
+| Admin Consent Request (Tier 3) | Admin Consent Grant Request — Low Risk | App Owner → Security Review → App Owner Approval → IGO Notification → IGO-Office Execution | 3 business days | Tier 3 only |
+| Admin Consent Revocation | Admin Consent Revocation Request | Requestor → App Owner Notification → IGO Authorization → IGO-Office Execution | 1 business day | All tiers |
 | Application Owner Assignment / Transfer | Application Owner Assignment | Dept Owner → IGO Approval → Help Desk Execution | 3 business days | All tiers |
 | New Application Registration | Enterprise Application Registration Request | App Owner → IGO Risk Classification → CISO Sign-Off (Tier 1) → Help Desk Execution | 5 business days (Tier 1); 3 business days (Tier 2/3) | All tiers |
 | Application Decommissioning | Enterprise Application Decommission Request | App Owner → Dept Owner → IGO Approval → Help Desk Execution | 5 business days | All tiers |
@@ -902,7 +917,9 @@ RITM type and approval chain.
 ### Audit log retention requirements
 
 All audit events generated by Entra ID in connection with enterprise application
-access governance must be retained in accordance with the following requirements:
+access governance must be retained in accordance with the following requirements
+(the required agency retention is design guidance; native retention is
+Microsoft's):
 
 | Log type | Native Entra retention | Required agency retention | Storage target |
 |---|---|---|---|
@@ -938,8 +955,8 @@ are non-negotiable audit requirements — no exemptions apply:
 | **Group Membership Changes** | Member added to group, member removed from group, group created, group deleted | GroupManagement |
 | **Role Management** | Role assigned, role removed, eligible role added/removed (PIM), PIM activation started, PIM activation completed, PIM activation failed | RoleManagement |
 | **Application Permission Changes** | Permission scope added to app, permission scope removed from app, delegated permission grant created/revoked | ApplicationManagement |
-| **Break-Glass Sign-In Events** | All sign-in events from designated break-glass accounts (by UPN) | SignInLogs |
-| **Policy Changes** | Conditional Access policy created/modified/deleted; user consent settings changed | Policy |
+| **Break-Glass Sign-In Events** | All sign-in events from designated break-glass accounts (by UPN) | Sign-in logs (not the audit log; diagnostic category SignInLogs) |
+| **Policy Changes** | Conditional Access policy created/modified/deleted; user consent settings changed | Policy (Conditional Access); AuthorizationPolicy ("Update authorization policy", which holds the user consent settings)[^ms-audit-activities] |
 
 ### Scheduled access reviews
 
@@ -1007,7 +1024,8 @@ submitted to the CISO by July 31 each year.
 
 ### Required SIEM alerts
 
-The following alerts must be configured in the agency SIEM, triggered by
+The following alerts (design guidance; the trigger events are Entra audit log
+activity names[^ms-audit-activities]) must be configured in the agency SIEM, triggered by
 corresponding Entra ID audit log events. All alerts must be routed to the agency
 Security Operations Center (SOC) and, for Priority 1 alerts, to the IGO directly.
 
@@ -1017,10 +1035,10 @@ Security Operations Center (SOC) and, for Priority 1 alerts, to the IGO directly
 | **New Service Principal Created** | "Add service principal" event in Entra audit log | P1 — Critical | SOC, IGO | Review within 2 hours |
 | **Break-Glass Account Sign-In** | Sign-in from designated break-glass account UPN(s) | P1 — Critical | SOC, IGO, CISO | Immediate (automated page) |
 | **PIM Elevation Outside Business Hours** | PIM role activation between 6:00 PM and 7:00 AM EST, or on federal holidays/weekends | P2 — High | SOC, IGO | Review within 4 hours |
-| **Application Permission Change** | "Add app role assignment to service principal" or "Remove app role assignment" event | P1 — Critical | SOC, IGO | Review within 2 hours |
+| **Application Permission Change** | "Add app role assignment to service principal" or "Remove app role assignment from service principal" event | P1 — Critical | SOC, IGO | Review within 2 hours |
 | **Global Administrator Role Assigned** | "Add member to role" for Global Administrator directory role | P1 — Critical | SOC, IGO, CISO | Immediate (automated page) |
 | **Delegated Permission Grant (Admin)** | "Add delegated permission grant" in Entra audit log | P2 — High | SOC, IGO | Review within 4 hours |
-| **User Consent Setting Changed** | Change to "Users can consent to apps accessing company data on their behalf" Entra tenant policy | P1 — Critical | SOC, IGO, CISO | Immediate |
+| **User Consent Setting Changed** | Change to the tenant's user consent settings (Enterprise applications → Consent and permissions → User consent settings), stored in the authorization policy[^ms-user-consent] | P1 — Critical | SOC, IGO, CISO | Immediate |
 | **Conditional Access Policy Modified** | Any Conditional Access policy created, modified, or deleted | P2 — High | SOC, IGO | Review within 4 hours |
 | **Orphaned Application Detected** | Automated weekly check — Enterprise Apps with no entry in Application Registry Owners field | P2 — High | IGO | RITM opened within 1 business day |
 
@@ -1041,7 +1059,7 @@ The following table maps this governance model's controls to applicable NIST SP
 | **AU-9** | Protection of Audit Information | Entra audit logs forwarded to SIEM where they are protected from modification. ServiceNow RITMs are immutable audit records. Log access is restricted to authorized personnel only. |
 | **AU-12** | Audit Record Generation | All required events in the Mandatory audit events section are generated automatically by Entra ID and ServiceNow. No manual action required for audit record creation on governed events. |
 | **IA-4** | Identifier Management | Application (Client) IDs and Object IDs recorded in Application Registry. Application Owners assigned by named individual (no group ownership). Naming conventions for access groups enforce consistent identifier management. |
-| **IA-5** | Authenticator Management | Break-glass credentials managed under dual-custody vault procedures. Credentials rotated after every use. Service account credentials for ServiceNow integration managed per agency credential policy. No credentials stored in application code. |
+| **IA-5** | Authenticator Management | Break-glass credentials managed under dual-custody vault procedures. Credentials rotated after every use. Credentials of the ServiceNow integration app registration managed per agency credential policy. No credentials stored in application code. |
 | **CM-5** | Access Restrictions for Change | All Entra ID configuration changes require PIM activation. Admin Consent changes require IGO approval. ServiceNow RITM enforces change authorization before execution. No direct configuration changes permitted without approved RITM. |
 | **IR-6** | Incident Reporting | Break-glass activation, Microsoft Security notification anomalies, and consent phishing indicators all trigger mandatory incident reporting. SIEM alerts route to SOC for incident response. Post-incident review required within 24 hours of break-glass use. |
 
@@ -1203,8 +1221,8 @@ record.
 
 ::: {.callout-important title="Integrating ServiceNow's shipped functions — not reinventing them"}
 This guidance does **not** build a parallel automation engine. ServiceNow already
-ships the integration: the **Microsoft Entra ID Spoke** "provides spoke actions to automate Microsoft Entra ID tasks for application management, audit logs, device management, group management, license management, organization management, password management, service principal management, user authentication, and user management"
-([ServiceNow documentation](https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/microsoft-azure-ad-spoke.html)). What this kit adds is **integration and
+ships the integration: the **Microsoft Entra ID Spoke** "provides actions to automate Entra tasks when events occur in ServiceNow," with action categories for application management, audit logs, device management, group management, license management, organization management, password management, service principal management, user authentication and user management; it requires an Integration Hub subscription
+([ServiceNow documentation](https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/microsoft-azure-ad-spoke.html)).[^sn-entra-spoke] What this kit adds is **integration and
 customization** — routing those shipped actions through the agency's Help Desk
 authority model and the ServiceNow / SAM approval pipelines, and filling only the
 residual gaps the spoke does not cover (OneDrive, ImmutableID hard-match,
@@ -1217,3 +1235,13 @@ mechanisms and the task ↔ Spoke capability crosswalk.
 [^ms-custom-apps]: Microsoft Learn, "Create custom roles to manage enterprise apps in Microsoft Entra ID," <https://learn.microsoft.com/entra/identity/role-based-access-control/custom-enterprise-apps> (accessed Oct 21, 2026).
 [^ms-by-task]: Microsoft Learn, "Least privileged roles by task in Microsoft Entra ID," <https://learn.microsoft.com/entra/identity/role-based-access-control/delegate-by-task> (accessed Oct 21, 2026).
 [^ms-retention]: Microsoft Learn, "Microsoft Entra data retention," <https://learn.microsoft.com/entra/identity/monitoring-health/reference-reports-data-retention> (accessed Oct 21, 2026).
+[^ms-graph-perms]: Microsoft Learn, "Microsoft Graph permissions reference," entries "Mail.ReadWrite" (application: "Read and write mail in all mailboxes"), "Mail.Send" (application: "Send mail as any user"), "Files.ReadWrite.All" and "Calendars.ReadWrite"; Microsoft Graph has no Mail.ReadWrite.All permission, <https://learn.microsoft.com/graph/permissions-reference> (accessed Oct 27, 2026).
+[^ms-owners]: Microsoft Learn, "Overview of enterprise application ownership in Microsoft Entra ID," <https://learn.microsoft.com/entra/identity/enterprise-apps/overview-assign-app-owners> (accessed Oct 27, 2026).
+[^ms-grant-admin]: Microsoft Learn, "Grant tenant-wide admin consent to an application," section "Prerequisites," <https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent> (accessed Oct 27, 2026).
+[^ms-revoke]: Microsoft Learn, "Review permissions granted to enterprise applications," section "Review and revoke permissions in the Microsoft Entra admin center," <https://learn.microsoft.com/entra/identity/enterprise-apps/manage-application-permissions> (accessed Oct 27, 2026).
+[^ms-assign]: Microsoft Learn, "Manage users and groups assignment to an application," <https://learn.microsoft.com/entra/identity/enterprise-apps/assign-user-or-group-access-portal> (accessed Oct 27, 2026).
+[^ms-consent-phishing]: Microsoft Learn, "Protect against consent phishing," section "What is consent phishing?," <https://learn.microsoft.com/entra/identity/enterprise-apps/protect-against-consent-phishing> (accessed Oct 27, 2026).
+[^ms-audit-activities]: Microsoft Learn, "Microsoft Entra audit log categories and activities," sections "Core Directory" and "Conditional Access," <https://learn.microsoft.com/entra/identity/monitoring-health/reference-audit-activities> (accessed Oct 27, 2026).
+[^ms-user-consent]: Microsoft Learn, "Configure how users consent to applications," section "Configure user consent settings," <https://learn.microsoft.com/entra/identity/enterprise-apps/configure-user-consent> (accessed Oct 27, 2026).
+[^sn-entra-spoke]: ServiceNow, "Microsoft Entra ID Spoke (formerly Microsoft Azure Active Directory spoke)," Zurich release (spoke description, Integration Hub subscription requirement, OAuth 2.0 custom app registration in Entra ID), <https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/microsoft-azure-ad-spoke.html> (accessed Oct 27, 2026).
+[^cisa-ztmm]: Cybersecurity and Infrastructure Security Agency, *Zero Trust Maturity Model*, Version 2.0, April 2023, section 5.4 "Applications and Workloads," <https://www.cisa.gov/sites/default/files/2023-04/CISA_Zero_Trust_Maturity_Model_Version_2_508c.pdf> (accessed Oct 27, 2026).

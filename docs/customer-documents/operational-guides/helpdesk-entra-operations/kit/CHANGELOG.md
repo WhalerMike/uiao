@@ -6,6 +6,42 @@ Brings the kit into line with Microsoft's and ServiceNow's current documentation
 (checked October 2026). Every correction below has a Microsoft Learn or ServiceNow
 source in the documents' footnotes.
 
+### Claim-by-claim verification pass (October 27, 2026)
+
+Every factual claim in the four documents and `implementation-path.md` was checked
+against a primary source opened on October 27, 2026 (Microsoft Learn, ServiceNow,
+SailPoint, NIST, OMB, CISA, FedRAMP). The ledgers are in the repo under
+`helpdesk-entra-operations/_verification/`: **308 claims — 162 verified, 58
+corrected (text fixed and footnoted), 79 restated as design guidance, 9 couldn't be
+verified (left as written and listed)**. Each document now opens with a "Design
+guidance" note separating program policy (approval chains, service levels,
+cadences, thresholds, RACI) from platform behavior. Corrections that change
+meaning include:
+
+- The spoke's audit-logs category has only a sign-in look-up: directory audit-log
+  reads are manual (new `SignInLogRetrieval` row; `AuditLogRetrieval` → Manual).
+- Microsoft Graph has no `Mail.ReadWrite.All`; the critical-permission list now uses
+  `Mail.ReadWrite`.
+- Admin consent is granted by Privileged Role Administrator (any permission) or
+  Cloud Application / Application Administrator (all but Graph application
+  permissions) — not by the Help Desk; revoking user-consent grants needs Graph or
+  PowerShell.
+- Enterprise-app owners can manage SSO, provisioning and assignments — ownership is
+  not metadata-only.
+- Phishing-resistant MFA at PIM activation comes from a Conditional Access
+  authentication context, not PIM's MFA option.
+- Entra ID does route some approvals natively (the admin consent workflow;
+  entitlement-management approval stages with Entra ID Governance); what it lacks is
+  the agency's owner and risk model.
+- Helpdesk Administrator's reset targets, role-assignable group creation rules,
+  dynamic-AU rule syntax and licensing, Connect Health access, and several OneDrive
+  admin paths corrected to Microsoft's current pages.
+- SailPoint: certification schedules generate a preview that an admin starts;
+  SoD blocking cancels the request; the Entra connector can manage directory roles.
+- The quoted ServiceNow spoke sentence was replaced with the page's own wording.
+- `New-HelpDeskPAG.ps1` assigns the custom app-assignment role tenant-wide even when
+  `-DirectoryScopeId` names an AU (that role can't take AU scope).
+
 ### Routing matrix (`lib/HelpDeskEntra.psm1`, implementation path, Helpdesk-Flow)
 
 - **MFA reset → Manual.** The Entra ID spoke has no authentication-method action;

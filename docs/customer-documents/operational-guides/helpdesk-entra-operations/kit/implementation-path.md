@@ -10,6 +10,8 @@
 > Microsoft Entra ID, ServiceNow, and SAM (your SailPoint IGA). It is written
 > to be handed to the agency as-is.
 
+> **Design guidance.** The authority levels, approval layers, ownership rules, risk tiers and review cadences here are the program's design guidance for the agency to adopt or adjust; platform behavior is footnoted to Microsoft, ServiceNow and SailPoint sources.
+
 ---
 
 ## 0. The operating model this is built to
@@ -85,7 +87,8 @@ team's hands. `Role` is the least-privileged role the Help Desk activates.
 | Password reset — synced user | A0 | none | **Yes** | Manual — Entra admin center with password writeback (not the Microsoft 365 admin center), else on-prem AD | Password / Helpdesk Administrator |
 | OneDrive client-side fix (cache, sign-out/in, KFM, reinstall) | A0 | none | No | Manual (client) | — |
 | UPN-change re-sign-in guidance | A0 | none | No | Manual (guidance) | — |
-| Sign-in / audit-log retrieval (triage) | A0 | none | No | Spoke (Audit logs) | Reports Reader |
+| Sign-in log lookup (triage) | A0 | none | No | Spoke (Look up Sign Ins Stream)[^sn-spoke-audit] | Reports Reader |
+| Directory audit-log lookup (triage) | A0 | none | No | Manual — the spoke has no directory-audit action | Reports Reader |
 | MFA / auth-method reset | A1 | Supervisor or requester's manager | **Yes** | **Manual** — the spoke has no method-reset action | Authentication Administrator |
 | Temporary Access Pass (lost every method) | A1 | Supervisor or requester's manager | **Yes** (re-proof) | Manual | Authentication Administrator |
 | License assignment / change | A1 | Requester's manager | No | Spoke (License mgmt) | License Administrator |
@@ -108,7 +111,7 @@ team's hands. `Role` is the least-privileged role the Help Desk activates.
 **Execution rule:** prefer the **Entra ID Spoke** auto-action **where the spoke
 documents one**; fall to a **Manual** SCTASK (Help Desk first; Cloud Services only
 when the Help Desk can't) for the gaps — MFA resets and Temporary Access Passes,
-synced-user password resets, OneDrive, Conditional Access, and the group→app-role
+synced-user password resets, directory audit-log lookups, OneDrive, Conditional Access, and the group→app-role
 binding. ImmutableID repair is not a Help Desk gap: it is Identity Engineering's.
 
 **Password resets and sync state.** Email triage can't see whether the target is
@@ -159,7 +162,7 @@ foundation the matrix sits on.
 
 Run **`scripts/Get-EnterpriseAppInventory.ps1`**. It enumerates every
 Enterprise Application (excluding Microsoft first-party apps from both Microsoft
-owner tenants unless `-IncludeMicrosoftFirstParty`) and produces, per app: owner
+owner tenants unless `-IncludeMicrosoftFirstParty`)[^ms-first-party] and produces, per app: owner
 status, the application permissions and delegated scopes it holds, and an
 **auto-assigned risk tier**:
 
@@ -168,7 +171,7 @@ status, the application permissions and delegated scopes it holds, and an
   (App registrations), where they are usually recorded. An app with no accountable
   owner has no one to route its approvals through — fix these first.
 - **Apps holding critical permissions** (application permissions or delegated
-  scopes such as `Mail.ReadWrite.All`, `Mail.Send`,
+  scopes such as `Mail.ReadWrite`, `Mail.Send`,[^ms-graph-perms]
   `RoleManagement.ReadWrite.Directory`, …) **→ Tier 1.**
 - **Externally published apps** are not detected by the script; raise them to
   Tier 1 by hand from the Application Registry.
@@ -180,7 +183,9 @@ The script is read-only and connects with read scopes only.
 
 Run **`scripts/New-HelpDeskPAG.ps1`**. Entra ID has **no single built-in role**
 that covers all Help Desk identity work, so capability is delivered through a
-**role-assignable group** (a Privileged Access Group, now called PIM for Groups):
+**role-assignable group** whose membership is managed just-in-time by **PIM for
+Groups** (until January 2023 Microsoft called that feature "privileged access
+groups", hence "PAG"):[^ms-pim-groups]
 
 - Roles are assigned to the **group**, never to individuals. The defaults are the
   least-privileged roles for each task: **Helpdesk Administrator** (password
@@ -192,26 +197,30 @@ that covers all Help Desk identity work, so capability is delivered through a
 - **Application Administrator** (can grant consent, create enterprise apps) and
   **Hybrid Identity Administrator** (cannot write `onPremisesImmutableId`) are not
   Help Desk roles. The script refuses them.
-- `-DirectoryScopeId '/administrativeUnits/<id>'` scopes the roles to an AU. For
-  one role per group and scope, run the script once per group.
+- `-DirectoryScopeId '/administrativeUnits/<id>'` scopes the Helpdesk, Password
+  and Authentication Administrator roles to an AU. The custom app-assignment role
+  holds only a service-principal permission, so it can't take AU scope; assign it
+  at tenant scope or to a single application.[^ms-au-scope] For one role per
+  group and scope, run the script once per group.
 - The technicians are **PIM-eligible members** — they hold nothing standing; they
   activate just-in-time. Membership also protects them: only Privileged
   Authentication and Global Administrators can reset a role-assignable group's
   members.
 - Activation policy (apply + verify in portal; Tier 2 values): **8-hour** ceiling,
-  **MFA on activation**, **justification and ticket number required** (PIM does
+  **Conditional Access authentication context (phishing-resistant strength) on
+  activation**,[^ms-pim-settings] **justification and ticket number required** (PIM does
   not validate the number — correlate activations to tickets in the SIEM),
   **180-day** eligibility with quarterly review.
 
 > Licensing: role-assignable groups require Entra ID **P1**; PIM activation
-> requires **P2 / Entra ID Governance**.
+> requires **P2 / Entra ID Governance**.[^ms-rag]
 
 ### Layer 3 — Operations (the runbook, with code)
 
 | Task | Script | Notes |
 |---|---|---|
 | Triage intake → route | `Invoke-RequestTriage.ps1` | Reads the shared mailbox's **Inbox** only (`Mail.ReadWrite.Shared` + Full Access); applies §1 matrix; opens ServiceNow/SAM items **only inside the `-WhatIf` gate** |
-| Application Access (A2) | `Add-AppAccessGroup.ps1` | Requires `-ApprovalRef`; **checks** (does not enforce) naming; **refuses nested groups**; skips an existing assignment; scopes `Application.Read.All`, `Group.Read.All`, `AppRoleAssignment.ReadWrite.All` |
+| Application Access (A2) | `Add-AppAccessGroup.ps1` | Requires `-ApprovalRef`; **checks** (does not enforce) naming; **refuses nested groups** (override: `-AllowNestedGroups`); skips an existing assignment; scopes `Application.Read.All`, `Group.Read.All`, `AppRoleAssignment.ReadWrite.All` |
 | ImmutableID preparation (A3) | `Repair-ImmutableId.ps1` | **Identity Engineering only**, for cloud-only accounts being taken over; **refuses synced users** (fix `mS-DS-ConsistencyGuid` in AD), users with `onPremisesObjectIdentifier` set, and role holders (blocked since July 1, 2026); dual-approval params; `-WhatIf` aware |
 | Quarterly certification | `Export-AccessCertification.ps1` | Per-app roster for owner certify/revoke; direct-user rows carry the resolved UPN |
 
@@ -220,17 +229,18 @@ that covers all Help Desk identity work, so capability is delivered through a
 ## 3. Platform realities the code enforces
 
 1. **Entra does not honor nested groups for Enterprise App assignment.** A
-   group assigned to an app grants access only to its **direct** user members.
-   `Add-AppAccessGroup.ps1` detects nested groups and refuses to proceed; the
+   group assigned to an app grants access only to its **direct** user
+   members.[^ms-nested]
+   `Add-AppAccessGroup.ps1` detects nested groups and refuses to proceed unless `-AllowNestedGroups` is passed; the
    certification export lists direct members only.
-2. **Admin Consent is tenant-wide and permanent until revoked.** It is never a
+2. **Admin Consent is tenant-wide and permanent until revoked.**[^ms-consent] It is never a
    Cloud Services Team action — triage, verify in the audit log, escalate to the
    App Owner → IGO. The triage classifier hard-codes this.
 3. **Hard match happens only when a new object arrives from AD,** and since July 1,
    2026 Entra ID blocks hard matches to accounts with `onPremisesObjectIdentifier`
    set or with privileged roles. Keep hard matching blocked except during a
    planned takeover. `Repair-ImmutableId.ps1` refuses the cases the platform
-   would block.
+   would block.[^ms-hardmatch]
 
 ---
 
@@ -295,3 +305,14 @@ Every state-changing script supports **`-WhatIf`**. Run it first.
 | Layer 3 App Access | Help Desk Guide §8; nested groups §7.4 |
 | ImmutableID | Help Desk Guide, "Hybrid identity operations" |
 | Certification | Doc 3 §10.3; Governance Structure Brief §6.3 / §8.4 |
+
+[^sn-spoke-audit]: ServiceNow, *Microsoft Entra ID spoke* (Zurich), Integration Hub: the Audit Logs category lists one action, "Look up Sign Ins Stream", and no directory-audit action, <https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/microsoft-azure-ad-spoke.html> (accessed Oct 27, 2026).
+[^ms-graph-perms]: Microsoft Learn, "Microsoft Graph permissions reference": the mail application permission is `Mail.ReadWrite` ("Read and write mail in all mailboxes"); there is no `Mail.ReadWrite.All`, <https://learn.microsoft.com/graph/permissions-reference> (accessed Oct 27, 2026).
+[^ms-first-party]: Microsoft Learn, "Verify first-party Microsoft applications in sign-in reports": Microsoft Services tenant `f8cdef31-a31e-4b4a-93e4-5f571e91255a` and Microsoft tenant `72f988bf-86f1-41af-91ab-2d7cd011db47`, <https://learn.microsoft.com/troubleshoot/entra/entra-id/governance/verify-first-party-apps-sign-in> (accessed Oct 27, 2026).
+[^ms-pim-groups]: Microsoft Learn, "Privileged Identity Management (PIM) for Groups," <https://learn.microsoft.com/entra/id-governance/privileged-identity-management/concept-pim-for-groups> (accessed Oct 21, 2026).
+[^ms-au-scope]: Microsoft Learn, "Assign Microsoft Entra roles," section "Roles that can be assigned with administrative unit scope": a custom role can take AU scope only if it "include[s] at least one permission relevant to users, groups, or devices," <https://learn.microsoft.com/entra/identity/role-based-access-control/manage-roles-portal> (accessed Oct 27, 2026); and "Create custom roles to manage enterprise apps in Microsoft Entra ID" (tenant or single-app scope), <https://learn.microsoft.com/entra/identity/role-based-access-control/custom-enterprise-apps> (accessed Oct 21, 2026).
+[^ms-pim-settings]: Microsoft Learn, "Configure Microsoft Entra role settings in Privileged Identity Management," sections "On activation, require multifactor authentication" (users might not be prompted if they already authenticated with strong credentials) and "On activation, require Microsoft Entra Conditional Access authentication context" (used with Authentication Strengths to require a specific method); the ticket field is information-only, <https://learn.microsoft.com/entra/id-governance/privileged-identity-management/pim-how-to-change-default-settings> (accessed Oct 27, 2026).
+[^ms-rag]: Microsoft Learn, "Use Microsoft Entra groups to manage role assignments," <https://learn.microsoft.com/entra/identity/role-based-access-control/groups-concept> (accessed Oct 21, 2026).
+[^ms-nested]: Microsoft Learn, "Manage Microsoft Entra groups and group membership," section "Add a group to another group" ("Nested groups don't gain access to shared resources and applications that are assigned to the parent group"), <https://learn.microsoft.com/entra/fundamentals/how-to-manage-groups>; and "Grant an appRoleAssignment to a group" ("All direct members of the group will be considered assigned"), <https://learn.microsoft.com/graph/api/group-post-approleassignments> (both accessed Oct 27, 2026).
+[^ms-consent]: Microsoft Learn, "Grant tenant-wide admin consent to an application" (consent is granted "on behalf of the whole organization"), <https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent> (accessed Oct 27, 2026); and "New-MgBetaOauth2PermissionGrant," parameter notes for `ExpiryTime` and `StartTime` (currently ignored), <https://learn.microsoft.com/powershell/module/microsoft.graph.beta.identity.signins/new-mgbetaoauth2permissiongrant?view=graph-powershell-beta> (accessed Oct 20, 2026).
+[^ms-hardmatch]: Microsoft Learn, "Configure Microsoft Entra Connect for an existing tenant," sections "Hard match vs soft match," "Block hard match in Microsoft Entra ID" and "Hard match security protections," <https://learn.microsoft.com/entra/identity/hybrid/connect/how-to-connect-install-existing-tenant> (accessed Oct 27, 2026).
