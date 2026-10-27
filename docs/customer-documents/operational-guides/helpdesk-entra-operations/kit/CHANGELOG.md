@@ -42,6 +42,16 @@ meaning include:
 - `New-HelpDeskPAG.ps1` assigns the custom app-assignment role tenant-wide even when
   `-DirectoryScopeId` names an AU (that role can't take AU scope).
 
+### App registration and group creation → Identity Engineering
+
+The Help Desk group holds no role that can add an enterprise application (Cloud
+Application Administrator or Application Administrator) or create a group, so
+Identity Engineering now executes new app registrations and access-group creation:
+the EAAG RACI, catalog rows, Group creation section and Group Creator role; the
+admin guide's authority boundary and SAM table; the Helpdesk-Flow crosswalk; and
+the implementation path. The module's `GroupCreation` row is now
+`TriageEscalateOnly` with no Help Desk role.
+
 ### Routing matrix (`lib/HelpDeskEntra.psm1`, implementation path, Helpdesk-Flow)
 
 - **MFA reset → Manual.** The Entra ID spoke has no authentication-method action;
@@ -133,7 +143,7 @@ meaning include:
   (v1.5 put the display name in `UserUpn`); paging (`-All`) on assignments.
 - All scripts load the module from `..\lib\` (kit layout) or alongside the script
   (repo layout), so they run from either.
-- **New:** `tests/HelpDeskEntra.Tests.ps1` (Pester 5, 26 tests): routing rows,
+- **New:** `tests/HelpDeskEntra.Tests.ps1` (Pester 5, 32 tests): routing rows,
   password split, regex boundaries, scope sets, and an AST check that every
   connector and mail-state call sits inside the `-WhatIf` gate.
 

@@ -93,7 +93,7 @@ verified 33 · corrected 14 · restated-as-design 18 · couldn't-verify 6
 - ServiceNow automation identity: Entra "service account" → OAuth 2.0 app registration used by the Entra ID spoke (also IA-5 row wording). Source: ServiceNow Entra ID spoke page.
 - ServiceNow spoke quotation replaced with the page's actual sentence; Integration Hub subscription requirement added. Source: ServiceNow Entra ID spoke page.
 - Audit categories: break-glass "SignInLogs" → sign-in logs; user consent setting changes "Policy" → AuthorizationPolicy ("Update authorization policy"). Sources: reference-audit-activities, configure-user-consent.
-- Not changed, flagged for the author: the catalog's New Application Registration row, the RACI "Help Desk R" for registration, and Help Desk group creation assume rights the Help Desk PAG doesn't hold (creating enterprise apps needs Application or Cloud Application Administrator; group creation and membership need a group-write role). These are design allocations, so they were left as written.
+- Resolved by the author's decision (Oct 27, 2026): the catalog's New Application Registration and Access Group Creation rows, the RACI registration row, the Group creation section and the Group Creator role now assign execution to Identity Engineering, because the Help Desk PAG holds no role that can do either (adding an enterprise application needs Cloud Application Administrator or Application Administrator — Learn "Quickstart: Add an enterprise application," Prerequisites, accessed Oct 27, 2026). The admin guide, Helpdesk Flow, implementation path and the module's `GroupCreation` row (now `TriageEscalateOnly`) were aligned.
 
 ## Couldn't verify
 

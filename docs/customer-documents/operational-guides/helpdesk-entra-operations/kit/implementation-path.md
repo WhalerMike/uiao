@@ -96,7 +96,7 @@ team's hands. `Role` is the least-privileged role the Help Desk activates.
 | OneDrive provisioning (needs license) | A1 | Requester's manager | No | Manual — created on first browse; pre-provisioning by a SharePoint Administrator | — |
 | **Enterprise App group access (Application Access)** | **A2** | Manager **+ Application Owner** | No | SAM connector for membership; group→app-role binding **Manual** until a pilot proves the spoke's Create Application Assignment handles it | Custom app-assignment role |
 | Access-certification revocation | A2 | SAM certification (App Owner) | No | Spoke (Group mgmt) | Custom app-assignment role |
-| Group creation + owner add/remove | A2 | App Owner + Identity Eng | No | Spoke (Group mgmt) | Groups Administrator |
+| Group creation + owner add/remove | A2 | App Owner + Identity Eng | No | **Identity Engineering** (Spoke, Group mgmt) | Help Desk: triage + escalate only |
 | User create / disable (joiner / leaver) | A2 | Manager + HR / Owner (SAM lifecycle) | No | Spoke (User mgmt) | User Administrator |
 | Device enable / disable / delete | **OOS** | Device team | No | Device team — the spoke has no device enable/disable/delete | — |
 | **Admin Consent request** | **A3** | **IGO only** (App Owner sponsors) | No | Escalate-only | **Triage + escalate ONLY** |

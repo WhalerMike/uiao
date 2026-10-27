@@ -65,6 +65,18 @@ Describe 'Execution matches what the Entra ID spoke documents' {
         $r.PimRole  | Should -BeNullOrEmpty
     }
 
+    It 'group creation is escalate-only for the Help Desk (Identity Engineering executes)' {
+        $r = Get-Rule 'GroupCreation'
+        $r.TeamRole | Should -Be 'TriageEscalateOnly'
+        $r.PimRole  | Should -BeNullOrEmpty
+    }
+
+    It 'app registration requests are out of scope for the Help Desk' {
+        $r = Resolve-RequestRoute -Text 'Please register an app for the new portal'
+        $r.Key      | Should -Be 'ServicePrincipalChange'
+        $r.TeamRole | Should -Be 'OutOfScope'
+    }
+
     It 'password, MFA and Temporary Access Pass rows require identity verification' {
         foreach ($k in 'PasswordReset', 'PasswordResetCloudOnly', 'PasswordResetSynced', 'MfaReset', 'TemporaryAccessPass') {
             (Get-Rule $k).Verification | Should -Be 'IdentityProof' -Because $k
@@ -105,6 +117,7 @@ Describe 'Resolve-RequestRoute' {
         @{ Text = 'Sync mismatch - duplicate account in Entra'; Key = 'ImmutableIdRepair' }
         @{ Text = 'Pull the sign-in logs for this user';     Key = 'SignInLogRetrieval' }
         @{ Text = 'Need the directory audit log for a change'; Key = 'AuditLogRetrieval' }
+        @{ Text = 'Please create a new security group for the app'; Key = 'GroupCreation' }
     ) {
         (Resolve-RequestRoute -Text $Text).Key | Should -Be $Key
     }
