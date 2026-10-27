@@ -8,7 +8,7 @@ date: "June 2026"
 status: Active
 repo-path: docs/customer-documents/operational-guides/helpdesk-entra-operations/helpdesk-flow.qmd
 created-at: 2026-06-09
-updated-at: 2026-06-09
+updated-at: 2026-10-27
 format:
   html:
     toc: true
@@ -61,35 +61,40 @@ exists; the Help Desk performs the manual gaps.
    Cloud Services back into triage.
 2. **Triage by required authority** — A0/A1 → ServiceNow, A2/A3 → SAM, OOS →
    escalate — with all `@microsoft.com` mail forced to A3, escalate-only.
-3. **Automate execution with the Entra ID Spoke; reserve people for the gaps.**
-4. **Cloud Services is escalation review, not the routine queue.** Approval sits
+3. **Automate execution with the Entra ID Spoke where the spoke documents the
+   action; reserve people for the gaps** — and check what it actually covers.
+4. **Verify the person before any password, MFA or Temporary Access Pass
+   action.** Approval is not identity verification.
+5. **Cloud Services is escalation review, not the routine queue.** Approval sits
    with the requester's manager (A1) or the application owner / IGO (A2/A3).
 
 ## Task ↔ Entra ID Spoke capability crosswalk
 
 `Execution` is the recommended default: **Spoke** = Flow Designer auto-executes;
 **Manual** = a Help Desk task; **SAM** = SAM connector; **Escalate/OOS** = out of
-the team's hands.
+the team's hands. The column reflects what ServiceNow's spoke page documents
+today, checked action by action — an earlier version of this crosswalk mapped
+more tasks to the spoke than its documentation supports.[^sn-spoke]
 
-| Task | Spoke category | Tier | Execution |
+| Task | What the spoke documents | Tier | Execution |
 |---|---|---|---|
-| Password reset — **cloud-only** user | Password management | A0 | Spoke (Delegated work/school grant) |
-| Password reset — **hybrid / federated** user | — (synced from on-prem AD) | A0 | Manual — on-prem AD / SSPR writeback |
-| Sign-in / audit-log retrieval | Audit logs | A0 | Spoke (read-only) |
-| MFA / auth-method reset | User authentication | A1 | Spoke |
-| License assign / remove | License management | A1 | Spoke |
-| User enable / update / assign manager | User management | A1 | Spoke |
-| Add user to security group | Group management | A1/A2 | Spoke |
-| Group creation + owner management | Group management | A2 | Spoke |
-| Access-certification revocation | Group management | A2 | Spoke |
+| Password reset — **cloud-only** user | Reset Password, for users created in Entra ID only; not federated users | A0 | Spoke, **after identity verification** |
+| Password reset — **synced** user | Not covered | A0 | Manual, after identity verification — Entra admin center with password writeback (never the Microsoft 365 admin center, which doesn't write back), else on-prem AD[^ms-writeback] |
+| Sign-in / audit-log retrieval | Audit log actions | A0 | Spoke (read-only) |
+| MFA / auth-method reset, Temporary Access Pass | **No action** — the user-authentication category lists only Revoke User SignIn Sessions | A1 | Manual, after identity verification |
+| License assign / remove | Assign / Remove User License | A1 | Spoke |
+| User enable / update / assign manager | Enable / Disable / Update User | A1 | Spoke |
+| Add user to security group | Add / remove user | A1/A2 | Spoke |
+| Group creation + owner management | Create security group; add / remove owner | A2 | Spoke |
+| Access-certification revocation | Group membership | A2 | Spoke |
 | User create / disable (joiner / leaver) | User management | A2 | Spoke (via SAM lifecycle) |
-| Device enable / disable / delete | Device management | A2 / OOS | Spoke / device team |
-| Enterprise App access (group → app role) | Group + Application mgmt | A2 | Spoke for membership; manual one-time group→app-role binding |
-| OneDrive provisioning / client-side | none (M365) | A0/A1 | Manual |
-| ImmutableID hard-match repair | none | A3 | Manual (Graph) |
-| Admin Consent | none (governance) | A3 | Escalate — never auto |
+| Device enable / disable / delete | **Not covered** — device group membership only | OOS | Device team |
+| Enterprise App access (group → app role) | Create / Delete Application Assignment; the page doesn't say whether these handle group-to-app-role assignment | A2 | Spoke for group membership; **manual** app-role binding until a pilot proves the action |
+| OneDrive provisioning / client-side | none (M365) | A0/A1 | Manual (pre-provisioning: SharePoint Administrator) |
+| ImmutableID hard-match repair | Not covered | A3 | **Identity Engineering, not the Help Desk** — usually fixed in AD (`mS-DS-ConsistencyGuid`) after two approvals |
+| Admin Consent | Not covered | A3 | Escalate — never auto |
 | Conditional Access | none | OOS | Manual / Security Admin |
-| Directory role / Service Principal | App / SP mgmt (governance keeps manual) | OOS | Manual / Identity Eng |
+| Directory role / Service Principal | Service principal actions exist; governance keeps them manual | OOS | Manual / Identity Eng |
 
 ### What the ServiceNow Entra ID Spoke ships
 
@@ -98,18 +103,19 @@ Directory spoke) is a prebuilt Integration Hub spoke with actions across ten
 categories — **application management, audit logs, device management, group
 management, license management, organization management, password management,
 service principal management, user authentication, and user management** — plus
-sample flows and subflows you clone.[^sn-spoke] It authenticates via a custom OAuth
-app and calls Microsoft Graph, so each action carries the matching Graph permission
-and admin consent. Microsoft's role reference describes the Application
-Administrator role the app-management actions run under as one that "allows users
-to add, manage, and configure enterprise applications and app registrations".[^ms-graph]
-For the on-premises side of a hybrid estate, ServiceNow also ships a separate
-**Microsoft Active Directory spoke**; this kit's manual ImmutableID path covers the
-hybrid hard-match the Entra ID Spoke does not.
+sample flows and subflows you clone.[^sn-spoke] It requires an Integration Hub
+subscription and authenticates through a custom app registered in the agency's
+tenant that obtains OAuth 2.0 tokens for Microsoft Graph — delegated permissions
+with the authorization-code grant, or application permissions with client
+credentials — so each action carries the matching Graph permission and admin
+consent. For the on-premises side of a hybrid estate, ServiceNow also ships a
+separate **Microsoft Active Directory spoke**; ImmutableID problems, which the
+Entra ID Spoke does not cover, go to Identity Engineering.
 
 ::: {.callout-warning title="Two limits that matter on a hybrid, work/school estate"}
 - **Password reset only covers cloud-only users.** ServiceNow's Reset Password action "resets the password of users created in Entra ID only and does not reset the password of the federated users"[^sn-spoke] — so **synced / federated users' password resets stay on-prem** (SSPR with password writeback, or on-prem AD), not the Spoke.
-- **No app-only for password / session actions.** Reset Password, Change Password, and Revoke Sign-in Sessions are **not supported as Application (app-only) permissions** — they require a **Delegated (work/school)** connection. (The spoke's pervasive "Not supported" entries are for *personal Microsoft accounts*, which a federal tenant never uses.)
+- **The connection type decides which password actions work.** Reset Password accepts the application permission `User-PasswordProfile.ReadWrite.All`; Change Password and the user-management Revoke User SignIn Sessions action support only **delegated (work or school)** permissions.[^sn-spoke] (v1.5 of this kit said none of the three ran app-only; that is corrected. The spoke's pervasive "Not supported" entries are for *personal Microsoft accounts*, which a federal tenant never uses.)
+- **No MFA reset.** The spoke has no authentication-method action, so an MFA reset stays a person's task — which makes identity verification the control that matters.
 :::
 
 ::: {.callout-note title="Coverage is release-dependent"}
@@ -125,15 +131,22 @@ unchanged.
 
 An Exchange Online transport rule routes mail addressed to the Cloud Services
 mailbox to the ServiceNow inbound address; a *New*-type Inbound Email Action
-creates the record in a triage queue with the assignee left blank.
+creates the record in a triage queue with the assignee left blank. Use
+`-RedirectMessageTo`, not `-BlindCopyTo`: a blind copy leaves the original mailbox
+receiving the message, which is two queues, not one front door. Pilot the rule in
+`Audit` mode, which writes what it would have done to the message tracking log
+without changing delivery, then enforce it.[^exo-rule]
 
 ![Email intake mechanism: a sender's email to the Cloud Services mailbox is redirected by an Exchange Online transport rule to the address bound to a ServiceNow Email Account; Email Filters drop loops and junk; a New-type Inbound Email Action creates the record in the triage queue with no assignee, and a Business Rule reroutes any ticket already assigned to Cloud Services back into triage.](images/helpdesk-flow-diagram-05-email-intake.png){#fig-intake fig-alt="A left-to-right blueprint. A sender box feeds an Exchange Online transport rule box, which feeds a ServiceNow Email Account box, which feeds an Email Filters box, which feeds an Inbound Email Action box, which creates a record in a navy Triage queue box with assignee blank. Below, a separate box labelled ticket already on Cloud Services feeds a red Business Rule box, reroute to triage, which also points into the Triage queue." width="100%"}
 
 ```powershell
 # Exchange Online — route Cloud Services intake to ServiceNow.  # CONFIGURE addresses
+# Audit mode first; switch to -Mode Enforce after comparing the tracking log.
+# RedirectMessageTo = the address tied to the ServiceNow Email Account.
 New-TransportRule -Name "Route Cloud Services intake to ServiceNow" `
   -SentTo "cloud-services@agency.gov" `
-  -BlindCopyTo "servicenow-inbound@agency.gov"   # address tied to the ServiceNow Email Account
+  -RedirectMessageTo "servicenow-inbound@agency.gov" `
+  -Mode Audit
 ```
 
 A Business Rule catches "assigned to Cloud Services but never triaged" and
@@ -141,9 +154,24 @@ reroutes it — Cloud Services is escalation-only, not the routine intake queue.
 
 ## The triage decision
 
-Triage applies the authority matrix. Any mail from `@microsoft.com` — especially
-`MSSecurity-noreply@microsoft.com` — is forced to A3, escalate-only, and is never
-actioned from the email.
+Triage applies the authority matrix. Any mail from `@microsoft.com` or one of its
+subdomains is forced to A3, escalate-only, and is never actioned from the email.
+The sender check only routes; it is not proof a message is genuine — Microsoft
+sends from several addresses, and look-alikes exist. The proof is the matching event
+in the Entra audit log.
+
+The checks run in a fixed order, because the first match wins and the early checks
+catch the dangerous cases:
+
+1. **Does the message claim to come from Microsoft?** A3, escalate only.
+2. **Does the target hold a directory role (active or eligible), belong to or own a
+   role-assignable group, or sit in a restricted management AU — or is the task on
+   the out-of-scope list?** Escalate. Email triage can't see the target's roles, so
+   the executor runs this check before acting.
+3. **Is it a governance action?** A3.
+4. **Does it change who can reach what?** A2.
+5. **Does it change only the requester's own account?** A1.
+6. **Otherwise** A0.
 
 ![The triage decision tree: the triage record's sender, subject, and body are first tested for an @microsoft.com origin, which forces A3 escalate-only; otherwise the request type is matched to an authority tier (A0 no approval, A1 manager, A2 manager plus application owner, A3 IGO, or out of scope), and routed to the ServiceNow pipeline, the SAM pipeline, or escalation.](images/helpdesk-flow-diagram-02-triage-decision.png){#fig-triage fig-alt="A top-down blueprint decision flow. A triage record box feeds a red decision diamond, from at-microsoft-dot-com, whose yes branch goes to a red A3 escalate-only box. The no branch feeds a decision diamond, match request type, with branches to A0, A1, A2, A3, and out-of-scope boxes. A0 and A1 point to a ServiceNow pipeline box; A2 and A3 point to a SAM pipeline box; out-of-scope points to an escalate box." width="100%"}
 
@@ -151,20 +179,35 @@ actioned from the email.
 
 **ServiceNow pipeline (A0 / A1)** — Flow Designer asks the requester's manager
 for approval, then executes: a Spoke action where one exists, otherwise an SCTASK
-to the Help Desk.
+to the Help Desk. Set a due date on every approval whose outcome is **reject or
+cancel, never approve**, so silence can't grant access.[^sn-fd]
 
-![The ServiceNow pipeline: an A0 record executes immediately; an A1 record goes through a Flow Designer Ask-for-Approval step to the requester's manager. On approval, a decision tests whether the Entra ID Spoke covers the task — if yes, the Spoke action auto-executes (password reset, add-to-group, license); if no, an SCTASK is assigned to the Help Desk. Both paths end in validate, close, and log.](images/helpdesk-flow-diagram-03-servicenow-pipeline.png){#fig-snpipe fig-alt="A blueprint flow. An A0/A1 record box feeds a decision, A0 no approval; yes goes straight to execute, no goes to a Flow Designer manager-approval box. Approved feeds a decision, Spoke covers it; yes to a teal Spoke action box, no to a navy SCTASK to Help Desk box; both converge on a validate-close-log box. A rejected branch leads to a close box." width="100%"}
+![The ServiceNow pipeline: an A0 record executes immediately; an A1 record goes through a Flow Designer Ask-for-Approval step to the requester's manager. On approval, a decision tests whether the Entra ID Spoke covers the task — if yes, the Spoke action auto-executes (cloud-only password reset, add-to-group, license); if no, an SCTASK is assigned to the Help Desk. Both paths end in validate, close, and log.](images/helpdesk-flow-diagram-03-servicenow-pipeline.png){#fig-snpipe fig-alt="A blueprint flow. An A0/A1 record box feeds a decision, A0 no approval; yes goes straight to execute, no goes to a Flow Designer manager-approval box. Approved feeds a decision, Spoke covers it; yes to a teal Spoke action box, no to a navy SCTASK to Help Desk box; both converge on a validate-close-log box. A rejected branch leads to a close box." width="100%"}
 
 **SAM pipeline (A2 / A3)** — SAM owns the access decision and certification; on
 approval it provisions via its Entra connector or raises a ServiceNow RITM →
 SCTASK for the gap.
 
-![The SAM pipeline: an A2 or A3 request becomes a SAM access request routed through its approval chain — manager plus application owner for A2, or IGO and Identity Engineering dual approval for A3. On approval, a decision tests whether the SAM connector can provision: if yes, SAM provisions in Entra; if no, a ServiceNow RITM and SCTASK go to Cloud Services. Both close in SAM as the system of record.](images/helpdesk-flow-diagram-04-sam-pipeline.png){#fig-sampipe fig-alt="A blueprint flow. An A2/A3 request box feeds a SAM access request box, then a decision, approval chain, branching to a manager-plus-application-owner box (A2) and an IGO dual box (A3). Both feed a decision, SAM connector can provision; yes to a teal SAM-provisions box, no to a navy ServiceNow RITM to Cloud Services box; both converge on a close-in-SAM box." width="100%"}
+![The SAM pipeline: an A2 or A3 request becomes a SAM access request routed through its approval chain — manager plus application owner for A2, or IGO and Identity Engineering dual approval for A3. On approval, a decision tests whether the SAM connector can provision: if yes, SAM provisions in Entra; if no, a ServiceNow RITM and SCTASK go to the Help Desk for a group-to-app-role binding, or to Identity Engineering for an ImmutableID fix. Both close in SAM as the system of record.](images/helpdesk-flow-diagram-04-sam-pipeline.png){#fig-sampipe fig-alt="A blueprint flow. An A2/A3 request box feeds a SAM access request box, then a decision, approval chain, branching to a manager-plus-application-owner box (A2) and an IGO dual box (A3). Both feed a decision, SAM connector can provision; yes to a teal SAM-provisions box, no to a navy ServiceNow RITM to Cloud Services box; both converge on a close-in-SAM box." width="100%"}
 
 ::: {.callout-warning title="Admin Consent never auto-executes"}
 Admin Consent (A3) is never executed by the Help Desk or Cloud Services — triage,
 verify in the Entra audit log, and escalate to the Application Owner → IGO.
 :::
+
+## Verify the person before a reset or recovery
+
+Approval answers *should this be done?*; it does not answer *is this caller the
+account's owner?* Password resets (including A0 resets that need no approval), MFA
+resets, Temporary Access Passes and account recovery all need the second answer,
+because a caller who sounds right is the attack.[^cisa-spider] The routing matrix
+marks those rows `Verification = IdentityProof`. Accept a phishing-resistant sign-in
+from the user, or re-proof them (Entra account recovery, or in person against a PIV
+card or government ID); never email, caller ID, a callback to a number the caller
+supplies, knowledge questions or a manager's say-so. Notify the user out of band
+after every reset, and record which method was used — not the evidence. The full
+ladder is in the
+[Administrative Responsibilities Guide](help-desk-administrative-responsibilities.qmd#verify-the-person-before-a-credential-action).
 
 ## How to describe, modify, and create a task flow
 
@@ -177,6 +220,7 @@ wires that row into the mechanisms above.
 | Email match | Email Filter / Inbound Action condition | subject/body matches `access to <app>` |
 | Authority | A0 / A1 / A2 / A3 / OOS | A2 |
 | Approver | Who owns the decision | Manager + Application Owner |
+| Verification | IdentityProof or None | None (the requester is authenticated in the portal) |
 | Pipeline | ServiceNow or SAM | SAM |
 | Execution | Spoke action / manual SCTASK / SAM connector | SAM connector, else SCTASK |
 | SLA | Time target + escalation | 3 business days |
@@ -192,8 +236,9 @@ one mechanism it points at, and re-test.
 
 The email is redirected into triage, classified A2, and raised as a SAM access
 request. The manager and Application Owner approve; SAM provisions the group
-membership through the Entra ID Spoke, or raises an SCTASK to Cloud Services for
-the one-time group→app-role binding. The complete chain is recorded in SAM and
+membership through its connector. If the group is not yet bound to the app role,
+SAM raises an SCTASK and the Help Desk binds it with the custom app-assignment role
+(not Application Administrator). The complete chain is recorded in SAM and
 ServiceNow, with the Entra audit-log reference attached.
 
 ## Configuration reference
@@ -212,7 +257,8 @@ ServiceNow, with the Entra audit-log reference attached.
 ::: {.callout-note title="Companion kit"}
 The runnable companion — the implementation-path guide, the routing module, and
 the request-triage classifier — ships in the
-[Help Desk / Cloud Services Operations Kit](../../../download/index.qmd#help-desk--cloud-services).
+Help Desk / Cloud Services Operations Kit (release `helpdesk-entra-kit-v1.6`;
+the scripts are in [`scripts/`](scripts/)).
 This page is reference material for review and adaptation, not validated against a
 live tenant; pilot the Exchange rule and Inbound Email Action before tenant-wide
 enablement.
@@ -229,7 +275,9 @@ enablement.
 
 **Microsoft documentation**
 
-- *Microsoft Entra built-in roles* (Application Administrator, Hybrid Identity Administrator, Helpdesk Administrator) — <https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/permissions-reference>
+- *Microsoft Entra built-in roles* — <https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/permissions-reference>
+- *Least privileged roles by task* — <https://learn.microsoft.com/entra/identity/role-based-access-control/delegate-by-task>
+- *New-TransportRule* — <https://learn.microsoft.com/powershell/module/exchangepowershell/new-transportrule>
 - *Privileged Identity Management (PIM) for Groups* — <https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/concept-pim-for-groups>
 - *What is Privileged Identity Management?* — <https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-configure>
 - *Enable Microsoft Entra self-service password reset* — <https://learn.microsoft.com/en-us/entra/identity/authentication/tutorial-enable-sspr>
@@ -239,3 +287,6 @@ enablement.
 [^sn-fd]: ServiceNow, *Flow Designer approvals overview*. <https://www.servicenow.com/community/workflow-automation-articles/flow-designer-approvals-overview-workflow-automation-center-of/ta-p/2528202>
 [^sn-spoke]: ServiceNow, *Microsoft Entra ID Spoke (formerly Microsoft Azure Active Directory spoke), Integration Hub*. <https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/microsoft-azure-ad-spoke.html>
 [^ms-graph]: Microsoft, *Microsoft Entra built-in roles* — the Spoke calls Microsoft Graph and needs the matching role/permission consent. <https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/permissions-reference>
+[^ms-writeback]: Microsoft Learn, "How does self-service password reset writeback work in Microsoft Entra ID?," <https://learn.microsoft.com/entra/identity/authentication/concept-sspr-writeback>; and "Troubleshoot admin password resets in Microsoft 365 admin center," <https://learn.microsoft.com/troubleshoot/entra/entra-id/user-prov-sync/password-writeback-microsoft-365-admin-center> (both accessed Oct 21, 2026).
+[^exo-rule]: Microsoft Learn, "New-TransportRule," parameters `-BlindCopyTo`, `-RedirectMessageTo`, `-SentTo` and `-Mode`, <https://learn.microsoft.com/powershell/module/exchangepowershell/new-transportrule> (accessed Oct 21, 2026).
+[^cisa-spider]: Cybersecurity and Infrastructure Security Agency, Cybersecurity Advisory AA23-320A, *Scattered Spider*, revised July 29, 2025, <https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a> (accessed Oct 21, 2026).

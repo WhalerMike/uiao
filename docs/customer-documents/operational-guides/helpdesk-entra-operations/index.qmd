@@ -8,7 +8,7 @@ date: "June 2026"
 status: Active
 repo-path: docs/customer-documents/operational-guides/helpdesk-entra-operations/index.qmd
 created-at: 2026-06-08
-updated-at: 2026-06-08
+updated-at: 2026-10-27
 format:
   html:
     toc: true
@@ -32,11 +32,14 @@ Desk performs only the residual manual action that automation cannot reach — a
 never makes an access-governance decision on its own.
 
 ::: {.callout-tip title="Download the runnable kit"}
-The companion **[Help Desk / Cloud Services Operations Kit](../../../download/index.qmd#help-desk--cloud-services)**
-ships these documents alongside an implementation-path guide, a request-triage
-classifier, and six Microsoft Graph scripts (inventory, PAG/PIM setup,
-group-to-app assignment, ImmutableID repair, access-certification export). Every
-state-changing script honors `-WhatIf`. The scripts and their shared module now
+The companion **Help Desk / Cloud Services Operations Kit** (release
+`helpdesk-entra-kit-v1.6`) ships these documents alongside an implementation-path
+guide, a request-triage classifier, and six Microsoft Graph scripts (inventory,
+PAG/PIM setup, group-to-app assignment, ImmutableID preparation for Identity
+Engineering, access-certification export). The Word versions of the documents
+also ship in the [OrgPath Governance Series](../../../download/index.qmd#orgpath-governance-series)
+download, under `Governance_Operations/`. Every state-changing script honors
+`-WhatIf`. The scripts and their shared module now
 live in the repo under [`scripts/`](scripts/) — see [The runnable scripts](#the-runnable-scripts)
 below — so the published kit cannot drift from what these pages document.
 :::
@@ -77,10 +80,13 @@ tenant, and keep input and output inside your authorization boundary.
 | [`HelpDeskEntra.psm1`](scripts/HelpDeskEntra.psm1) | Shared module: the Connect helper, the Task Authority & Routing Matrix (the single source of truth behind both the human runbook and the triage classifier), the critical-permission reference list, and shared logging. |
 | [`Invoke-RequestTriage.ps1`](scripts/Invoke-RequestTriage.ps1) | Triage the Help Desk shared mailbox — classify each request by required authority (A0–A3 / out-of-scope) and route it to ServiceNow or SAM. |
 | [`Get-EnterpriseAppInventory.ps1`](scripts/Get-EnterpriseAppInventory.ps1) | Build the Enterprise Application inventory (with risk tiering and orphaned-app detection) that every governance step reads. |
-| [`New-HelpDeskPAG.ps1`](scripts/New-HelpDeskPAG.ps1) | Stand up the Help Desk Privileged Access Group (PAG) — role-assignable group + PIM eligible-not-active assignment. |
-| [`Add-AppAccessGroup.ps1`](scripts/Add-AppAccessGroup.ps1) | Assign a security group to an Enterprise Application role (the A2 group-to-app step), with a nested-group guard. |
-| [`Repair-ImmutableId.ps1`](scripts/Repair-ImmutableId.ps1) | Repair a Hybrid AD → Entra ID `onPremisesImmutableId` hard-match break. |
+| [`New-HelpDeskPAG.ps1`](scripts/New-HelpDeskPAG.ps1) | Stand up the Help Desk Privileged Access Group (PAG) — role-assignable group + PIM eligible-not-active assignment of Helpdesk Administrator, Authentication Administrator and a custom enterprise-app assignment role (which it can create). |
+| [`Add-AppAccessGroup.ps1`](scripts/Add-AppAccessGroup.ps1) | Assign a security group to an Enterprise Application role (the A2 group-to-app step), with a nested-group guard and an existing-assignment check. |
+| [`Repair-ImmutableId.ps1`](scripts/Repair-ImmutableId.ps1) | **Identity Engineering only.** Prepare a cloud-only account to be hard-matched by setting `onPremisesImmutableId`; refuses synced users and privileged targets (fix those in AD). |
 | [`Export-AccessCertification.ps1`](scripts/Export-AccessCertification.ps1) | Produce a per-application access roster for owner certification. |
+| [`tests/HelpDeskEntra.Tests.ps1`](scripts/tests/HelpDeskEntra.Tests.ps1) | Pester tests for the routing matrix and the triage script's `-WhatIf` gate (no tenant needed). |
+
+What changed in each kit release is in the [kit changelog](kit/CHANGELOG.md).
 
 ::: {.callout-note title="Kit conformance (ADR-105): governed-only by design"}
 [ADR-105](../../../adr/adr-105-operational-guide-kit-conventions.qmd) asks a

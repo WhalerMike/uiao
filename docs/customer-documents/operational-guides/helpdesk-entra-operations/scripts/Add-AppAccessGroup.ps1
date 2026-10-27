@@ -2,7 +2,7 @@
 <#
 .SYNOPSIS
     Assign a security group to an Enterprise Application role (the A2
-    "Application Access" task), with naming-convention validation and a
+    "Application Access" task), with a naming-convention check and a
     nested-group safety check.
 
 .DESCRIPTION
@@ -10,10 +10,20 @@
       - Governance provenance: a SAM/ServiceNow approval reference is REQUIRED
         (-ApprovalRef). The Cloud Services Team only executes approved work.
       - Naming convention (Doc 3 §7.2):  APP-<AppShort>-<Role>-T<tier>
+        CHECKED, NOT ENFORCED: a non-conforming name logs a warning and the
+        assignment still proceeds. Enforce it in group creation instead.
       - Nested-group check: Entra does NOT honor nested group membership for
         Enterprise App assignment (Doc 1 §7.4). If the group contains other
         groups as members, those users will NOT get access — the script warns
         and (by default) refuses to proceed.
+      - Existing assignment: if the group already holds the role, the script
+        logs it and makes no change.
+
+    ROLE: run under the custom enterprise-app assignment role
+    (microsoft.directory/servicePrincipals/appRoleAssignedTo/update) that
+    New-HelpDeskPAG.ps1 defines, not Application Administrator. Group-based
+    assignment needs Entra ID P1. Graph scopes: Application.Read.All,
+    Group.Read.All, AppRoleAssignment.ReadWrite.All.
 
 .PARAMETER AppDisplayName  Enterprise Application (service principal) display name.
 .PARAMETER GroupName       Security group to assign (must match naming convention).
@@ -32,8 +42,11 @@ param(
     [string]$TenantId
 )
 
-Import-Module (Join-Path $PSScriptRoot '..\lib\HelpDeskEntra.psm1') -Force
-Connect-HelpDeskGraph -ScopeSet GroupWrite -TenantId $TenantId
+# Module sits in ..\lib\ in the kit zip and beside the scripts in the repo.
+$modulePath = @((Join-Path $PSScriptRoot '..\lib\HelpDeskEntra.psm1'), (Join-Path $PSScriptRoot 'HelpDeskEntra.psm1')) |
+    Where-Object { Test-Path $_ } | Select-Object -First 1
+Import-Module $modulePath -Force
+Connect-HelpDeskGraph -ScopeSet AppAssignment -TenantId $TenantId
 
 # 0. Naming convention -------------------------------------------------------
 $namePattern = '^APP-[A-Z0-9]+-[A-Z]+-T[123]$'
@@ -42,10 +55,15 @@ if ($GroupName -notmatch $namePattern) {
 }
 
 # 1. Resolve objects ---------------------------------------------------------
-$sp = Get-MgServicePrincipal -Filter "displayName eq '$AppDisplayName'" -ErrorAction Stop | Select-Object -First 1
-if (-not $sp) { throw "Enterprise Application not found: $AppDisplayName" }
-$group = Get-MgGroup -Filter "displayName eq '$GroupName'" -ErrorAction Stop | Select-Object -First 1
-if (-not $group) { throw "Group not found: $GroupName" }
+# OData string literals escape a single quote by doubling it.
+$sps = @(Get-MgServicePrincipal -Filter "displayName eq '$($AppDisplayName -replace "'", "''")'" -ErrorAction Stop)
+if ($sps.Count -eq 0) { throw "Enterprise Application not found: $AppDisplayName" }
+if ($sps.Count -gt 1) { throw "More than one Enterprise Application is named '$AppDisplayName'. Resolve by object ID before assigning." }
+$sp = $sps[0]
+$groups = @(Get-MgGroup -Filter "displayName eq '$($GroupName -replace "'", "''")'" -ErrorAction Stop)
+if ($groups.Count -eq 0) { throw "Group not found: $GroupName" }
+if ($groups.Count -gt 1) { throw "More than one group is named '$GroupName'. Resolve by object ID before assigning." }
+$group = $groups[0]
 
 # 2. Nested-group safety check ----------------------------------------------
 $members = Get-MgGroupMember -GroupId $group.Id -All
@@ -68,7 +86,7 @@ if ($AppRoleName) {
 $roleLabel = if ($AppRoleName) { $AppRoleName } else { 'default' }   # PS 5.1-safe (no ?? )
 
 # 4. Assign ------------------------------------------------------------------
- $existingAssignment = Get-MgServicePrincipalAppRoleAssignedTo -ServicePrincipalId $sp.Id -All -ErrorAction SilentlyContinue |
+$existingAssignment = Get-MgServicePrincipalAppRoleAssignedTo -ServicePrincipalId $sp.Id -All -ErrorAction SilentlyContinue |
     Where-Object { $_.PrincipalId -eq $group.Id -and $_.AppRoleId -eq $appRoleId } |
     Select-Object -First 1
 if ($existingAssignment) {

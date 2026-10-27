@@ -15,7 +15,7 @@
 | `executive-governance-series/` | 0 | 0 | 0 | 1 | 10 | 11 |
 | `learning/` | 0 | 0 | 0 | 2 | 1 | 3 |
 | `modernization-specs/` | 0 | 0 | 6 | 0 | 1 | 7 |
-| `operational-guides/` | 0 | 1 | 17 | 41 | 19 | 78 |
+| `operational-guides/` | 0 | 1 | 16 | 42 | 19 | 78 |
 | `orgcomp-series/` | 21 | 10 | 52 | 37 | 4 | 124 |
 | `orglink-narrative/` | 0 | 0 | 1 | 0 | 0 | 1 |
 | `orgpath-multicloud/` | 0 | 6 | 0 | 0 | 1 | 7 |
@@ -30,7 +30,7 @@
 | `uiao-orgcomp-integration/` | 0 | 0 | 7 | 7 | 1 | 15 |
 | `validation-suites/` | 0 | 3 | 48 | 0 | 1 | 52 |
 | `whitepapers/` | 0 | 0 | 8 | 21 | 1 | 30 |
-| **Total** | **24** | **301** | **319** | **154** | **55** | **853** |
+| **Total** | **24** | **301** | **318** | **155** | **55** | **853** |
 
 ## Section detail
 
@@ -195,10 +195,10 @@
 | [`docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/client-server-to-hybrid-cloud/index.qmd) | 117 | Navigation hub | ✅ | 4/4 | aspirational |
 | [`docs/customer-documents/operational-guides/directory-migration/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/directory-migration/index.qmd) | 45 | Navigation hub | ✅ | — | aspirational |
 | [`docs/customer-documents/operational-guides/end-user-training.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/end-user-training.qmd) | 654 | Substantial | ✅ | 6/6 | — |
-| [`docs/customer-documents/operational-guides/helpdesk-entra-operations/enterprise-application-access-governance.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/helpdesk-entra-operations/enterprise-application-access-governance.qmd) | 1197 | Substantial | ✅ | 3/3 | — |
-| [`docs/customer-documents/operational-guides/helpdesk-entra-operations/help-desk-administrative-responsibilities.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/helpdesk-entra-operations/help-desk-administrative-responsibilities.qmd) | 1013 | Substantial | ✅ | 3/3 | — |
-| [`docs/customer-documents/operational-guides/helpdesk-entra-operations/helpdesk-flow.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/helpdesk-entra-operations/helpdesk-flow.qmd) | 241 | Authored | ✅ | 5/5 | — |
-| [`docs/customer-documents/operational-guides/helpdesk-entra-operations/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/helpdesk-entra-operations/index.qmd) | 104 | Navigation hub | ✅ | — | — |
+| [`docs/customer-documents/operational-guides/helpdesk-entra-operations/enterprise-application-access-governance.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/helpdesk-entra-operations/enterprise-application-access-governance.qmd) | 1219 | Substantial | ✅ | 3/3 | — |
+| [`docs/customer-documents/operational-guides/helpdesk-entra-operations/help-desk-administrative-responsibilities.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/helpdesk-entra-operations/help-desk-administrative-responsibilities.qmd) | 1153 | Substantial | ✅ | 3/3 | — |
+| [`docs/customer-documents/operational-guides/helpdesk-entra-operations/helpdesk-flow.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/helpdesk-entra-operations/helpdesk-flow.qmd) | 292 | Substantial | ✅ | 5/5 | — |
+| [`docs/customer-documents/operational-guides/helpdesk-entra-operations/index.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/helpdesk-entra-operations/index.qmd) | 110 | Navigation hub | ✅ | — | — |
 | [`docs/customer-documents/operational-guides/helpdesk-entra-operations/orgpath-identity-governance-structure.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/helpdesk-entra-operations/orgpath-identity-governance-structure.qmd) | 746 | Substantial | ✅ | 1/1 | — |
 | [`docs/customer-documents/operational-guides/identity-orgtree/ad-to-entraid-tree.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/identity-orgtree/ad-to-entraid-tree.qmd) | 8733 | Substantial | ✅ | 4/4 | — |
 | [`docs/customer-documents/operational-guides/identity-orgtree/domain-join-to-orgpath-join.qmd`](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/operational-guides/identity-orgtree/domain-join-to-orgpath-join.qmd) | 522 | Substantial | ✅ | — | — |

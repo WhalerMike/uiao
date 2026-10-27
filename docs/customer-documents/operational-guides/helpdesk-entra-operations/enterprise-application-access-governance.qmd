@@ -9,7 +9,7 @@ status: Active
 canon-source: "inbox/HelpDesk/implementation/published/Enterprise-Application-Access-Governance-and-Approval-Model.docx"
 repo-path: docs/customer-documents/operational-guides/helpdesk-entra-operations/enterprise-application-access-governance.qmd
 created-at: 2026-06-08
-updated-at: 2026-06-08
+updated-at: 2026-10-27
 format:
   html:
     toc: true
@@ -23,7 +23,7 @@ lifecycle_review: 2026-12-08
 
 *Entra ID Identity Governance Series — Document 3 of 3. Microsoft Entra ID —
 Enterprise Application Access Control Framework. Document Number: IDG-GOV-003 ·
-Version 1.0 · Date of Issue: June 8, 2026 · Review Date: June 8, 2027 · Document
+Version 1.1 · Date of Issue: June 8, 2026 · Revised: October 27, 2026 · Review Date: June 8, 2027 · Document
 Owner: Identity Governance Officer (IGO) · Issuing Authority: Office of the CISO.
 Series documents: IDG-GOV-001 (Entra ID Identity Lifecycle) · IDG-GOV-002
 (Privileged Access and PIM Model) · IDG-GOV-003 (Enterprise Application Access
@@ -126,7 +126,7 @@ enterprise application governance must be familiar with these definitions.
 | **Delegated Permission** | An API permission that allows an application to act on behalf of a signed-in user. Access is bounded by both the user's own permissions and the granted scope. Generally lower risk than Application Permissions. |
 | **Application Permission** | An API permission that allows an application to act independently — without a signed-in user — typically with access to all users' data within the tenant. Application Permissions are always granted through Admin Consent and carry the highest risk level. |
 | **Managed Identity** | A system-assigned or user-assigned identity in Entra ID for Azure resources (e.g., Azure Functions, VMs), enabling those resources to authenticate to other services without storing credentials. Managed Identities are governed as Service Principals. |
-| **Privileged Access Group (PAG)** | A Microsoft Entra ID security group configured for Privileged Identity Management (PIM) group membership. PAGs are used to implement the Help Desk Operator role model in this agency, as no native "Help Desk" Entra role exists for identity operations. |
+| **Privileged Access Group (PAG)** | A role-assignable Microsoft Entra ID security group configured for Privileged Identity Management (PIM) group membership — Microsoft's name until January 2023 for what is now PIM for Groups. PAGs implement the Help Desk Operator role model in this agency, because no single built-in role covers all Help Desk identity work. |
 | **PIM (Privileged Identity Management)** | The Microsoft Entra ID service that governs time-bound, just-in-time (JIT) elevation of privileged roles. All Help Desk Operators and identity administrators must activate elevated roles through PIM. PIM activation is logged and subject to audit. |
 | **ImmutableID** | An attribute used to link an on-premises Active Directory user object to its corresponding Entra ID user account in hybrid identity environments. Critical for federated authentication scenarios. |
 | **Group-Based Access** | The practice of assigning security groups (rather than individual users) to Enterprise Applications for access control. Group-based access is the mandatory pattern in this agency for all application assignments. |
@@ -136,7 +136,7 @@ enterprise application governance must be familiar with these definitions.
 | **ServiceNow RITM** | A "Requested Item" ticket in the ServiceNow ITSM platform. All access requests, consent approvals, and governance actions must be initiated, approved, and closed via a ServiceNow RITM, which serves as the system of record. |
 | **Break-Glass Account** | An emergency access account held outside the normal PIM governance model, used only when standard administrative access is unavailable. Break-glass activation triggers mandatory notification and post-incident review. |
 | **Ownership Hierarchy** | The three-layer organizational ownership model: Layer 1 = IGO (tenant-wide authority), Layer 2 = Departmental Owner (department-level accountability), Layer 3 = Application Owner (application-specific accountability). |
-| **Entra-HelpDesk-Operators PAG** | The agency's Privileged Access Group through which Help Desk Operators receive time-bound activation of Application Administrator and Hybrid Identity Administrator roles. This PAG is the implementation mechanism for the Help Desk governance role. |
+| **Entra-HelpDesk-Operators PAG** | The agency's Privileged Access Group through which Help Desk Operators receive time-bound activation of Helpdesk Administrator (password resets), Authentication Administrator (authentication methods and Temporary Access Pass) and a custom enterprise-app assignment role. This PAG is the implementation mechanism for the Help Desk governance role. |
 | **Least Privilege** | The security principle that any user, application, or system should have only the minimum permissions necessary to perform its function. Least privilege is the central design principle of this governance model. |
 | **Consent Grant** | The specific record created in Entra ID when Admin Consent is approved, binding the permission scope to the Service Principal. Consent Grants are logged, audited, and subject to periodic review and revocation. |
 | **Application Registry** | The agency's authoritative inventory of all Enterprise Applications in the Entra ID tenant, including ownership, risk classification, consent grants, and review status. Maintained by the IGO office. |
@@ -156,18 +156,29 @@ group, key responsibilities, and approval authority level.
 | **Privileged Role Administrator** | Privileged Role Administrator (Entra ID built-in, via PIM) | Manages PIM policies and activation settings; assigns eligible role memberships; reviews PIM activation logs; manages Privileged Access Group configurations | **Level 2** — PIM and role management actions |
 | **Application Owner (Ownership Layer 3)** | Named in Enterprise App → Owners tab; member of App-Owners security group | First line of governance accountability for assigned application; approves or denies access requests for their application; conducts quarterly access reviews (Tier 1) or semi-annual (Tier 2); submits Admin Consent requests with business justification; maintains accuracy of application metadata in Registry; notifies IGO of any material change in application scope | **Level 3** — application-level access approvals |
 | **Departmental Owner (Ownership Layer 2)** | Member of Dept-Owners-[DeptCode] security group | Validates business justification for access requests; approves Tier 3 application access requests; confirms staffing changes that affect application access; escalates unresolved access requests to Application Owner; reviews department-level group memberships semi-annually | **Level 4** — departmental access validation |
-| **Help Desk Operator** | Entra-HelpDesk-Operators PAG (grants Application Administrator + Hybrid Identity Administrator via PIM activation) | Executes approved access changes in Entra ID (group assignments, app assignments); must activate role via PIM before performing any Entra action; closes ServiceNow RITM with execution confirmation; does not approve access — execution only; triages Microsoft Security notification emails per the Microsoft Security notification section; escalates anomalous consent or permission events to IGO | **Execution only** — no approval authority |
+| **Help Desk Operator** | Entra-HelpDesk-Operators PAG (grants Helpdesk Administrator, Authentication Administrator and the custom enterprise-app assignment role via PIM activation) | Executes approved access changes in Entra ID (group assignments, app assignments); must activate role via PIM before performing any Entra action; closes ServiceNow RITM with execution confirmation; does not approve access — execution only; triages Microsoft Security notification emails per the Microsoft Security notification section; escalates anomalous consent or permission events to IGO | **Execution only** — no approval authority |
 | **End User / Requester** | Standard user account (no elevated role) | Submits access requests via ServiceNow catalog; provides business justification for access needs; acknowledges acceptable use requirements upon access grant; reports unauthorized access or anomalous application behavior | **None** — requestor only |
 | **ServiceNow Workflow Automation** | ServiceNow Integration Service Account (Entra ID service account, no interactive sign-in) | Routes RITM tickets to approvers based on risk tier; sends automated notifications at each workflow stage; logs all approval actions to RITM audit trail; enforces SLA timers and escalation triggers | **System actor** — no human approval authority |
 
-::: {.callout-warning title="No native Help Desk Entra role"}
-Microsoft Entra ID does not provide a native "Help Desk" role with the combined
-capabilities required for identity operations (application assignment + hybrid
-identity management). The **Entra-HelpDesk-Operators PAG** is the agency's
-implementation mechanism, granting time-bound, just-in-time activation of
-Application Administrator and Hybrid Identity Administrator roles through PIM.
-Help Desk Operators must **never** be granted these roles as permanent
-assignments. All activations must be logged and subject to quarterly review.
+::: {.callout-warning title="No single built-in Help Desk role"}
+Microsoft Entra ID has no single built-in role that covers all Help Desk identity
+work. The **Entra-HelpDesk-Operators PAG** is the agency's implementation
+mechanism, granting time-bound, just-in-time activation of the least-privileged
+roles for each task: Helpdesk Administrator (or Password Administrator) for
+password resets, Authentication Administrator for authentication methods and
+Temporary Access Pass, and a **custom role holding only
+`microsoft.directory/servicePrincipals/appRoleAssignedTo/update`** for
+enterprise-application assignment.[^ms-custom-apps]
+
+**Application Administrator is not a Help Desk role:** it can grant consent to
+delegated permissions and to application permissions outside Microsoft Graph, and
+can create enterprise applications[^ms-by-task] — the one thing this model reserves
+to the IGO. **Hybrid Identity Administrator is not a Help Desk role either:** it
+cannot write `onPremisesImmutableId`, and ImmutableID repair belongs to Identity
+Engineering. Both stay with Identity Engineering, eligible only, behind PIM
+approval. Help Desk Operators must **never** be granted any of these roles as
+permanent assignments. All activations must be logged and subject to quarterly
+review.
 :::
 
 ### RACI matrix
@@ -457,7 +468,7 @@ not permitted.
 | **2** | Departmental Owner reviews business justification. Confirms requester's role legitimacy and department membership. Approves or denies the request. | Departmental Owner | ServiceNow (approval task) | 1 business day | RITM routed to App Owner (if approved) or closed denied |
 | **3** | Application Owner reviews the approved request against application access policy. Confirms the requested group is appropriate. Approves or denies with documented reason. | Application Owner | ServiceNow (approval task) | 2 business days | RITM routed to Help Desk for execution (if approved) or closed denied |
 | **4** | IGO is notified of all Tier 1 access approvals before execution. IGO may intervene and escalate review within 4 business hours of notification. | IGO (notification only for Tier 2/3) | ServiceNow (automated notification) | IGO review window: 4 hours (Tier 1 only) | IGO acknowledgement logged; execution proceeds if no hold placed |
-| **5** | Help Desk Operator activates Application Administrator role via PIM (Entra-HelpDesk-Operators PAG). Records PIM activation time in RITM work notes. | Help Desk Operator | Entra ID PIM portal | Same day as RITM assignment | PIM activation logged in Entra audit log |
+| **5** | Help Desk Operator activates the needed role via PIM (Entra-HelpDesk-Operators PAG) — group membership changes need only group write in the access group's scope; a group-to-app-role binding uses the custom app-assignment role. Records PIM activation time in RITM work notes. | Help Desk Operator | Entra ID PIM portal | Same day as RITM assignment | PIM activation logged in Entra audit log |
 | **6** | Help Desk Operator executes group membership addition: adds the approved user to the designated access security group in Entra ID. Confirms assignment in Entra portal and records object IDs in RITM. | Help Desk Operator | Microsoft Entra admin center → Groups | Within PIM activation window | User added to group; group-based access to Enterprise App propagates |
 | **7** | Help Desk Operator closes RITM with full execution log: timestamp, operator UPN, group name, group Object ID, user UPN added, Entra audit log reference. | Help Desk Operator | ServiceNow | Within 1 hour of execution | RITM resolved and closed; audit trail complete |
 | **8** | End user receives automated notification confirming access grant. Notification includes application name, effective date, and acceptable use acknowledgement requirement. | ServiceNow Automation | ServiceNow (email notification) | Automated on RITM close | User notified and access confirmed |
@@ -743,8 +754,9 @@ Every Admin Consent grant must be documented in the following systems:
    audit log event reference
 2. **Entra ID audit log:** The "Consent to application" event is automatically
    logged in Entra ID. The grantor identity, application, and permission scopes
-   are recorded. This log must be retained for a minimum of 90 days in Entra ID
-   and 1 year in the agency SIEM.
+   are recorded. Entra ID keeps it natively for only 30 days (P1/P2), so it must be
+   exported and retained for a minimum of 3 years in the agency SIEM and long-term
+   archive (see Audit log retention requirements).
 3. **Application Registry:** The Application Registry must be updated within 1
    business day of consent grant to reflect current permission scopes and consent
    date
@@ -894,13 +906,18 @@ access governance must be retained in accordance with the following requirements
 
 | Log type | Native Entra retention | Required agency retention | Storage target |
 |---|---|---|---|
-| Entra ID Audit Logs (all) | 30 days (free) / 90 days (P1/P2) | Minimum 1 year | Agency SIEM |
-| Sign-in Logs | 30 days (free) / 90 days (P1/P2) | Minimum 1 year | Agency SIEM |
-| PIM Activation Logs | 30 days (free) / 90 days (P1/P2) | Minimum 1 year | Agency SIEM |
-| Admin Consent Grant Events | 90 days (P1/P2) | Minimum 3 years | Agency SIEM + long-term archive |
-| Break-Glass Activation Logs | 90 days (P1/P2) | Minimum 3 years | Agency SIEM + long-term archive |
+| Entra ID Audit Logs (all) | 7 days (Free) / 30 days (P1/P2) | Minimum 1 year | Agency SIEM |
+| Sign-in Logs | 7 days (Free) / 30 days (P1/P2) | Minimum 1 year | Agency SIEM |
+| PIM Activation Logs (part of the audit log) | 30 days | Minimum 1 year | Agency SIEM |
+| Admin Consent Grant Events (audit log) | 30 days (P1/P2) | Minimum 3 years | Agency SIEM + long-term archive |
+| Break-Glass Activation Logs (sign-in and audit logs) | 30 days (P1/P2) | Minimum 3 years | Agency SIEM + long-term archive |
 | ServiceNow RITMs (all) | Permanent (ServiceNow) | Minimum 3 years active; 7 years archived | ServiceNow + archive |
 | Application Registry snapshots | Manual (maintained by IGO) | Annual snapshot, 3 years | Secure document repository |
+
+Native retention is from Microsoft's data-retention reference.[^ms-retention]
+Retention changes are not retroactive — data that has aged out can't be recovered
+unless it was already exported — so configure the Azure Monitor export before
+go-live.
 
 ::: {.callout-important title="SIEM integration is mandatory"}
 Entra ID audit log forwarding to the agency SIEM must be configured and verified
@@ -1108,6 +1125,7 @@ requires model amendment rather than ongoing exception management.
 | Version | Date | Author | Change summary | Approved by |
 |---|---|---|---|---|
 | 1.0 | June 8, 2026 | Identity Governance Officer | Initial publication. Establishes complete Enterprise Application Access Governance and Approval Model for Microsoft Entra ID. Incorporates all governance roles, risk classification framework, access workflows, group-based access governance, Admin Consent governance, ServiceNow integration, and audit requirements. | CISO |
+| 1.1 | October 27, 2026 | Identity Governance Officer | Kit v1.6. Help Desk PAG roles corrected: Helpdesk / Authentication Administrator and a custom enterprise-app assignment role replace Application Administrator and Hybrid Identity Administrator; native Entra log retention corrected to 7 days (Free) / 30 days (P1/P2). | CISO |
 
 ### Review cycle
 
@@ -1195,3 +1213,7 @@ classified by required authority, and route to the ServiceNow or SAM pipeline. S
 [Help Desk Flow — Intake, Triage, and Routing](helpdesk-flow.qmd) for the full
 mechanisms and the task ↔ Spoke capability crosswalk.
 :::
+
+[^ms-custom-apps]: Microsoft Learn, "Create custom roles to manage enterprise apps in Microsoft Entra ID," <https://learn.microsoft.com/entra/identity/role-based-access-control/custom-enterprise-apps> (accessed Oct 21, 2026).
+[^ms-by-task]: Microsoft Learn, "Least privileged roles by task in Microsoft Entra ID," <https://learn.microsoft.com/entra/identity/role-based-access-control/delegate-by-task> (accessed Oct 21, 2026).
+[^ms-retention]: Microsoft Learn, "Microsoft Entra data retention," <https://learn.microsoft.com/entra/identity/monitoring-health/reference-reports-data-retention> (accessed Oct 21, 2026).
