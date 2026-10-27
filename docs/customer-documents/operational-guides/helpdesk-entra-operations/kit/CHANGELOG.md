@@ -42,15 +42,19 @@ meaning include:
 - `New-HelpDeskPAG.ps1` assigns the custom app-assignment role tenant-wide even when
   `-DirectoryScopeId` names an AU (that role can't take AU scope).
 
-### App registration and group creation → Identity Engineering
+### App registration, group creation, owner assignment and decommissioning → Identity Engineering
 
-The Help Desk group holds no role that can add an enterprise application (Cloud
-Application Administrator or Application Administrator) or create a group, so
-Identity Engineering now executes new app registrations and access-group creation:
-the EAAG RACI, catalog rows, Group creation section and Group Creator role; the
-admin guide's authority boundary and SAM table; the Helpdesk-Flow crosswalk; and
-the implementation path. The module's `GroupCreation` row is now
-`TriageEscalateOnly` with no Help Desk role.
+The Help Desk group holds no role that can add an enterprise application, assign
+its owners or delete it (each needs Cloud Application Administrator or Application
+Administrator), or create a group. Identity Engineering now executes new app
+registrations, access-group creation, Application Owner assignment and transfer,
+and application decommissioning (including orphaned-application remediation): the
+EAAG RACI, catalog rows, ownership transfer procedure, Group creation section and
+Group Creator role; the admin guide's authority boundary and SAM table; the
+Helpdesk-Flow crosswalk; and the implementation path. In the module, the
+`GroupCreation` row is now `TriageEscalateOnly` with no Help Desk role, and
+owner-transfer and decommission requests route to the out-of-scope
+`ServicePrincipalChange` row.
 
 ### Routing matrix (`lib/HelpDeskEntra.psm1`, implementation path, Helpdesk-Flow)
 
@@ -143,7 +147,7 @@ the implementation path. The module's `GroupCreation` row is now
   (v1.5 put the display name in `UserUpn`); paging (`-All`) on assignments.
 - All scripts load the module from `..\lib\` (kit layout) or alongside the script
   (repo layout), so they run from either.
-- **New:** `tests/HelpDeskEntra.Tests.ps1` (Pester 5, 32 tests): routing rows,
+- **New:** `tests/HelpDeskEntra.Tests.ps1` (Pester 5, 34 tests): routing rows,
   password split, regex boundaries, scope sets, and an AST check that every
   connector and mail-state call sits inside the `-WhatIf` gate.
 

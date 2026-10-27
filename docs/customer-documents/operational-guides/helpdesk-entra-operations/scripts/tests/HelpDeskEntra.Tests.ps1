@@ -118,6 +118,8 @@ Describe 'Resolve-RequestRoute' {
         @{ Text = 'Pull the sign-in logs for this user';     Key = 'SignInLogRetrieval' }
         @{ Text = 'Need the directory audit log for a change'; Key = 'AuditLogRetrieval' }
         @{ Text = 'Please create a new security group for the app'; Key = 'GroupCreation' }
+        @{ Text = 'Transfer the application owner for Payroll'; Key = 'ServicePrincipalChange' }
+        @{ Text = 'Please decommission the Payroll app';        Key = 'ServicePrincipalChange' }
     ) {
         (Resolve-RequestRoute -Text $Text).Key | Should -Be $Key
     }
