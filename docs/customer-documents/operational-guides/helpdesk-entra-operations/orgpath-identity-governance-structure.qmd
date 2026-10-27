@@ -25,16 +25,25 @@ lifecycle_review: 2026-12-08
 enterprise architects, and Identity Governance Officers. Platforms referenced:
 Microsoft Entra ID · SAM (SailPoint IGA) · ServiceNow ITSM · Microsoft PIM.*
 
+::: {.callout-note title="Design guidance"}
+The OrgPath four-layer model, its approval layers, ownership rules and review cadences are the program's design guidance for the agency to adopt or adjust. Platform behavior is footnoted to Microsoft, ServiceNow, SailPoint and federal sources.
+:::
+
 ## Executive summary
 
 Microsoft Entra ID is the foundation of enterprise identity for most modern
-government agencies — but it is not, by design, an identity governance tool. It
-provides powerful authentication, authorization, and access control
-capabilities, yet it contains no native mechanism for routing governance
-decisions through an organizational hierarchy. When an application requests
-Admin Consent, when an access request is submitted, or when a quarterly access
-review is due, Entra ID does not know who the accountable approver is, what
-business unit is affected, or what risk tier applies. That institutional
+government agencies — but it is not, by design, a complete identity governance
+tool. It provides powerful authentication, authorization, and access control
+capabilities, and its governance features route approvals only on what the
+tenant holds: the admin consent workflow sends a request to the reviewers the
+tenant designates,[^ms-consent-workflow] and, with Microsoft Entra ID Governance
+licensing, entitlement management can route an access request through up to
+three approval stages, starting with the requester's manager from the `manager`
+attribute.[^ms-em-approval][^ms-gov-licensing] What Entra ID does not hold is the
+agency's governance model. When an application requests Admin Consent, when an
+access request is submitted, or when a quarterly access review is due, Entra ID
+does not know which application owner is accountable, what business unit is
+affected, or what risk tier applies. That institutional
 knowledge lives only in people's heads — and when those people change, the
 knowledge disappears.
 
@@ -83,15 +92,22 @@ standing, and operational continuity.
 ### Admin Consent approved without a defined chain of authority
 
 When an Enterprise Application requests OAuth 2.0 Admin Consent in Microsoft
-Entra ID, that request surfaces to any user holding the Global Administrator
-role or a delegated consent permission. There is no native mechanism in Entra ID
-to require that the consent request travel through a defined approval chain. In
+Entra ID, consent can be granted by anyone holding a role that can grant it:
+Global Administrator, Privileged Role Administrator, a custom role with consent
+permissions, or, for any permission except Microsoft Graph application
+permissions, Cloud Application Administrator or Application
+Administrator.[^ms-grant-consent] The admin consent workflow, when enabled, sends
+a user's request to designated reviewers, but it is a single review step, and
+designating a reviewer does not give them the right to
+approve.[^ms-consent-workflow] There is no native mechanism in Entra ID to
+require that the consent request travel through a multi-stage approval chain. In
 most agencies today, the result is that Admin Consent is granted by whichever
 Global Admin is available and responsive — without a formal assessment of the
 application's risk, without documented business justification, and without
 accountability attached to a specific organizational role. A single uninformed
-consent decision can grant a third-party application read or write access to the
-entirety of the agency's Microsoft 365 data estate.
+consent decision can grant a third-party application read or write access to
+every mailbox or every site in the agency's Microsoft 365
+tenant.[^ms-grant-consent][^ms-graph-perms]
 
 ### Application ownership is informal and undocumented
 
@@ -117,11 +133,16 @@ agency's access policy for the application in question.
 
 ### Incomplete audit trails — decisions not tied to organizational roles
 
-Federal identity governance standards, including OMB Memo M-19-17, NIST SP
-800-53 (AC-2, AC-6), and the FedRAMP 20x **KSI-IAM** indicators anchored on
-those controls — `KSI-IAM-ELP` (ensuring least privilege) and `KSI-IAM-AAM`
-(automating account management) in particular — require that access decisions
-be traceable to accountable individuals acting within defined roles.
+Federal identity governance requirements point the same way. OMB Memo M-19-17
+requires each agency to designate an ICAM governance structure and to manage
+access, including revoking privileges that are no longer
+authorized;[^omb-m1917] NIST SP 800-53 Rev. 5 AC-2 requires approval of account
+requests by defined personnel or roles and periodic account review, and AC-6
+requires least privilege;[^nist-ac] and, for cloud services under FedRAMP 20x,
+the **KSI-IAM** indicators — `KSI-IAM-ELP` (ensuring least privilege) and
+`KSI-IAM-AAM` (automating account management) in particular — map to those
+controls.[^fedramp-ksi] Together they expect access decisions to be traceable to
+accountable individuals acting within defined roles.
 When access is granted informally — through direct administrator action, email
 approval, or undocumented ServiceNow work — the audit trail captures the
 technical action but not the governance chain. The agency cannot answer basic
@@ -141,10 +162,11 @@ last reviewed?
   cannot be systematically reviewed or revoked.
 - **Compliance exposure:** Inability to produce an auditable access decision
   trail creates material risk in federal audit, Inspector General review, and
-  FedRAMP 20x assessment contexts. Under 20x the exposure surfaces sooner:
-  `KSI-IAM-ELP` and `KSI-IAM-AAM` are continuously validated, so an
-  unattributable grant reads as an unevidenced indicator immediately rather
-  than at the next assessment cycle.
+  FedRAMP 20x assessment contexts. For a cloud service under 20x the exposure
+  surfaces sooner: `KSI-IAM-ELP` calls for least-privilege measures that are
+  persistently reviewed, and `KSI-IAM-AAM` for automated management of account
+  and privilege lifecycles,[^fedramp-ksi] so an unattributable grant reads as an
+  unevidenced indicator rather than waiting for the next assessment cycle.
 - **Privilege drift:** Without structured periodic re-justification, users
   accumulate access entitlements over time that far exceed their current role
   requirements.
@@ -216,7 +238,8 @@ justification at submission.
 
 **What they cannot do:** Requesters have no approval authority. A requester
 cannot approve their own access, cannot bypass the OrgPath routing chain, and
-cannot initiate an Admin Consent request (that authority belongs to Layer 3).
+cannot initiate an Admin Consent request (that authority belongs to Layer 3;
+design guidance).[^ms-consent-request]
 
 **Entra ID mapping:** End user identity in Entra ID (Entra user object).
 
@@ -265,7 +288,7 @@ request when it is escalated to Layer 4. They may NOT approve Admin Consent. Tha
 authority is unconditional at Layer 4 only.
 
 **Platform assignments:** Designated as Application Owner in the Entra ID
-Enterprise Application owner field; configured as SAM application owner and
+Enterprise Application owner field;[^ms-app-owners] configured as SAM application owner and
 second-stage approver in all access request workflows for that application. A
 backup/delegate owner must also be designated to prevent governance failure
 during absence or transition.
@@ -377,7 +400,7 @@ separation of function is a deliberate governance control.
 
 ### Quarterly access reviews scoped to Application Owners
 
-SAM generates quarterly access certification campaigns automatically. Application
+SAM runs quarterly access certification campaigns on a schedule.[^sp-cert-schedule] Application
 Owners (Layer 3) receive certification tasks scoped precisely to the applications
 they own — they review every current holder of every entitlement for their
 application. This is not a generic "review all access" exercise. It is a
@@ -404,7 +427,8 @@ end. OrgPath addresses privilege drift structurally: every entitlement must be
 re-justified through the OrgPath chain on each certification cycle. An Application
 Owner who cannot confirm a continuing business need for an entitlement is required
 to revoke it — SAM will either automatically revoke (for fully connected
-applications) or generate a ServiceNow task for Help Desk execution. Access that
+applications) or generate a ServiceNow task for Help Desk
+execution.[^sp-cert-remediate] Access that
 cannot be justified does not persist.
 
 ## How OrgPath defines application ownership
@@ -499,14 +523,18 @@ becomes operationally enforceable. The configuration principles are as follows:
   configured risk tier. There is no manual determination of routing required —
   the configuration enforces it.
 - **Time-based escalation:** If a layer approver does not respond within the
-  defined Service Level Agreement (SLA) window, SAM automatically escalates the
-  request to the next layer. Governance decisions do not stall because an approver
-  is unavailable — the routing chain continues.
+  defined Service Level Agreement (SLA) window, SAM sends reminders and then
+  escalates the request along its configured escalation
+  chain,[^sp-escalation] which the program sets so the request keeps moving
+  (design guidance). Governance decisions do not stall because an approver is
+  unavailable — the routing chain continues.
 - **Separation of Duties (SoD) enforcement:** SAM evaluates every access request
   against the agency's configured SoD policies at the moment of submission, before
-  the request enters the approval chain. Requests that would create a prohibited
-  SoD conflict are automatically blocked and routed to the IGO for exception
-  review — they never proceed silently through a standard approval chain.
+  the request enters the approval chain. With SoD blocking configured, requests
+  that would create a prohibited SoD conflict are cancelled
+  automatically;[^sp-sod] an exception goes to the IGO as its own request (design
+  guidance) — conflicting requests never proceed silently through a standard
+  approval chain.
 - **Authoritative access model:** SAM maintains the authoritative record of every
   application's approved roles, approved access holders, and ownership
   assignments. This record is the governance source of truth — not Entra ID, not
@@ -516,11 +544,13 @@ becomes operationally enforceable. The configuration principles are as follows:
 
 Not all access provisioning actions can be executed automatically by SAM through
 its Entra ID connector. For access requiring manual administrator action in Entra
-ID — such as the assignment of highly privileged roles not managed through
-standard group membership — SAM triggers a downstream ServiceNow workflow:
+ID — such as the assignment of highly privileged roles, which the agency keeps
+out of automated provisioning (design guidance) even though the connector can
+manage Entra directory roles[^sp-entra-connector] — SAM triggers a downstream
+ServiceNow workflow:
 
 - Upon completion of the full SAM approval chain, SAM creates a ServiceNow Request
-  Item (RITM) for manual provisioning.
+  Item (RITM) for manual provisioning.[^sp-sdim]
 - The RITM contains the complete SAM approval chain record, requester identity,
   application, entitlement details, and risk tier classification — no context is
   lost in the handoff.
@@ -533,8 +563,8 @@ standard group membership — SAM triggers a downstream ServiceNow workflow:
 
 ### How SAM supports quarterly access certifications
 
-- SAM generates access certification campaigns automatically on the defined
-  schedule — quarterly for Tier 1 (high-risk) applications, semi-annually for Tier
+- SAM runs access certification campaigns on the defined
+  schedule[^sp-cert-schedule] — quarterly for Tier 1 (high-risk) applications, semi-annually for Tier
   2, and annually for Tier 3.
 - Each campaign is scoped to the Application Owner for each application — they
   receive tasks in SAM to review and certify every current user of their
@@ -542,7 +572,7 @@ standard group membership — SAM triggers a downstream ServiceNow workflow:
 - For applications with a fully configured SAM-Entra ID connector, SAM executes
   revocation decisions automatically. For applications not fully connected, SAM
   generates a ServiceNow task for Help Desk execution of the revocation in Entra
-  ID.
+  ID.[^sp-cert-remediate]
 - All certification decisions — approve, revoke, and abstain — are recorded in SAM
   with timestamp, approver, and decision rationale. This record constitutes the
   auditable proof of access review required for federal compliance certifications.
@@ -621,9 +651,9 @@ authorization for a privileged identity action.
 | **Access request approval** | Inconsistent — email, phone, or informal channel depending on individual habit | Structured SAM portal with enforced, risk-tiered approval chain and time-bound escalation |
 | **Quarterly access reviews** | Ad hoc, infrequent, or entirely absent | SAM-driven certification campaigns per Application Owner, automatically scheduled by risk tier |
 | **Audit trail completeness** | Incomplete — decisions captured as technical actions, not tied to accountable governance roles | Full audit chain in SAM + ServiceNow + Entra ID; every decision attributed to a named OrgPath role |
-| **Privilege drift prevention** | None — access accumulates indefinitely without structural re-justification | SAM certification cycles require affirmative re-justification; unjustified access is revoked automatically |
+| **Privilege drift prevention** | None — access accumulates indefinitely without structural re-justification | SAM certification cycles require affirmative re-justification; unjustified access is revoked — automatically for connected applications, by remediation task otherwise |
 | **SoD enforcement** | None — conflicts not detected until post-incident review, if ever | Automated SoD policy enforcement at point of request submission in SAM; conflicts blocked before reaching an approver |
-| **Orphaned assignment management** | Orphaned access persists indefinitely; no accountable owner to identify and remove it | Application Owners certify complete access rosters each cycle; unconfirmed assignments trigger automatic revocation |
+| **Orphaned assignment management** | Orphaned access persists indefinitely; no accountable owner to identify and remove it | Application Owners certify complete access rosters each cycle; revoked assignments are removed through the connector or a remediation task |
 | **Provisioning speed** | Days to weeks for manual, approval-by-email processes | Automated provisioning via SAM Entra ID connector for group-based access; ServiceNow RITM for residual manual actions |
 | **Compliance readiness** | Unable to produce complete, role-attributable access decision trails for audit | Complete, exportable governance records in SAM supporting federal audit, IG review, and FedRAMP 20x KSI-IAM evidence |
 
@@ -734,13 +764,31 @@ program in the Microsoft Entra ID environment.
 
 ::: {.callout-important title="Integrating ServiceNow's shipped functions — not reinventing them"}
 This guidance does **not** build a parallel automation engine. ServiceNow already
-ships the integration: the **Microsoft Entra ID Spoke** "provides spoke actions to automate Microsoft Entra ID tasks for application management, audit logs, device management, group management, license management, organization management, password management, service principal management, user authentication, and user management"
-([ServiceNow documentation](https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/microsoft-azure-ad-spoke.html)). What this kit adds is **integration and
+ships the integration: the **Microsoft Entra ID Spoke** "provides actions to automate Entra tasks when events occur in ServiceNow," grouped into ten categories: application management, audit logs, device management, group management, license management, organization management, password management, service principal management, user authentication, and user management.[^sn-spoke] What this kit adds is **integration and
 customization** — routing those shipped actions through the agency's Help Desk
 authority model and the ServiceNow / SAM approval pipelines, and filling only the
-residual gaps the spoke does not cover (OneDrive, ImmutableID hard-match,
-Conditional Access). It runs ServiceNow-first: requests enter a triage queue, are
+residual gaps the spoke does not cover (for example authentication-method resets,
+OneDrive provisioning and Conditional Access; ImmutableID hard-match repair is
+Identity Engineering's work). It runs ServiceNow-first: requests enter a triage queue, are
 classified by required authority, and route to the ServiceNow or SAM pipeline. See
 [Help Desk Flow — Intake, Triage, and Routing](helpdesk-flow.qmd) for the full
 mechanisms and the task ↔ Spoke capability crosswalk.
 :::
+
+[^ms-consent-workflow]: Microsoft Learn, "Configure the admin consent workflow": requests go by email to the reviewers the tenant designates; "To approve requests, a reviewer must have the permissions required to grant admin consent"; only Global Administrators can turn the workflow on, <https://learn.microsoft.com/entra/identity/enterprise-apps/configure-admin-consent-workflow> (accessed Oct 27, 2026).
+[^ms-em-approval]: Microsoft Learn, "Change approval and requestor information settings for an access package in entitlement management," sections "Single-stage approval" and "Multi-stage approval" (Manager as approver, found from the user's Manager attribute; up to three stages; alternate approvers), <https://learn.microsoft.com/entra/id-governance/entitlement-management-access-package-approval-policy> (accessed Oct 27, 2026).
+[^ms-gov-licensing]: Microsoft Learn, "Microsoft Entra ID Governance licensing fundamentals," <https://learn.microsoft.com/entra/id-governance/licensing-fundamentals> (accessed Oct 20, 2026).
+[^ms-grant-consent]: Microsoft Learn, "Grant tenant-wide admin consent to an application," introduction (consent may allow "full access to all mailboxes or all sites") and section "Prerequisites" (Privileged Role Administrator for any permission; Cloud Application Administrator, AI Administrator or Application Administrator for any permission except Microsoft Graph app roles; or a custom role with consent permission), <https://learn.microsoft.com/entra/identity/enterprise-apps/grant-admin-consent> (accessed Oct 27, 2026).
+[^ms-graph-perms]: Microsoft Learn, "Microsoft Graph permissions reference," entry `Mail.ReadWrite` (application: "create, read, update, and delete mail in all mailboxes without a signed-in user"), <https://learn.microsoft.com/graph/permissions-reference> (accessed Oct 27, 2026).
+[^omb-m1917]: Office of Management and Budget, M-19-17, *Enabling Mission Delivery through Improved Identity, Credential, and Access Management*, May 21, 2019, sections on managing access and "Governance," <https://www.whitehouse.gov/wp-content/uploads/2019/05/M-19-17.pdf> (accessed Oct 27, 2026).
+[^nist-ac]: NIST SP 800-53 Rev. 5, controls AC-2 (c, d, e, j) and AC-6, as published in FedRAMP, "Access Control" (catalog for the 2026 rules), <https://fedramp.gov/2026/reference/controls/access-control/> (accessed Oct 27, 2026).
+[^fedramp-ksi]: FedRAMP, Consolidated Rules for 2026, "Key Security Indicators," entries KSI-IAM-AAM ("The lifecycle and privileges of all accounts, roles, and groups are securely managed using automation") and KSI-IAM-ELP (least-privilege measures "used and persistently reviewed"), with their related SP 800-53 controls, <https://www.fedramp.gov/2026/reference/key-security-indicators/> (accessed Oct 27, 2026).
+[^ms-consent-request]: When the admin consent workflow is enabled, Entra ID lets any user who can't consent to an app send a request for admin approval; the program routes those requests through Layer 3 sponsorship. Microsoft Learn, "Configure the admin consent workflow," <https://learn.microsoft.com/entra/identity/enterprise-apps/configure-admin-consent-workflow> (accessed Oct 27, 2026).
+[^ms-app-owners]: An Entra ID owner is more than a label: the owner of an enterprise application can manage its single sign-on, provisioning and user assignment, add or remove owners, and has the same permissions as an Application Administrator scoped to that app; groups can't be owners, and Microsoft recommends at least two owners per app. Microsoft Learn, "Overview of enterprise application ownership in Microsoft Entra ID," <https://learn.microsoft.com/entra/identity/enterprise-apps/overview-assign-app-owners> (accessed Oct 27, 2026).
+[^sp-cert-schedule]: Scheduling depends on the SailPoint product. In SailPoint Identity Security Cloud, a schedule generates the campaign preview, and "An admin must still manually start the campaign." SailPoint, "Starting a Campaign," <https://documentation.sailpoint.com/saas/help/certs/starting_search_campaign.html> (accessed Oct 27, 2026).
+[^sp-cert-remediate]: With a direct connection that can provision changes, access removal is automatic; without write access, SailPoint creates a task assigned to the source owner. Routing that task to ServiceNow requires a service desk integration. SailPoint, "Understanding Certifications," <https://documentation.sailpoint.com/saas/help/certs/understanding_certifications.html> (accessed Oct 27, 2026).
+[^sp-escalation]: In SailPoint Identity Security Cloud, reminders are configurable, and "the first two times a request is escalated it is sent to the manager of the assigned reviewer," then to the fallback approver. SailPoint Identity Security Cloud documentation, access request approval settings, <https://documentation.sailpoint.com/saas/help/requests/config_approval_settings.html> (accessed Oct 27, 2026).
+[^sp-sod]: SailPoint, "Preventing Policy Violations": a global setting can block requests with SoD conflicts ("The system will automatically cancel access requests with SoD conflicts"), or individual policies can prevent violating requests, <https://documentation.sailpoint.com/saas/help/sod/prevent-violations.html> (accessed Oct 27, 2026).
+[^sp-entra-connector]: SailPoint, Microsoft Entra ID connector, "Supported Features" (account group management; Microsoft Entra role management for built-in and custom directory roles), <https://documentation.sailpoint.com/connectors/saas/msentraid/help/saas_connectivity/microsoft_entra_id/supported_features.html> (accessed Oct 27, 2026).
+[^sp-sdim]: SailPoint, IdentityIQ for ServiceNow Service Desk, "Basic Configuration": tickets create service requests on `sc_request` (REQ) and `sc_req_item` (RITM), and the module fetches ticket status back from the target tables, <https://documentation.sailpoint.com/connectors/identityiq/servicenow/sdim/help/integrating_servicenow_sdim/basic_configuration.html> (accessed Oct 27, 2026).
+[^sn-spoke]: ServiceNow, *Microsoft Entra ID spoke* (Zurich), Integration Hub; the spoke requires an Integration Hub subscription, <https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/microsoft-azure-ad-spoke.html> (accessed Oct 27, 2026).

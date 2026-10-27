@@ -1,4 +1,4 @@
-﻿#requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Applications, Microsoft.Graph.Groups
+﻿#requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Applications, Microsoft.Graph.Groups, Microsoft.Graph.Users
 <#
 .SYNOPSIS
     Produce a per-application access roster for owner certification (the input
@@ -25,14 +25,17 @@ param(
     [string]$TenantId
 )
 
-Import-Module (Join-Path $PSScriptRoot '..\lib\HelpDeskEntra.psm1') -Force
+# Module sits in ..\lib\ in the kit zip and beside the scripts in the repo.
+$modulePath = @((Join-Path $PSScriptRoot '..\lib\HelpDeskEntra.psm1'), (Join-Path $PSScriptRoot 'HelpDeskEntra.psm1')) |
+    Where-Object { Test-Path $_ } | Select-Object -First 1
+Import-Module $modulePath -Force
 Connect-HelpDeskGraph -ScopeSet InventoryRead -TenantId $TenantId
 
-$filter = if ($AppDisplayName) { "displayName eq '$AppDisplayName'" } else { $null }
+$filter = if ($AppDisplayName) { "displayName eq '$($AppDisplayName -replace "'", "''")'" } else { $null }
 $sps = if ($filter) { Get-MgServicePrincipal -Filter $filter } else { Get-MgServicePrincipal -All }
 
 $rows = foreach ($sp in $sps) {
-    $assignments = Get-MgServicePrincipalAppRoleAssignedTo -ServicePrincipalId $sp.Id -ErrorAction SilentlyContinue
+    $assignments = Get-MgServicePrincipalAppRoleAssignedTo -ServicePrincipalId $sp.Id -All -ErrorAction SilentlyContinue
     foreach ($a in $assignments) {
         if ($a.PrincipalType -eq 'Group') {
             $members = Get-MgGroupMember -GroupId $a.PrincipalId -All -ErrorAction SilentlyContinue |
@@ -50,11 +53,13 @@ $rows = foreach ($sp in $sps) {
         }
         elseif ($a.PrincipalType -eq 'User') {
             # Direct user assignment — flag it: Doc 3 §6.1 mandates group-based only.
+            # The assignment carries only the display name; resolve the UPN.
+            $u = Get-MgUser -UserId $a.PrincipalId -Property 'userPrincipalName,displayName' -ErrorAction SilentlyContinue
             [pscustomobject]@{
                 Application = $sp.DisplayName
                 AssignedVia = 'DIRECT-USER (policy exception — should be group-based)'
                 GroupName   = ''
-                UserUpn     = $a.PrincipalDisplayName
+                UserUpn     = if ($u) { $u.UserPrincipalName } else { "unresolved: $($a.PrincipalId)" }
                 UserName    = $a.PrincipalDisplayName
                 Certify     = ''
             }
